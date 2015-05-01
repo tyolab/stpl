@@ -10,20 +10,52 @@
 							<builder id="org.eclipse.cdt.build.core.settings.default.builder.656598116" keepEnvironmentInBuildfile="false" name="Gnu Make Builder" superClass="org.eclipse.cdt.build.core.settings.default.builder"/>
 							<tool id="org.eclipse.cdt.build.core.settings.holder.libs.358371362" name="holder for library settings" superClass="org.eclipse.cdt.build.core.settings.holder.libs"/>
 							<tool id="org.eclipse.cdt.build.core.settings.holder.2120718654" name="Assembly" superClass="org.eclipse.cdt.build.core.settings.holder">
+								<option id="org.eclipse.cdt.build.core.settings.holder.incpaths.763952997" name="Include Paths" superClass="org.eclipse.cdt.build.core.settings.holder.incpaths" valueType="includePath">
+									<listOptionValue builtIn="false" value="/usr/include/c++/4.9.2/"/>
+								</option>
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1629691886" languageId="org.eclipse.cdt.core.assembly" languageName="Assembly" sourceContentType="org.eclipse.cdt.core.asmSource" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>
 							<tool id="org.eclipse.cdt.build.core.settings.holder.888652915" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder">
+								<option id="org.eclipse.cdt.build.core.settings.holder.incpaths.376884750" name="Include Paths" superClass="org.eclipse.cdt.build.core.settings.holder.incpaths" valueType="includePath">
+									<listOptionValue builtIn="false" value="/usr/include"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/stpl/stpl}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/stpl/utils}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/stpl/nlp}&quot;"/>
+									<listOptionValue builtIn="false" value="/usr/include/c++/4.9.2/"/>
+								</option>
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.361774384" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>
 							<tool id="org.eclipse.cdt.build.core.settings.holder.95443593" name="GNU C" superClass="org.eclipse.cdt.build.core.settings.holder">
+								<option id="org.eclipse.cdt.build.core.settings.holder.incpaths.1109669993" name="Include Paths" superClass="org.eclipse.cdt.build.core.settings.holder.incpaths" valueType="includePath">
+									<listOptionValue builtIn="false" value="/usr/include"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/stpl/nlp}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/stpl/stpl}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/stpl/utils}&quot;"/>
+									<listOptionValue builtIn="false" value="/usr/include/c++/4.9.2/"/>
+								</option>
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.2082539982" languageId="org.eclipse.cdt.core.gcc" languageName="GNU C" sourceContentType="org.eclipse.cdt.core.cSource,org.eclipse.cdt.core.cHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>
 						</toolChain>
 					</folderInfo>
+					<sourceEntries>
+						<entry excluding="utils|tools|spec|nlp|stpl" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="nlp"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="spec"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="stpl"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="tools"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="utils"/>
+					</sourceEntries>
 				</configuration>
 			</storageModule>
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="preference.org.eclipse.cdt.managedbuilder.core.configurationDataProvider.1106448671" moduleId="org.eclipse.cdt.core.settings" name="Preference Configuration">
-				<externalSettings/>
+				<externalSettings>
+					<externalSetting>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/stpl/utils"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/stpl/stpl"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/stpl/nlp"/>
+						<entry flags="RESOLVED" kind="includePath" name="/usr/include"/>
+					</externalSetting>
+				</externalSettings>
 				<extensions>
 					<extension id="org.eclipse.cdt.core.ELF" point="org.eclipse.cdt.core.BinaryParser"/>
 					<extension id="org.eclipse.cdt.core.GNU_ELF" point="org.eclipse.cdt.core.BinaryParser"/>
@@ -43,11 +75,16 @@
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
 		<project id="stpl.null.229123109" name="stpl"/>
 	</storageModule>
-	<storageModule moduleId="scannerConfiguration"/>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">
 		<configuration configurationName="Preference Configuration">
 			<resource resourceType="PROJECT" workspacePath="/stpl"/>
 		</configuration>
+	</storageModule>
+	<storageModule moduleId="scannerConfiguration">
+		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		<scannerConfigBuildInfo instanceId="preference.org.eclipse.cdt.managedbuilder.core.configurationDataProvider.1106448671">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
 	</storageModule>
 </cproject>
