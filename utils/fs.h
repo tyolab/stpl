@@ -62,11 +62,15 @@ namespace FILESYSTEM {
 		    return files.size();
 		}
 
-		bool exist() {
+		bool exists() {
+			return exists(name_.c_str());
+		}
+
+		static bool exists(const char *filename) {
 			bool success = true;
 			struct stat my_stat;
 
-			if( stat( name_.c_str(), &my_stat ) == -1 )
+			if( stat(filename, &my_stat ) == -1 )
 				success = false;
 
 			return success;
