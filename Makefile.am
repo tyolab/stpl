@@ -2,46 +2,46 @@
 #AUTOMAKE_OPTIONS = foreign
 
 stpl_basic_headers=\
-				stpl_doc.h \
-				stpl_entity.h \
-				stpl_exception.h \
-				stpl_grammar.h \
-				stpl_keyword.h \
-				stpl_log.h \
-				stpl_othertraits.h \
-				stpl_parser.h \
-				stpl_property.h \
-				stpl_rule.h \
-				stpl_scanner.h \
-				stpl_simple.h \
-				stpl_stream.h \
-				stpl_typetraits.h \
-				stpl_unichar.h \
-				stpl_unigrammar.h \
-				stpl_uniword.h \
-				stpl_word.h
+				stpl/stpl_doc.h \
+				stpl/stpl_entity.h \
+				stpl/stpl_exception.h \
+				stpl/stpl_grammar.h \
+				stpl/stpl_keyword.h \
+				stpl/stpl_log.h \
+				stpl/stpl_othertraits.h \
+				stpl/stpl_parser.h \
+				stpl/stpl_property.h \
+				stpl/stpl_rule.h \
+				stpl/stpl_scanner.h \
+				stpl/stpl_simple.h \
+				stpl/stpl_stream.h \
+				stpl/stpl_typetraits.h \
+				stpl/stpl_unichar.h \
+				stpl/stpl_unigrammar.h \
+				stpl/stpl_uniword.h \
+				stpl/stpl_word.h
 stpl_basic_sources=
 
 stpl_xml_headers= \
-				xml/stpl_xml_basic.h \
-				xml/stpl_xml_entity.h \
-				xml/stpl_xml.h
+				stpl/xml/stpl_xml_basic.h \
+				stpl/xml/stpl_xml_entity.h \
+				stpl/xml/stpl_xml.h
 stpl_xml_sources=			
 				
 stpl_html_headers = \
-				html/stpl_html_entity.h \
-				html/stpl_html.h
+				stpl/html/stpl_html_entity.h \
+				stpl/html/stpl_html.h
 stpl_html_sources =
 				
 stpl_misc_headers = \
-				misc/stpl_trec.h
+				stpl/misc/stpl_trec.h
 stpl_misc_sources =	
 			
 stpl_characters_headers = \
-				lang/stpl_character.h \
-				lang/stpl_chinese.h \
-				lang/stpl_unicode.h \
-				lang/stpl_uscanner.h				
+				stpl/lang/stpl_character.h \
+				stpl/lang/stpl_chinese.h \
+				stpl/lang/stpl_unicode.h \
+				stpl/lang/stpl_uscanner.h				
 stpl_characters_sources =		
 
 stpl_stpl_sources = \
@@ -57,16 +57,16 @@ stpl_stpl_sources = \
 #				$(stpl_characters_sources)
 				
 stpl_spec_headers = \
-			default.h \
-			property.h \
-			text.h
+			spec/default.h \
+			spec/property.h \
+			spec/text.h
 stpl_spec_sources = $(stpl_spec_headers)
 
 stpl_utils_headers = \
-			charset_converter.h \
-			fs.h \
-			icstring.h \
-			archive.h
+			utils/charset_converter.h \
+			utils/fs.h \
+			utils/icstring.h \
+			utils/archive.h
 stpl_utils_sources = $(stpl_utils_headers)
 			
 #includedir = $(prefix)/include/stpl/utils
@@ -99,6 +99,6 @@ include_HEADERS = $(stpl_stpl_sources) \
 							$(stpl_spec_sources) \
 							$(stpl_utils_sources)
 
-SUBDIRS = test
+SUBDIRS = tools test
 
 EXTRA_DIST = LICENSE.LGPL

@@ -1,7 +1,7 @@
 /******************************************************************************
  * This file is part of the Simple Text Processing Library(STPL).
  *
- * (c) Copyright 2007-2008 TYONLINE TECHNOLOGY PTY. LTD.
+ * (c) Copyright 2015 TYONLINE TECHNOLOGY PTY. LTD.
  *
  * This file may be distributed and/or modified under the terms of the
  * GNU LESSER GENERAL PUBLIC LICENSE, Version 3 as published by the Free Software

@@ -13,34 +13,12 @@
  *
  *******************************************************************************
  *
- * @author				Ling-Xiang(Eric) Tang 
+ * @author				Ling-Xiang(Eric) Tang
  *
  *******************************************************************************/
 
-#ifndef STPL_OTHERTRAITS_H_
-#define STPL_OTHERTRAITS_H_
 
-#include "stpl_doc.h"
-#include "stpl_grammar.h"
-
-namespace stpl {
-	
-	template <typename DocumentT>
-	struct ScannerTypeTrait {
-		typedef  Scanner<DocumentT>	scanner_type;
-	};
-	
-	template <typename DocumentT, typename ScannerT>
-	struct GrammarTypeTrait {
-		typedef Grammar<DocumentT, ScannerT>	grammar_type;
-	};		
-	
-	/*
-	template <PlainDocument<>, typename ScannerT>
-	struct GrammarTypeTrait<PlainDocument, ScannerT> {
-		typedef PlainTextGrammar<DocumentT, ScannerT>	grammar_type;
-	};	
-	*/
+int main(int argc, char* argv[])
+{
+	return 0;
 }
-
-#endif /*STPL_OTHERTRAITS_H_*/
