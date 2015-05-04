@@ -208,6 +208,10 @@ namespace stpl {
 
 			void force_end_quote(bool b) { force_end_quote = b; }
 
+			virtual bool match() {
+				return StringBound<StringT, IteratorT>::match();
+			}
+
 			virtual bool match(IteratorT begin, IteratorT end) {
 				if (StringBound<StringT, IteratorT>::match(begin, end)) {
 					if (name_.length() <= 0)

@@ -18,6 +18,7 @@
  *******************************************************************************/
 
 #include <stdio.h>
+#include <string.h>
 
 #include <iostream>
 #include <string>
@@ -38,7 +39,7 @@ void usage(const char *program) {
 	fprintf(stderr, "stpl-xml - a simple XML value extraction tool (version: %s) from STPL (Simple Text Processing Library)\n", VERSION);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "usage: %s xpath /a/path/to/xml/file\n", program); // [node:attr]
-	fprintf(stderr, "          xpath - element[[#]][/child-element/...]:attr\n");
+	fprintf(stderr, "          xpath - element[[#]][/child-element/...]:attr[=value]\n");
 	exit(-1);
 }
 
@@ -81,38 +82,66 @@ int main(int argc, char* argv[])
 	}
 
 	int count = 0;
+	element_type::attribute_type *parsed_attr = NULL;
+	const char *pos2 = NULL;
+	const char *attr = NULL;
+	string target_attr;
+	string target_value;
+	if (NULL != (attr = strchr(pos, ':'))) {
+		++attr;
+		pos2 = strchr(attr, '=');
+		if (pos2) {
+			parsed_attr = new element_type::attribute_type();
+			string temp(attr);
+			parsed_attr->match(temp.begin(), temp.end());
+			target_attr = parsed_attr->name();
+			target_value = parsed_attr->value();
+			attr = NULL; // we are looking for the element with a particular attribute value
+		}
+		else {
+			attr = pos;
+			target_attr = attr;
+		}
+	}
+
 	// allow non-stard xml file with no single document root
 	entity_iterator	it;
 	element_type *elem = NULL;
-	const char *attr = NULL;
 	for (it = doc.iter_begin(); it != doc.iter_end(); ++it) {
 		node_type *node = static_cast<node_type*>((*it));
 
 		if (node->is_element()) {
+			++count;
+
 			elem = static_cast<element_type *>(node);
 			string name = elem->name();
-			if (name == first_tag && (index == -1 || count == index)) {
+			if (name == first_tag && (index == -1 || (count - 1) == index)) {
 				if (*pos == '/') {
-					element_type *d_elem = elem->get_descendent_node_by_xpath(++pos, &attr);
+					element_type *d_elem = elem->get_descendent_node_by_xpath(++pos, target_attr, target_value);
 					elem = d_elem;
 				}
-				else if (*pos == ':')
-					attr = ++pos;
+				else if (parsed_attr) {
+					string value2 = elem->get_attribute(target_attr);
+					if (target_value != value2)
+						continue;
+				}
 				break;
 			}
 			else
 				elem = NULL;
-			++count;
 		}
 	}
 	if (elem) {
 		if (attr) {
-			string attr_str =elem->get_attribute(attr);
-			cout << attr_str;
+			if (elem->has_attribute(attr)) {
+				string attr_str = elem->get_attribute(attr);
+				cout << attr_str << endl;
+			}
+			else
+				cerr << "can't find attribute \"" << attr << "\" for element \"" << elem->name() << "\"" << endl;
 		}
 		else
-			cout << elem->text();
-		cout << endl;
+			cout << elem->text() << endl;
 	}
 	else
 		fprintf(stderr, "could not find node for xpath: %s\n", xpath);

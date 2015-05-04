@@ -148,7 +148,7 @@ namespace stpl {
 
 
 			virtual bool match() {
-				return match(this->begin(), this->end());
+				return this->match(this->begin(), this->end());
 			}
 
 			//virtual bool match(IteratorT& begin, IteratorT& end)  { return false;};

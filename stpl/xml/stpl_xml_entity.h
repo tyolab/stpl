@@ -86,9 +86,10 @@ namespace stpl {
 		class ElemTag: public XmlKeyword<StringT, IteratorT>
 		{
 			public:
-				typedef	StringT	string_type;
-				typedef IteratorT	iterator;
-				typedef typename AttributeT::attributes_type	attributes_type;
+				typedef	StringT										string_type;
+				typedef IteratorT									iterator;
+				typedef AttributeT 									attribute_type;
+				typedef typename attribute_type::attributes_type	attributes_type;
 
 			protected:
 				attributes_type attributes_;
@@ -128,6 +129,10 @@ namespace stpl {
 				ElemTag& operator= (XmlKeyword<StringT, IteratorT>* elem_k_ptr) {
 					this->clone(elem_k_ptr);
 					return *this;
+				}
+
+				bool has_attribute(const StringT attr) const {
+					return this->attributes_.find(attr) != this->attributes_.end();
 				}
 
 				StringT get_attribute(const StringT attr) const {
@@ -511,6 +516,7 @@ namespace stpl {
 				typedef Comment<StringT, IteratorT>								comment_type;
 				typedef typename NodeTypesT::basic_entity 						basic_entity;
 				typedef typename NodeTypesT::container_type						container_type;
+				typedef typename NodeTypesT::tag_type::attribute_type			attribute_type;
 				typedef typename container_type::entity_iterator				entity_iterator;
 				typedef list<
 					typename container_type::container_entity_type
@@ -594,13 +600,19 @@ namespace stpl {
 					return make_pair(false, StringT());
 				}
 
+				bool has_attribute(const StringT attr) {
+					if (start_k_)
+						return start_k_->has_attribute(attr);
+					return false;
+				}
+
 				StringT get_attribute(const StringT attr) {
 					if (start_k_)
 						return start_k_->get_attribute(attr);
 					return "";
 				}
 
-				Element *get_descendent_node_by_xpath(const char *xpath, const char **attr = NULL) {
+				Element *get_descendent_node_by_xpath(const char *xpath, StringT& attr_name, StringT& attr_value) {
 					const char *pos = xpath;
 					StringT first_tag;
 					while (*pos != '\0' && *pos != '/' && *pos != '[' && *pos != ':')
@@ -623,21 +635,27 @@ namespace stpl {
 						basic_entity *node = static_cast<basic_entity*>((*it));
 
 						if (node->is_element()) {
+							++count;
 							elem = static_cast<Element *>(node);
 							StringT name = elem->name();
-							if (name == first_tag && (index == -1 || count == index)) {
+							if (name == first_tag && (index == -1 || (count - 1) == index)) {
 								if (*pos == '/') {
-									Element *d_elem = elem->get_descendent_node_by_xpath(++pos, attr);
+									Element *d_elem = elem->get_descendent_node_by_xpath(++pos, attr_name, attr_value);
 									elem = d_elem;
 								}
-								else if (*pos == ':')
-									*attr = ++pos;
+								else if (attr_value.length() > 0) {
+									StringT value2 = elem->get_attribute(attr_name);
+									if (attr_value != value2) {
+										elem = NULL;
+										continue;
+									}
+								}
 								break;
 							}
 							else
 								elem = NULL;
+
 						}
-						++count;
 					}
 					return elem;
 				}
