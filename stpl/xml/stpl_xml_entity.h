@@ -486,11 +486,11 @@ namespace stpl {
 		class XmlNodeTypes {
 			public:
 				typedef BasicXmlEntity<StringT, IteratorT> 					basic_entity;
-				typedef XmlKeyword<StringT, IteratorT>							keyword_type;
-				typedef ElemTag<StringT, IteratorT> 								tag_type;
-				typedef Text<StringT, IteratorT> 										text_type;
-				typedef Entity<basic_entity>												container_type;
-				typedef typename container_type::container_entity_type	container_entity_type;
+				typedef XmlKeyword<StringT, IteratorT>						keyword_type;
+				typedef ElemTag<StringT, IteratorT> 						tag_type;
+				typedef Text<StringT, IteratorT> 							text_type;
+				typedef Entity<basic_entity>								container_type;
+				typedef typename container_type::container_entity_type		container_entity_type;
 		};
 
 		template <typename StringT = std::string
@@ -506,27 +506,27 @@ namespace stpl {
 				typedef typename NodeTypesT::keyword_type						XmlKeywordT;
 
 			public:
-				typedef StringT																		string_type;
-				typedef IteratorT																	iterator;
-				typedef Comment<StringT, IteratorT>									comment_type;
+				typedef StringT													string_type;
+				typedef IteratorT												iterator;
+				typedef Comment<StringT, IteratorT>								comment_type;
 				typedef typename NodeTypesT::basic_entity 						basic_entity;
-				typedef typename NodeTypesT::container_type					container_type;
-				typedef typename container_type::entity_iterator					entity_iterator;
+				typedef typename NodeTypesT::container_type						container_type;
+				typedef typename container_type::entity_iterator				entity_iterator;
 				typedef list<
 					typename container_type::container_entity_type
-							>																					tree_type;
+							>													tree_type;
 				typedef typename std::map<StringT, bool>						ie_map; /// include or exclude map
 
 			protected:
-				typedef StringBound<StringT, IteratorT> 							StringB;
-				StringB 																					body_;
+				typedef StringBound<StringT, IteratorT> 						StringB;
+				StringB 														body_;
 
-				ElemTagT* 																				start_k_;
-				ElemTagT*																					end_k_;
-				ElemTagT* 																				last_tag_ptr_;
+				ElemTagT* 														start_k_;
+				ElemTagT*														end_k_;
+				ElemTagT* 														last_tag_ptr_;
 
 				//Element* parent_;
-				StringT																					xpath_;
+				StringT															xpath_;
 
 			private:
 				void init() {
@@ -568,6 +568,7 @@ namespace stpl {
 					init();
 					this->create(name);
 				}
+
 				virtual ~Element() {
 					cleanup();
 				}
@@ -598,9 +599,48 @@ namespace stpl {
 						return start_k_->get_attribute(attr);
 					return "";
 				}
-				//void set_parent(Element* parent) {
-				//	parent_ = parent;
-				//}
+
+				Element *get_descendent_node_by_xpath(const char *xpath, const char **attr = NULL) {
+					const char *pos = xpath;
+					StringT first_tag;
+					while (*pos != '\0' && *pos != '/' && *pos != '[' && *pos != ':')
+						first_tag.push_back(*pos++);
+
+					int index = -1;
+					if (*pos == '[') {
+						index = atoi(++pos);
+						while (isdigit(*pos))
+							++pos;
+						if (*pos == ']')
+							++pos; // ]
+					}
+
+					int count = 0;
+					Element *elem = NULL;
+					// allow non-stard xml file with no single document root
+					entity_iterator	it;
+					for (it = this->iter_begin(); it != this->iter_end(); ++it) {
+						basic_entity *node = static_cast<basic_entity*>((*it));
+
+						if (node->is_element()) {
+							elem = static_cast<Element *>(node);
+							StringT name = elem->name();
+							if (name == first_tag && (index == -1 || count == index)) {
+								if (*pos == '/') {
+									Element *d_elem = elem->get_descendent_node_by_xpath(++pos, attr);
+									elem = d_elem;
+								}
+								else if (*pos == ':')
+									*attr = ++pos;
+								break;
+							}
+							else
+								elem = NULL;
+						}
+						++count;
+					}
+					return elem;
+				}
 
 			protected:
 				virtual bool is_last_tag_end_tag() {

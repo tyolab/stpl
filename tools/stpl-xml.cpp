@@ -32,12 +32,13 @@
 
 using namespace FILESYSTEM;
 using namespace std;
+using namespace stpl;
 
 void usage(const char *program) {
-	fprintf(stderr, "%s of STPL (Simple Text Processing Library) - a simple XML value extraction tool (version: %s)", program, VERSION);
-	fprintf(stderr, "\n\n");
-	fprintf(stderr, "usage: %s xpath /a/path/to/xml/file"); // [node:attr]
-	fprintf(stderr, "          xpath - node[/childnode]:attr");
+	fprintf(stderr, "stpl-xml - a simple XML value extraction tool (version: %s) from STPL (Simple Text Processing Library)\n", VERSION);
+	fprintf(stderr, "\n");
+	fprintf(stderr, "usage: %s xpath /a/path/to/xml/file\n", program); // [node:attr]
+	fprintf(stderr, "          xpath - element[[#]][/child-element/...]:attr\n");
 	exit(-1);
 }
 
@@ -52,8 +53,8 @@ int main(int argc, char* argv[])
 		fprintf(stderr, "no such file: %s", file);
 	}
 
-	File<string, char *> fs(argv[1]);
-	str = string(fs.begin(), fs.end());
+	FileStream<string, char *> fs(file);
+	string str = string(fs.begin(), fs.end());
 
 	typedef XML::XParser<string, string::const_iterator> 		xml_parser;
 	typedef xml_parser::document_type::entity_type	  			node_type;
@@ -67,33 +68,53 @@ int main(int argc, char* argv[])
 	const char *xpath = argv[1];
 	const char *pos = xpath;
 	std::string first_tag;
-	while (*pos != '\0' && *pos != '/' && *pos != '[')
+	while (*pos != '\0' && *pos != '/' && *pos != '[' && *pos != ':')
 		first_tag.push_back(*pos++);
 
-	int index = 0;
-	if (*pos == '[')
+	int index = -1;
+	if (*pos == '[') {
 		index = atoi(++pos);
+		while (isdigit(*pos))
+			++pos;
+		if (*pos == ']')
+			++pos; // ]
+	}
 
 	int count = 0;
 	// allow non-stard xml file with no single document root
+	entity_iterator	it;
+	element_type *elem = NULL;
+	const char *attr = NULL;
 	for (it = doc.iter_begin(); it != doc.iter_end(); ++it) {
 		node_type *node = static_cast<node_type*>((*it));
 
 		if (node->is_element()) {
-			element_type *elem = static_cast<element_type *>(node);
-			if (elem->name() == first_tag && count == index) {
+			elem = static_cast<element_type *>(node);
+			string name = elem->name();
+			if (name == first_tag && (index == -1 || count == index)) {
 				if (*pos == '/') {
-					element_type *node = elem->get_descendent_node_by_xpath(++pos);
+					element_type *d_elem = elem->get_descendent_node_by_xpath(++pos, &attr);
+					elem = d_elem;
 				}
 				else if (*pos == ':')
-					cout << elem->get_attribute(++pos);
-				else
-					cout << elem->text();
-
+					attr = ++pos;
 				break;
 			}
+			else
+				elem = NULL;
+			++count;
 		}
-		++count;
 	}
+	if (elem) {
+		if (attr) {
+			string attr_str =elem->get_attribute(attr);
+			cout << attr_str;
+		}
+		else
+			cout << elem->text();
+		cout << endl;
+	}
+	else
+		fprintf(stderr, "could not find node for xpath: %s\n", xpath);
 	return 0;
 }
