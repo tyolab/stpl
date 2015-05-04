@@ -1,7 +1,9 @@
 
 AM_CPPFLAGS = -I$(srcdir)/../
 
-noinst_PROGRAMS = stpl-xml 
+inst_PROGRAMS = stpl-xml 
+
+instdir=$(prefix)/bin
 
 stpl_xml_SOURCES = stpl-xml.cpp
 
