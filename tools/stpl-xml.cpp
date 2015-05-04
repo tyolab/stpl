@@ -82,7 +82,7 @@ int main(int argc, char* argv[])
 	}
 
 	int count = 0;
-	element_type::attribute_type *parsed_attr = NULL;
+//	element_type::attribute_type *parsed_attr = NULL;
 	const char *pos2 = NULL;
 	const char *attr = NULL;
 	string target_attr;
@@ -91,15 +91,14 @@ int main(int argc, char* argv[])
 		++attr;
 		pos2 = strchr(attr, '=');
 		if (pos2) {
-			parsed_attr = new element_type::attribute_type();
+//			parsed_attr = new element_type::attribute_type();
 			string temp(attr);
-			parsed_attr->match(temp.begin(), temp.end());
-			target_attr = parsed_attr->name();
-			target_value = parsed_attr->value();
+			element_type::attribute_type parsed_attr(temp.begin(), temp.end());
+			target_attr = parsed_attr.name();
+			target_value = parsed_attr.value();
 			attr = NULL; // we are looking for the element with a particular attribute value
 		}
 		else {
-			attr = pos;
 			target_attr = attr;
 		}
 	}
@@ -120,7 +119,7 @@ int main(int argc, char* argv[])
 					element_type *d_elem = elem->get_descendent_node_by_xpath(++pos, target_attr, target_value);
 					elem = d_elem;
 				}
-				else if (parsed_attr) {
+				else if (target_value.length() > 0) {
 					string value2 = elem->get_attribute(target_attr);
 					if (target_value != value2)
 						continue;
@@ -132,9 +131,9 @@ int main(int argc, char* argv[])
 		}
 	}
 	if (elem) {
-		if (attr) {
-			if (elem->has_attribute(attr)) {
-				string attr_str = elem->get_attribute(attr);
+		if (target_attr.length() > 0) {
+			if (elem->has_attribute(target_attr)) {
+				string attr_str = elem->get_attribute(target_attr);
 				cout << attr_str << endl;
 			}
 			else
