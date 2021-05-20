@@ -132,16 +132,14 @@ namespace stpl {
 			virtual ~NRule() {	}
 
 			virtual bool apply(ScannerT* scanner_ptr) {
-				if (N > 0) {
-					for (int i=0; i<N; i++) {
-						if (!Rule<EntityT, ContainerT, ScannerT, SecondEntityT>::apply(scanner_ptr))
-							return false;
-					}
-					return true;
-				}
+				int count = 0;
 				bool ret = false;
 				while((ret = Rule<EntityT, ContainerT, ScannerT, SecondEntityT>::apply(scanner_ptr))) {
 					if (!ret)
+						break;
+
+					++count;
+					if (N > 0 && count > N)
 						break;
 				}
 				return ret;

@@ -26,7 +26,7 @@ namespace stpl {
 
 	enum Language {
 		UNASSIGNED = 0,
-		UNKNOWN = 1,
+		NONE = 1,
 		NUMBER = 2 << 0,
 		ENGLISH = 2 << 1,
 		CHINESE = 2 << 2,
@@ -39,7 +39,7 @@ namespace stpl {
 	class Character {
 		public:
 			//virtual bool is_valid_char(IteratorT it) = 0;
-			virtual Language lang() { return UNKNOWN; }
+			virtual Language lang() { return NONE; }
 	};
 
 	// The Characters class defined here are the ASCII characters

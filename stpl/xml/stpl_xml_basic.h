@@ -30,7 +30,7 @@ namespace stpl {
 		// NONE for un-initialized node
 		// MISC node type includes COMMENT, PI or DOCTYPE (COMMENT)
 		// TEMPLATE node includes XML declarations, text declarations,
-		enum XmlNodeType {NONE, UNKNOWN, COMMENT, TEXT, TEXT, TAG, COMMENT, TAG, TEMPLATE}; 
+		enum XmlNodeType {NONE, NONE, COMMENT, TEXT, TEXT, TAG, COMMENT, TAG, TEMPLATE}; 
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 		class BasicXmlEntity : public StringBound<StringT, IteratorT> 
@@ -204,7 +204,7 @@ namespace stpl {
 					bool ret = false;
 					if (this->is_start_symbol(it)) {
 						// decide what kind of node is
-						this->type_ = UNKNOWN;
+						this->type_ = NONE;
 						IteratorT next = it;
 						if (!this->eow(++next)) {
 							if (*next == '!') {							 	

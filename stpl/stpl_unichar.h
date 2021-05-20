@@ -100,10 +100,10 @@ namespace stpl {
 
 				virtual bool is_valid_char(IteratorT it) {
 
-					lang_ = UNKNOWN;
-					Language lang = static_cast<Language>(LANG & UNKNOWN);
+					lang_ = NONE;
+					Language lang = static_cast<Language>(LANG & NONE);
 
-					if ((LANG & CHINESE) == CHINESE || lang == UNKNOWN) {
+					if ((LANG & CHINESE) == CHINESE || lang == NONE) {
 						if (Chinese<StringT, IteratorT>::is_valid_char(it)) {
 							lang_ = CHINESE;
 
@@ -111,7 +111,7 @@ namespace stpl {
 						}
 					}
 
-					if ((LANG & ENGLISH) == ENGLISH || lang == UNKNOWN) {
+					if ((LANG & ENGLISH) == ENGLISH || lang == NONE) {
 						if (isalpha(*it)) {
 							lang_ = ENGLISH;
 
@@ -119,7 +119,7 @@ namespace stpl {
 						}
 					}
 
-					if ((LANG & NUMBER) == NUMBER || lang == UNKNOWN) {
+					if ((LANG & NUMBER) == NUMBER || lang == NONE) {
 						if (isdigit(*it)) {
 							lang_ = NUMBER;
 
@@ -127,7 +127,7 @@ namespace stpl {
 						}
 					}
 
-					if ((LANG & SPACE) == SPACE || lang == UNKNOWN) {
+					if ((LANG & SPACE) == SPACE || lang == NONE) {
 						if (isspace(*it)) {
 							lang_ = SPACE;
 
@@ -135,7 +135,7 @@ namespace stpl {
 						}
 					}
 
-					if ((LANG & PUNCTUATION) == PUNCTUATION || lang == UNKNOWN) {
+					if ((LANG & PUNCTUATION) == PUNCTUATION || lang == NONE) {
 						if (ispunct(*it)) {
 							lang_ = PUNCTUATION;
 
@@ -143,7 +143,7 @@ namespace stpl {
 						}
 					}
 
-					if ((LANG & SYMBOL) == SYMBOL || lang == UNKNOWN) {
+					if ((LANG & SYMBOL) == SYMBOL || lang == NONE) {
 						if (ispunct(*it)) {
 							lang_ = SYMBOL;
 
@@ -151,7 +151,7 @@ namespace stpl {
 						}
 					}
 
-					return (lang == UNKNOWN);
+					return (lang == NONE);
 				}
 
 				virtual Language lang() {

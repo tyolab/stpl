@@ -8,39 +8,31 @@
 #ifndef STPL_WIKI_DOC_H_
 #define STPL_WIKI_DOC_H_
 
-#include <stpl_doc.h>
-#include <stpl_scanner.h>
-#include <stpl_grammar.h>
-#include <stpl_parser.h>
+#include "../stpl_doc.h"
+#include "../stpl_scanner.h"
+#include "../stpl_grammar.h"
+#include "../stpl_parser.h"
 
-#include "wiki_entity.h"
+#include "stpl_wiki_entity.h"
 
+#include <vector>
 namespace stpl {
-	namespace wiki {
+	namespace WIKI {
 
 		template<
 				typename StringT = std::string,
 				typename IteratorT = typename StringT::iterator,
-				typename EntityT = BasicWikiEntity<StringT, IteratorT>,
-				typename RootElemT = Element<
-								typename EntityT::string_type,
-								typename EntityT::iterator
-								>
+				typename EntityT = BasicWikiEntity<StringT, IteratorT>
 				>
 		class WikiDoc :  public Document<EntityT> {
 			public:
 				typedef EntityT										entity_type;
 				typedef StringT										string_type;
 				typedef IteratorT 									iterator;
-				typedef typename RootElemT::tree_type				tree_type;
-				typedef RootElemT 									element_type;
 				typedef typename Document<EntityT>::entity_iterator entity_iterator;
 
 			private:
-				//typedef	typename EntityT::string_type StringT;
-				//typedef typename EntityT::iterator	IteratorT;
-
-				RootElemT* 	root_;
+				std::vector<EntityT> 	nodes_;
 
 			public:
 				WikiDoc() : Document<EntityT>::Document() { init(); }
@@ -59,11 +51,6 @@ namespace stpl {
 				}
 				virtual ~WikiDoc() {}
 
-				RootElemT* root() { return root_; }
-				void root(RootElemT* root) {
-					root_ = root;
-				}
-
 				void write(std::string filename) {
 					ofstream outfile (filename.c_str(),ofstream::binary);
 					outfile << this->ref();
@@ -71,7 +58,6 @@ namespace stpl {
 				}
 
 				virtual void flush(int level=0) {
-					//this->ref().erase();
 					entity_iterator it;
 					for (it = this->iter_begin(); it != this->iter_end(); ++it) {
 						(*it)->flush(level);
@@ -83,8 +69,6 @@ namespace stpl {
 
 			private:
 				void init() {
-					//debug
-					// this->ref().append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
 				}
 		};
 
@@ -105,35 +89,33 @@ namespace stpl {
 			private:
 				typedef Rule<EntityT, DocumentT, ScannerT> RuleT;
 
-				typedef Element<
-								string_type,
-								iterator,
-								WikiNodeTypes<string_type, iterator>/*,
-										0*/
-								> TempElement;
+				// typedef Layout<
+				// 				string_type,
+				// 				iterator,
+				// 				WikiNodeTypes<string_type, iterator>
+				// 				> TempLayout;
 
-				typedef InfoNode<
-								string_type,
-								iterator
-								> TempInfoNode;
-
-				typedef NRule<
-								TempElement,
-								DocumentT, Scanner<TempElement>,
-								1
-								>	OneRootElementRule;
+				// typedef Text<
+				// 				string_type,
+				// 				iterator
+				// 				> TempTextNode;
 
 				typedef NRule<
-								TempInfoNode,
-								DocumentT, Scanner<TempInfoNode>
-								>	NInfoNodeRule;
+								EntityT,
+								DocumentT, Scanner<EntityT>
+								>	ManyEntitiessRule;
+
+				// typedef NRule<
+				// 				TempTextNode,
+				// 				DocumentT, Scanner<TempTextNode>
+				// 				>	NInfoNodeRule;
 
 			protected:
 				void add_rules() {
 					RuleT* rule_ptr = new RuleT(this->document_ptr_);
 					rule_ptr->set_continue(true);
-					rule_ptr->add_rule(reinterpret_cast<BaseRuleT*>(new NInfoNodeRule(this->document_ptr_)));
-					rule_ptr->add_rule(reinterpret_cast<BaseRuleT*>(new OneRootElementRule(this->document_ptr_)));
+					//rule_ptr->add_rule(reinterpret_cast<BaseRuleT*>(new NInfoNodeRule(this->document_ptr_)));
+					rule_ptr->add_rule(reinterpret_cast<BaseRuleT*>(new ManyEntitiessRule(this->document_ptr_)));
 					this->add(reinterpret_cast<BaseRuleT*>(rule_ptr));
 				}
 

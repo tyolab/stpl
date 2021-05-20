@@ -20,24 +20,29 @@
 #ifndef STPL_WIKI_BASIC_H_
 #define STPL_WIKI_BASIC_H_
 
-#include <stpl_entity.h>
-#include <stpl_property.h>
+#include "../stpl_entity.h"
+#include "../stpl_property.h"
+
 #include <map>
 
 namespace stpl {
-	namespace wiki {
+	namespace WIKI {
 		
-		// NONE for un-initialized node
-		// MISC node type includes COMMENT, PI or DOCTYPE (COMMENT)
 		// TEMPLATE node includes wiki declarations, text declarations,
-		enum WikiNodeType {NONE, 
-							LAYOUT,
-							TAG,
-							LINK,
-							TEMPLATE,
-							COMMENT,
-							TEXT,
+		// If not any of others, then just TEXT
+		enum WikiNodeType {
+			LAYOUT,
+			TAG,
+			LINK,
+			TEMPLATE,
+			COMMENT,
+			TEXT
+		};
 
+		// NONE for un-initialized node, or just TEXT
+		// MISC node type includes COMMENT, PI or DOCTYPE (COMMENT)
+		enum WikiNode {NONE, 
+							// Sub node types of LAYOUT
 							LAYOUT_SECTION, 
 							LAYOUT_HEADING, 
 							LAYOUT_HZ_RULE, 
@@ -47,6 +52,8 @@ namespace stpl {
 							LAYOUT_LI,
 							LAYOUT_UL,
 							LAYOUT_DESC,
+
+							// Sub node types of LINK
 							LINK_FREE,
 							LINK_REDIRECT,
 							LINK_LANG,
@@ -56,10 +63,13 @@ namespace stpl {
 							LINK_T_ASOF,
 							LINK_MEDIA,
 							LINK_IMAGE,
+
+							// Sub node types of TEMPLATE
 							T_PA, // pronuciation aids
 							T_COLBEGIN, // column begin
 							T_COLEND,   // column end
 
+							// Sub node types of TAG
 							TAG_REF,
 							// Cite book, web, needed
 							// attributes:
@@ -99,13 +109,15 @@ namespace stpl {
 				static const char WIKI_KEY_CLOSE_LINK = ']';
 				
 			protected:
+				WikiNode		 								node_;
 				WikiNodeType 									type_;
 				BasicWikiEntity*								parent_ptr_;
 				StringBound<StringT, IteratorT> 				body_;
 					
 			private:
 				void init() {
-					type_ = NONE;
+					node_ = NONE;
+					type_ = TEXT;
 					parent_ptr_ = NULL;
 				}
 				
@@ -272,7 +284,6 @@ namespace stpl {
 					bool ret = false;
 					if (this->is_start_symbol(it)) {
 						// decide what kind of node is
-						this->type_ = UNKNOWN;
 						IteratorT next = it;
 						if (!this->eow(++next)) {
 							if (*next == '!') {							 	
@@ -379,9 +390,9 @@ namespace stpl {
 				
 				virtual void add_start(StringT& text) {
 					//TODO body_.set_begin()
-					this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN);
+					this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG);
 					if (this->is_end_wiki_keyword_)
-						this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_SLASH);					
+						this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TEMPLATE);					
 				}
 				
 				virtual void add_content(StringT& text) {	
@@ -391,13 +402,12 @@ namespace stpl {
 				virtual void add_end(StringT& text) {
 					//TODO body_.set_end()
 					if (this->is_ended_wiki_keyword_ && !this->is_end_wiki_keyword_)
-						this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_SLASH);
-					this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_CLOSE);					
+						this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TEMPLATE);
+					this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_CLOSE_TAG);					
 				}		
 
 			private:
 				void init() {
-					this->type_ = NONE;
 					is_ended_wiki_keyword_ = false;  // <../>
 					is_end_wiki_keyword_ = false;	// </..>
 					contain_intsubset_ = false;
