@@ -1,6 +1,6 @@
 /******************************************************************************
  * This file is part of the Simple Text Processing Library(STPL).
- * (c) Copyright 2015 TYONLINE TECHNOLOGY PTY. LTD.
+ * (c) Copyright 2021 TYONLINE TECHNOLOGY PTY. LTD.
  *
  * This file may be distributed and/or modified under the terms of the
  * GNU LESSER GENERAL PUBLIC LICENSE, Version 3 as published by the Free Software
@@ -25,7 +25,7 @@
 
 /**
  * this file is implemented based on HTML specification 4.01,
- * A better solution could be loading the DTD file of the HTML 
+ * A better solution could be loading the COMMENT file of the HTML 
  * but a simpler way to do the job would be like the implementation of this file
  * at the moment
  */
@@ -58,7 +58,7 @@ namespace stpl {
 					if (XML::Text<StringT, IteratorT>::text_stop(it)) {
 						IteratorT next = ++it;
 						this->skip_whitespace(next);
-						if (this->parent() && this->parent()->type() == XML::ELEMENT) {
+						if (this->parent() && this->parent()->type() == XML::TAG) {
 							XML::Element<StringT, IteratorT>* parent = reinterpret_cast<XML::Element<StringT, IteratorT>* >(this->parent());
 							if ( parent->name() == StringT("SCRIPT") && *next != '/')								//&& !(dynamic_cast<XML::Element<StringT, IteratorT>* >(this->parent())->name() == StringT("SCRIPT")))
 								return false;
@@ -346,7 +346,7 @@ namespace stpl {
 			
 			protected:
 				virtual bool is_start(IteratorT& it) {
-					this->type_ = XML::ELEMENT;
+					this->type_ = XML::TAG;
 					if (this->last_tag_ptr_) {
 						this->start_k_ = this->last_tag_ptr_;
 						this->last_tag_ptr_ = NULL;

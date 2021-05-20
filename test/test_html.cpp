@@ -1,6 +1,6 @@
 /******************************************************************************
  * This file is part of the Simple Text Processing Library(STPL).
- * (c) Copyright 2015 TYONLINE TECHNOLOGY PTY. LTD.
+ * (c) Copyright 2021 TYONLINE TECHNOLOGY PTY. LTD.
  *
  * This file may be distributed and/or modified under the terms of the
  * GNU LESSER GENERAL PUBLIC LICENSE, Version 3 as published by the Free Software
@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
 		while (html_file.more()) {
 			HTML::HtmlFile::entity_iterator it = html_file.next();
 			
-			if ((*it)->type() == XML::ELEMENT) {
+			if ((*it)->type() == XML::TAG) {
 				HTML::HtmlFileElementType* elem_ptr = static_cast<HTML::HtmlFileElementType*>(*it);
 				elem_ptr->print();
 			}
@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
 		while (html_doc.more()) {
 			HTML::HtmlDocument::entity_iterator it = html_doc.next();
 			
-			if ((*it)->type() == XML::ELEMENT) {
+			if ((*it)->type() == XML::TAG) {
 				HTML::HtmlElementType* elem_ptr = static_cast<HTML::HtmlElementType*>(*it);
 				elem_ptr->print();
 			}

@@ -17,33 +17,91 @@
  *
  *******************************************************************************/
 
-#ifndef STPL_XML_BASIC_H_
-#define STPL_XML_BASIC_H_
+#ifndef STPL_WIKI_BASIC_H_
+#define STPL_WIKI_BASIC_H_
 
-#include "../stpl_entity.h"
-#include "../stpl_property.h"
+#include <stpl_entity.h>
+#include <stpl_property.h>
 #include <map>
 
 namespace stpl {
-	namespace XML {
+	namespace wiki {
 		
 		// NONE for un-initialized node
 		// MISC node type includes COMMENT, PI or DOCTYPE (COMMENT)
-		// TEMPLATE node includes XML declarations, text declarations,
-		enum XmlNodeType {NONE, UNKNOWN, COMMENT, TEXT, TEXT, TAG, COMMENT, TAG, TEMPLATE}; 
+		// TEMPLATE node includes wiki declarations, text declarations,
+		enum WikiNodeType {NONE, 
+							LAYOUT,
+							TAG,
+							LINK,
+							TEMPLATE,
+							COMMENT,
+							TEXT,
+
+							LAYOUT_SECTION, 
+							LAYOUT_HEADING, 
+							LAYOUT_HZ_RULE, 
+							LAYOUT_T_LB,
+							LAYOUT_T_LI,
+							LAYOUT_T_UL,
+							LAYOUT_LI,
+							LAYOUT_UL,
+							LAYOUT_DESC,
+							LINK_FREE,
+							LINK_REDIRECT,
+							LINK_LANG,
+							LINK_INTERWIKI,
+							LINK_CATEGORY,
+							LINK_EXTERNAL,
+							LINK_T_ASOF,
+							LINK_MEDIA,
+							LINK_IMAGE,
+							T_PA, // pronuciation aids
+							T_COLBEGIN, // column begin
+							T_COLEND,   // column end
+
+							TAG_REF,
+							// Cite book, web, needed
+							// attributes:
+							// |isbn
+							// |url
+							// |title
+							// |author
+							// |first
+							// |last
+							// |location
+							// |publisher
+							// |date
+							// |year
+							// |accessdate
+
+							// Templates
+							T_COLOR,
+							T_FONT_COLOR,
+							T_FONT_STRIKE,
+
+							TAG_NOWIKI,
+							TAG_PRE
+							}; 
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
-		class BasicXmlEntity : public StringBound<StringT, IteratorT> 
+		class BasicWikiEntity : public StringBound<StringT, IteratorT> 
 		{
 			public:
-				static const char XML_KEY_OPEN = '<';
-				static const char XML_KEY_CLOSE = '>';
-				static const char XML_KEY_SLASH = '/';
+				static const char WIKI_KEY_OPEN_TAG = '<';
+				static const char WIKI_KEY_CLOSE_TAG = '>';
+				static const char WIKI_KEY_HEADING = '=';
+				static const char WIKI_KEY_LIST = '*';
+				static const char WIKI_KEY_LIST_ORDERED = '#';
+				static const char WIKI_KEY_OPEN_TEMPLATE = '{';
+				static const char WIKI_KEY_CLOSE_TEMPLATE = '}';
+				static const char WIKI_KEY_OPEN_LINK = '[';
+				static const char WIKI_KEY_CLOSE_LINK = ']';
 				
 			protected:
-				XmlNodeType 									type_;
-				BasicXmlEntity*								parent_ptr_;
-				StringBound<StringT, IteratorT> 	body_;
+				WikiNodeType 									type_;
+				BasicWikiEntity*								parent_ptr_;
+				StringBound<StringT, IteratorT> 				body_;
 					
 			private:
 				void init() {
@@ -52,35 +110,45 @@ namespace stpl {
 				}
 				
 			public:
-				BasicXmlEntity() : StringBound<StringT, IteratorT>::StringBound() {
+				BasicWikiEntity() : StringBound<StringT, IteratorT>::StringBound() {
 				}
-				BasicXmlEntity(IteratorT it) : StringBound<StringT, IteratorT>::StringBound(it), body_(it, it) {
+				BasicWikiEntity(IteratorT it) : StringBound<StringT, IteratorT>::StringBound(it), body_(it, it) {
 					init();
 				}
-				BasicXmlEntity(IteratorT begin, IteratorT end) : StringBound<StringT, IteratorT>::StringBound(begin, end), body_(begin, begin) {
+				BasicWikiEntity(IteratorT begin, IteratorT end) : StringBound<StringT, IteratorT>::StringBound(begin, end), body_(begin, begin) {
 					init();
 				}
-				BasicXmlEntity(StringT content) : 
+				BasicWikiEntity(StringT content) : 
 					StringBound<StringT, IteratorT>::StringBound(content) {
 					init();
 				}				
-				virtual ~BasicXmlEntity() {}		
+				virtual ~BasicWikiEntity() {}		
 				
-				XmlNodeType type() { return type_; }		
-				void type(XmlNodeType type) { type_ = type; }
+				WikiNodeType type() { return type_; }		
+				void type(WikiNodeType type) { type_ = type; }
 				
 				virtual StringBound<StringT, IteratorT>& content() {
 					return body_;
 				}
 
 				static bool is_start_symbol(IteratorT it) {
-					if (*it == XML_KEY_OPEN)
+					if (*it == WIKI_KEY_OPEN_TAG
+						|| *it == WIKI_KEY_HEADING
+						|| *it == WIKI_KEY_LIST
+						|| *it == WIKI_KEY_LIST_ORDERED
+						|| *it == WIKI_KEY_OPEN_TEMPLATE
+						|| *it == WIKI_KEY_OPEN_LINK
+						)
 						return true;
 					return false;
 				}
 				
 				static bool is_end_symbol(IteratorT it) {
-					if (*it == XML_KEY_CLOSE)
+					if (*it == WIKI_KEY_CLOSE_TAG
+						|| *it == WIKI_KEY_HEADING
+						|| *it == WIKI_KEY_CLOSE_TEMPLATE
+						|| *it == WIKI_KEY_CLOSE_LINK
+					)
 						return true;
 					return false;
 				}
@@ -91,10 +159,10 @@ namespace stpl {
 					return false;
 				}
 				
-				static XmlNodeType element_type() { return TAG; }
+				static WikiNodeType element_type() { return TAG; }
 				
-				BasicXmlEntity* parent() { return parent_ptr_; }
-				void set_parent(BasicXmlEntity* parent_ptr) {
+				BasicWikiEntity* parent() { return parent_ptr_; }
+				void set_parent(BasicWikiEntity* parent_ptr) {
 					parent_ptr_ = parent_ptr;
 				}		
 
@@ -102,21 +170,21 @@ namespace stpl {
 		};		
 		
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
-		class XmlAttribute : public Property<StringT, IteratorT> {
+		class WikiAttribute : public Property<StringT, IteratorT> {
 			public:
-				typedef std::map<StringT, XmlAttribute*>	attributes_type;
+				typedef std::map<StringT, WikiAttribute*>	attributes_type;
 				
 			public:
-				XmlAttribute() : 
+				WikiAttribute() : 
 					Property<StringT, IteratorT>::Property() { init(); }
-				XmlAttribute(IteratorT begin) :
+				WikiAttribute(IteratorT begin) :
 				    Property<StringT, IteratorT>::Property(begin) { init(); }				
-				XmlAttribute(IteratorT begin, IteratorT end) :
+				WikiAttribute(IteratorT begin, IteratorT end) :
 				    Property<StringT, IteratorT>::Property(begin, end) { init(); }
-				XmlAttribute(StringT content) : 
+				WikiAttribute(StringT content) : 
 					Property<StringT, IteratorT>::Property(content) {
 				}
-				virtual ~XmlAttribute() {}		
+				virtual ~WikiAttribute() {}		
 				
 			private:
 				void init() { this->force_end_quote_ = true; }
@@ -130,7 +198,7 @@ namespace stpl {
 						if (*next == '/') {							
 							this->skip_whitespace(++next);
 						}
-						if (BasicXmlEntity<StringT, IteratorT>::is_end_symbol(next) ) {
+						if (BasicWikiEntity<StringT, IteratorT>::is_end_symbol(next) ) {
 							it = next;
 							return true;
 						}
@@ -140,57 +208,57 @@ namespace stpl {
 		};
 		
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
-		class XmlKeyword: public BasicXmlEntity<StringT, IteratorT> 
+		class WikiKeyword: public BasicWikiEntity<StringT, IteratorT> 
 		{
 			public:
 				typedef	StringT	string_type;
 				typedef IteratorT	iterator;			
 				
 			protected:
-				bool					is_end_xml_keyword_;      // </tag>
-				bool					is_ended_xml_keyword_;  // <tag/>
+				bool					is_end_wiki_keyword_;      // </tag>
+				bool					is_ended_wiki_keyword_;  // <tag/>
 				bool					contain_intsubset_;
 				
 			public:
-				XmlKeyword() : BasicXmlEntity<StringT, IteratorT>::BasicXmlEntity() {
+				WikiKeyword() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() {
 					init();
 				}
-				XmlKeyword(IteratorT it) : BasicXmlEntity<StringT, IteratorT>::BasicXmlEntity(it) {
+				WikiKeyword(IteratorT it) : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(it) {
 					init();
 				}
-				XmlKeyword(IteratorT begin, IteratorT end) : BasicXmlEntity<StringT, IteratorT>::BasicXmlEntity(begin, end) {
+				WikiKeyword(IteratorT begin, IteratorT end) : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(begin, end) {
 					init();
 				}
-				XmlKeyword(StringT content) :
-					BasicXmlEntity<StringT, IteratorT>::BasicXmlEntity(content) {
+				WikiKeyword(StringT content) :
+					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(content) {
 					init();
 				}
-				virtual ~XmlKeyword() {}
+				virtual ~WikiKeyword() {}
 
-				void set_end_xml_keyword(bool b) {
-					is_end_xml_keyword_ = b;
+				void set_end_wiki_keyword(bool b) {
+					is_end_wiki_keyword_ = b;
 				}
 
-				void set_ended_xml_keyword(bool b) {
-					is_ended_xml_keyword_ = b;
+				void set_ended_wiki_keyword(bool b) {
+					is_ended_wiki_keyword_ = b;
 				}
 
-				bool is_end_xml_keyword() {
-					return is_end_xml_keyword_;
+				bool is_end_wiki_keyword() {
+					return is_end_wiki_keyword_;
 				}
 
-				bool is_ended_xml_keyword() {
-					return is_ended_xml_keyword_;
+				bool is_ended_wiki_keyword() {
+					return is_ended_wiki_keyword_;
 				}
 
 				virtual void print(std::ostream &out = cout, int level = 0) {
 					this->body_.print(out, level);
 				}
 
-				void clone(XmlKeyword* elem_k_ptr) {
+				void clone(WikiKeyword* elem_k_ptr) {
 					if (this != elem_k_ptr) {
-						this->is_end_xml_keyword_ = elem_k_ptr->is_end_xml_keyword();
-						this->is_ended_xml_keyword_ = elem_k_ptr->is_ended_xml_keyword();
+						this->is_end_wiki_keyword_ = elem_k_ptr->is_end_wiki_keyword();
+						this->is_ended_wiki_keyword_ = elem_k_ptr->is_ended_wiki_keyword();
 						this->begin(elem_k_ptr->begin());
 						this->end(elem_k_ptr->end());
 						this->body_.begin(elem_k_ptr->content().begin());
@@ -234,7 +302,7 @@ namespace stpl {
 								++next;
 							} else if (*next == '/') {
 								this->type_ = TEXT;
-								this->is_end_xml_keyword_ = true;
+								this->is_end_wiki_keyword_ = true;
 								++next;
 							} else if (isalnum(*next) /*TODO put the UTF code here*/
 								) {
@@ -280,11 +348,11 @@ namespace stpl {
 						} else if (this->type() == TEXT) {
 							if (*pre_char == '/') {
 								//this->body_.end(pre_char);
-								if (this->is_end_xml_keyword_) {
-									//TODO print some errors here, because we cann't have two close xml keyword
-									this->is_end_xml_keyword_ = false;
+								if (this->is_end_wiki_keyword_) {
+									//TODO print some errors here, because we cann't have two close wiki keyword
+									this->is_end_wiki_keyword_ = false;
 								}									
-								this->is_ended_xml_keyword_ = true;
+								this->is_ended_wiki_keyword_ = true;
 							} 		
 							ret = true;				
 							//body_.end(it);		
@@ -311,9 +379,9 @@ namespace stpl {
 				
 				virtual void add_start(StringT& text) {
 					//TODO body_.set_begin()
-					this->ref().push_back(BasicXmlEntity<StringT, IteratorT>::XML_KEY_OPEN);
-					if (this->is_end_xml_keyword_)
-						this->ref().push_back(BasicXmlEntity<StringT, IteratorT>::XML_KEY_SLASH);					
+					this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN);
+					if (this->is_end_wiki_keyword_)
+						this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_SLASH);					
 				}
 				
 				virtual void add_content(StringT& text) {	
@@ -322,19 +390,19 @@ namespace stpl {
 				
 				virtual void add_end(StringT& text) {
 					//TODO body_.set_end()
-					if (this->is_ended_xml_keyword_ && !this->is_end_xml_keyword_)
-						this->ref().push_back(BasicXmlEntity<StringT, IteratorT>::XML_KEY_SLASH);
-					this->ref().push_back(BasicXmlEntity<StringT, IteratorT>::XML_KEY_CLOSE);					
+					if (this->is_ended_wiki_keyword_ && !this->is_end_wiki_keyword_)
+						this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_SLASH);
+					this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_CLOSE);					
 				}		
 
 			private:
 				void init() {
 					this->type_ = NONE;
-					is_ended_xml_keyword_ = false;  // <../>
-					is_end_xml_keyword_ = false;	// </..>
+					is_ended_wiki_keyword_ = false;  // <../>
+					is_end_wiki_keyword_ = false;	// </..>
 					contain_intsubset_ = false;
 				}				
 		};		
 	}
 }
-#endif /*STPL_XML_BASIC_H_*/
+#endif /*STPL_WIKI_BASIC_H_*/
