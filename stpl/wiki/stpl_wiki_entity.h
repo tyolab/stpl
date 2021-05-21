@@ -78,10 +78,56 @@ namespace stpl {
 				}
 		};
 
+		template <
+			typename StringT = std::string, 
+			typename IteratorT = typename StringT::iterator
+			>
+		class Tag: public WikiKeyword<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT	string_type;
+				typedef IteratorT	iterator;
+
+			private:
+				void init() { this->type_ = TEXT; }
+
+			public:
+				Tag() : WikiKeyword<StringT, IteratorT>::WikiKeyword() { init(); }
+				Tag(IteratorT it)
+					 : WikiKeyword<StringT, IteratorT>::WikiKeyword(it) { init(); }
+				Tag(IteratorT begin, IteratorT end)
+					 : WikiKeyword<StringT, IteratorT>::WikiKeyword(begin, end) { init(); }
+				Tag(StringT content) :
+					WikiKeyword<StringT, IteratorT>::WikiKeyword() {
+					init();
+					this->create(content);
+				}
+				virtual ~Tag() {}
+
+			protected:
+				virtual bool is_start(IteratorT& it) {
+					this->skip_whitespace(it);
+					this->begin(it);
+					return true;
+				}
+
+				virtual bool is_end(IteratorT& it) {
+					return this->eow(it) || text_stop(it);
+				}
+
+				virtual bool text_stop(IteratorT next) {
+					return WikiKeyword<StringT, IteratorT>::is_start_symbol(next);
+				}
+
+				virtual void add_content(StringT& text) {
+					this->ref().append(text);
+				}
+		};		
+
 		template <typename StringT = std::string,
 			 typename IteratorT = typename StringT::iterator,
 			 typename AttributeT = WikiAttribute<StringT, IteratorT> >
-		class ElemTag: public WikiKeyword<StringT, IteratorT>
+		class ElemTag: public Tag<StringT, IteratorT>
 		{
 			public:
 				typedef	StringT										string_type;
@@ -96,15 +142,15 @@ namespace stpl {
 				StringBound<StringT, IteratorT> name_;
 
 			public:
-				ElemTag() : WikiKeyword<StringT, IteratorT>::WikiKeyword() {}
-				ElemTag(IteratorT it) : WikiKeyword<StringT, IteratorT>::WikiKeyword(it), name_(it, it)  {
+				ElemTag() : Tag<StringT, IteratorT>::Tag() {}
+				ElemTag(IteratorT it) : Tag<StringT, IteratorT>::Tag(it), name_(it, it)  {
 					init();
 				}
 				ElemTag(IteratorT begin, IteratorT end) :
-					 WikiKeyword<StringT, IteratorT>::WikiKeyword(begin, end), name_(begin, begin) { init(); }
+					 Tag<StringT, IteratorT>::Tag(begin, end), name_(begin, begin) { init(); }
 
 				ElemTag(StringT content) :
-					WikiKeyword<StringT, IteratorT>::WikiKeyword(content) {
+					Tag<StringT, IteratorT>::Tag(content) {
 					init();
 				}
 				virtual ~ElemTag() {
@@ -112,16 +158,16 @@ namespace stpl {
 				};
 
 				ElemTag& operator= (ElemTag& elem_k) {
-					this->clone(reinterpret_cast<WikiKeyword<StringT, IteratorT>*>(&elem_k));
+					this->clone(reinterpret_cast<Tag<StringT, IteratorT>*>(&elem_k));
 					return *this;
 				}
 
 				ElemTag& operator= (const ElemTag* elem_k_ptr) {
-					this->clone(reinterpret_cast<WikiKeyword<StringT, IteratorT>*>(elem_k_ptr));
+					this->clone(reinterpret_cast<Tag<StringT, IteratorT>*>(elem_k_ptr));
 					return *this;
 				}
 
-				ElemTag& operator= (WikiKeyword<StringT, IteratorT>* elem_k_ptr) {
+				ElemTag& operator= (Tag<StringT, IteratorT>* elem_k_ptr) {
 					this->clone(elem_k_ptr);
 					return *this;
 				}
@@ -192,7 +238,7 @@ namespace stpl {
 				}
 
 				virtual bool match(IteratorT begin, IteratorT end) {
-					if (WikiKeyword<StringT, IteratorT>::match(begin, end)) {
+					if (Tag<StringT, IteratorT>::match(begin, end)) {
 						if (this->type_ == TEXT)
 							return true;
 					}
@@ -300,7 +346,7 @@ namespace stpl {
 				}
 
 				bool parse_attribute(IteratorT& begin, IteratorT& end) {
-					this->skip_not_valid_char(begin);
+					this->skip_invalid_chars(begin);
 					AttributeT* attr_ptr = new AttributeT(begin, end);
 					bool ret = false;
 					if ((ret = attr_ptr->match(begin, end))) {
@@ -317,7 +363,7 @@ namespace stpl {
 			protected:
 
 				virtual bool is_start(IteratorT& it) {
-					if (WikiKeyword<StringT, IteratorT>::is_start(it) && this->type_ == TEXT) {
+					if (Tag<StringT, IteratorT>::is_start(it) && this->type_ == TEXT) {
 						it = this->body_.begin();
 						name_.begin(it);
 						while (!this->eow(it) && is_valid_name_char(it))
@@ -329,12 +375,12 @@ namespace stpl {
 				}
 
 				virtual bool is_end(IteratorT& it) {
-					if (!WikiKeyword<StringT, IteratorT>::is_end(it)) {
+					if (!Tag<StringT, IteratorT>::is_end(it)) {
 						IteratorT begin = it;
 						IteratorT end = this->end();
 						if (parse_attribute(begin, end)) {
 							it = end;
-							if (WikiKeyword<StringT, IteratorT>::is_end(it)) {
+							if (Tag<StringT, IteratorT>::is_end(it)) {
 								this->body_.end(it);
 								return true;
 							}
@@ -365,40 +411,68 @@ namespace stpl {
 				}
 		};
 
-
+		/**
+		 * Can be either Template or Table
+		 */
 		template <typename StringT = std::string,
 							typename IteratorT = typename StringT::iterator
 						  >
-		class Template : public BasicWikiEntity<StringT, IteratorT>
+		class TBase : public BasicWikiEntity<StringT, IteratorT>
 		{
 			public:
 				typedef	StringT	string_type;
 				typedef IteratorT	iterator;
 
-			private:
-				void init() { this->type_ = TEMPLATE; }
-
 			public:
-				Template() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() {}
-				Template(IteratorT it) :
+				TBase() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() {}
+				TBase(IteratorT it) :
 					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(it) {
 					init();
 				}
-				Template(IteratorT begin, IteratorT end) :
+				TBase(IteratorT begin, IteratorT end) :
 					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(begin, end) { init(); }
-				Template(StringT content) :
+				TBase(StringT content) :
 					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(content) {
 					init();
 				}
-				virtual ~Template() {};
+				virtual ~TBase() {};
 
-				virtual bool match(IteratorT begin, IteratorT end) {
-					if (BasicWikiEntity<StringT, IteratorT>::match(begin, end)) {
-						if (this->type_ == TEMPLATE)
+				// virtual bool match(IteratorT begin, IteratorT end) {
+				// 	if (BasicWikiEntity<StringT, IteratorT>::match(begin, end)) {
+				// 		if (this->type_ == TEMPLATE)
+				// 			return true;
+				// 	}
+				// 	return false;
+				// }
+
+				virtual bool is_start(IteratorT& it) {
+					bool ret = false;
+					if (*it == '|') {
+						ret = true;
+						this->type_ = TABLE;
+					}
+					else if (*it == '{') {
+						ret = true;
+
+						// it is a template, but we don't know what kind of template yet
+						this->type_ = TEMPLATE;
+					}
+
+					return ret;
+				}
+
+				virtual bool is_end(IteratorT& it) {
+					if (*it == '|' || *it == '}') {
+						IteratorT it1 = it + 1;
+						if (*it == '}')
 							return true;
 					}
 					return false;
 				}
+
+
+			private:
+				void init() { }			
 		};
 
 		template <typename StringT = std::string,
@@ -526,7 +600,7 @@ namespace stpl {
 				typedef ElemTag<StringT, IteratorT> 						tag_type;
 				typedef Text<StringT, IteratorT> 							text_type;
 				typedef Link<StringT, IteratorT> 							link_type;
-				typedef Template<StringT, IteratorT> 						template_type;
+				typedef TBase<StringT, IteratorT> 						template_type;
 				typedef Entity<basic_entity>								container_type;
 				typedef typename container_type::container_entity_type		container_entity_type;
 		};
@@ -615,8 +689,6 @@ namespace stpl {
 				void init(IteratorT begin, IteratorT end) {
 					this->begin(begin);
 					this->end(end);
-					//start_k_.begin(begin);
-					//start_k_.end(end);
 				}
 
 				void set_start_keyword(ElemTagT* start_k) {
@@ -822,7 +894,7 @@ namespace stpl {
 
 						// cleanup_last_tag();
 						// skip non valid char or get next tag
-						skip_not_valid_char(it);
+						skip_invalid_chars(it);
 					}
 
 					if (!last_tag_ptr_ || is_last_tag_end_tag()) {
@@ -899,7 +971,7 @@ namespace stpl {
 					return ret;
 				}
 
-				virtual IteratorT skip_not_valid_char(IteratorT& it) {
+				virtual IteratorT skip_invalid_chars(IteratorT& it) {
 					this->skip_whitespace(it);
 
 					//if (!start_k_)
@@ -1312,12 +1384,11 @@ namespace stpl {
 				}
 		};
 
-
 		template <
 			typename StringT = std::string, 
 			typename IteratorT = typename StringT::iterator
 			>
-		class Tag: public BasicWikiEntity<StringT, IteratorT>
+		class Table: public BasicWikiEntity<StringT, IteratorT>
 		{
 			public:
 				typedef	StringT	string_type;
@@ -1327,17 +1398,17 @@ namespace stpl {
 				void init() { this->type_ = TEXT; }
 
 			public:
-				Tag() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() { init(); }
-				Tag(IteratorT it)
+				Table() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() { init(); }
+				Table(IteratorT it)
 					 : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(it) { init(); }
-				Tag(IteratorT begin, IteratorT end)
+				Table(IteratorT begin, IteratorT end)
 					 : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(begin, end) { init(); }
-				Tag(StringT content) :
+				Table(StringT content) :
 					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() {
 					init();
 					this->create(content);
 				}
-				virtual ~Tag() {}
+				virtual ~Table() {}
 
 			protected:
 				virtual bool is_start(IteratorT& it) {

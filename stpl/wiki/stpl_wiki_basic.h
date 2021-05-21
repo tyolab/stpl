@@ -36,6 +36,7 @@ namespace stpl {
 			LINK,
 			TEMPLATE,
 			COMMENT,
+			TABLE,
 			TEXT
 		};
 
@@ -64,10 +65,15 @@ namespace stpl {
 							LINK_MEDIA,
 							LINK_IMAGE,
 
+							// Sub node types of TABLE
+							T_TABLE,
+
 							// Sub node types of TEMPLATE
-							T_PA, // pronuciation aids
-							T_COLBEGIN, // column begin
-							T_COLEND,   // column end
+							T_T,
+							T_T_PA,                         // pronuciation aids
+							T_T_COLBEGIN, 	                // column begin
+							T_T_COLEND,   					// column end
+							T_T_DEFN, 						// definition / description lists
 
 							// Sub node types of TAG
 							TAG_REF,
@@ -86,12 +92,13 @@ namespace stpl {
 							// |accessdate
 
 							// Templates
-							T_COLOR,
-							T_FONT_COLOR,
-							T_FONT_STRIKE,
+							T_T_COLOR,
+							T_T_FONT_COLOR,
+							T_T_FONT_STRIKE,
 
 							TAG_NOWIKI,
-							TAG_PRE
+							TAG_PRE,
+							TAG_POEM
 							}; 
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
@@ -107,6 +114,7 @@ namespace stpl {
 				static const char WIKI_KEY_CLOSE_TEMPLATE = '}';
 				static const char WIKI_KEY_OPEN_LINK = '[';
 				static const char WIKI_KEY_CLOSE_LINK = ']';
+				static const char WIKI_KEY_SLASH = '/';
 				
 			protected:
 				WikiNode		 								node_;
@@ -384,7 +392,7 @@ namespace stpl {
 					return false;
 				}	
 						
-				virtual IteratorT skip_not_valid_char(IteratorT& it) {
+				virtual IteratorT skip_invalid_chars(IteratorT& it) {
 					return this->skip_whitespace(it);
 				}			
 				

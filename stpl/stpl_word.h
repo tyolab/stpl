@@ -111,7 +111,7 @@ namespace stpl {
 			}		
 			
 			
-			virtual IteratorT skip_not_valid_char(IteratorT& it) {
+			virtual IteratorT skip_invalid_chars(IteratorT& it) {
 				return this->skip_whitespace(it);
 			}
 					

@@ -358,7 +358,7 @@ namespace stpl {
 					return true;
 				}
 				
-				//virtual IteratorT skip_not_valid_char(IteratorT& next) {
+				//virtual IteratorT skip_invalid_chars(IteratorT& next) {
 				//	return skip_whitespace(next);
 				//}
 				
@@ -380,7 +380,7 @@ namespace stpl {
 						// TODO if there is any text instead of a <html> tag
 						// I take it that all the rest are the children of root element -- <html>
 						// if ()
-						this->skip_not_valid_char(temp_end);
+						this->skip_invalid_chars(temp_end);
 						
 						if (!this->last_tag_ptr_ || this->last_tag_ptr_->length() <= 0 )
 							return false;
@@ -406,7 +406,7 @@ namespace stpl {
 								temp_end = child_ptr->end();
 								this->add(reinterpret_cast<basic_entity*>(child_ptr));
 								this->match_text(temp_end);
-								this->skip_not_valid_char(temp_end);
+								this->skip_invalid_chars(temp_end);
 								end = temp_end;
 								//count++;
 							} while (temp_end != doc_end);

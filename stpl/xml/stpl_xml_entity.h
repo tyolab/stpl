@@ -305,7 +305,7 @@ namespace stpl {
 				}
 
 				bool parse_attribute(IteratorT& begin, IteratorT& end) {
-					this->skip_not_valid_char(begin);
+					this->skip_invalid_chars(begin);
 					AttributeT* attr_ptr = new AttributeT(begin, end);
 					bool ret = false;
 					if ((ret = attr_ptr->match(begin, end))) {
@@ -789,7 +789,7 @@ namespace stpl {
 
 						// cleanup_last_tag();
 						// skip non valid char or get next tag
-						skip_not_valid_char(it);
+						skip_invalid_chars(it);
 					}
 
 					if (!last_tag_ptr_ || is_last_tag_end_tag()) {
@@ -866,7 +866,7 @@ namespace stpl {
 					return ret;
 				}
 
-				virtual IteratorT skip_not_valid_char(IteratorT& it) {
+				virtual IteratorT skip_invalid_chars(IteratorT& it) {
 					this->skip_whitespace(it);
 
 					//if (!start_k_)

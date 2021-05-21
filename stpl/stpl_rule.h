@@ -61,10 +61,8 @@ namespace stpl {
 	    typedef typename EntityT::iterator	IteratorT;
 
 		protected:
-			//ContainerT* containter_ptr_;
 			Entity<BaseRuleT>	sub_rules_;
 			bool to_continue_;
-			//Scanner<EntityT>* scanner_ptr_;
 
 		private:
 			void init() {
@@ -94,20 +92,13 @@ namespace stpl {
 				}
 				else {
 					if (this->containter_ptr_) {
-						SecondEntityT* entity_ptr = new SecondEntityT(scanner_ptr->current(), scanner_ptr->end());
-						EntityT* base_ptr = reinterpret_cast<EntityT*>(entity_ptr);
-						ret = scanner_ptr->scan(base_ptr);
-						if (ret ) {
-							if (entity_ptr->length() > 0)  {
-								this->containter_ptr_->add(base_ptr);
-							}
-							else {
-								ret = false;
-							}
+						// SecondEntityT* entity_ptr = new SecondEntityT(scanner_ptr->current(), scanner_ptr->end());
+						// EntityT* base_ptr = reinterpret_cast<EntityT*>(entity_ptr);
+						EntityT* entity_ptr = scanner_ptr->scan();
+						if (entity_ptr && entity_ptr->length() > 0) {
+							this->containter_ptr_->add(entity_ptr);
+							ret = true;
 						}
-
-						if (!ret)
-							delete entity_ptr;
 					}
 				}
 				return ret;
@@ -115,7 +106,7 @@ namespace stpl {
 	};
 
 
-	// 0...* entities, that mean could have any number of the entities
+	// 0...* entities, that means it could have any number of entities
 
 
 	template < typename EntityT,

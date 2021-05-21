@@ -128,7 +128,7 @@ namespace stpl {
 				return next;
 			}
 
-			virtual IteratorT skip_not_valid_char(IteratorT& next) {
+			virtual IteratorT skip_invalid_chars(IteratorT& next) {
 				//return skip_whitespace(next);
 				while (!eow(next) && !is_valid_char(next))
 					next++;
@@ -159,10 +159,7 @@ namespace stpl {
 				this->begin(begin);
 				this->end(end);
 				bool ret = match(begin);
-				//begin = this->begin();
-				//end = this->end();
 				return ret;
-				//return end;
 			}
 
 			virtual bool match(IteratorT begin) {
@@ -187,19 +184,19 @@ namespace stpl {
 			}
 
 			virtual bool detect(IteratorT& begin) {
-				skip_not_valid_char(begin);
+				bool ret = false;
+				skip_invalid_chars(begin);
 
-				//this->end(next_char);
 				/*
 				 * the begining of the entity should be decided in the is_start function
 				 */
-				while (!is_start(begin) && !this->eow(begin))
-					begin++;
+				if (is_start(begin)) {
+					ret = true;
+					while (!this->eow(begin))
+						begin++;
+				}
 
-				if (this->eow(begin))
-					return false;
-
-				return true;
+				return ret;
 			}
 
 			virtual bool equal(StringT what) {

@@ -130,6 +130,73 @@ namespace stpl {
 
 		};
 
+		template< typename EntityT >
+		class WikiScanner: public Scanner<EntityT> {	
+		private:										
+			typedef	typename EntityT::string_type StringT;
+			typedef typename EntityT::iterator	IteratorT;									
+			public:
+				WikiScanner() {
+					Scanner<EntityT>::Scanner();
+					Scanner<EntityT>::state_ = TEXT;
+				}
+				WikiScanner(IteratorT begin, IteratorT end) {
+					Scanner<EntityT>::Scanner(begin, end);
+					Scanner<EntityT>::state_ = TEXT;
+				}
+				~WikiScanner() {
+
+				}
+
+			protected:
+				virtual EntityT* state_check() {
+					IteratorT it = this->current();
+					IteratorT end = this->end();
+					EntityT* entity_ptr = NULL;
+
+					/**
+					 * We only need the openings, and let the entity finish itself
+					 */
+					switch (*it)
+					{
+					case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG:
+						Scanner<EntityT>::state_ = TAG;
+						entity_ptr = new ElemTag<StringT, IteratorT>(it, end);;
+						break;
+					case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TEMPLATE:
+						Scanner<EntityT>::state_ = TEMPLATE;
+						entity_ptr = new TBase<StringT, IteratorT>(it, end);
+
+						// entity_ptr->node_ = T_T;
+						break;
+					case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LIST:
+						Scanner<EntityT>::state_ = LAYOUT;
+						entity_ptr = new Layout<StringT, IteratorT>(it, end);
+						entity_ptr->node_ = LAYOUT_UL;
+						break;
+					case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LIST_ORDERED:
+						Scanner<EntityT>::state_ = LAYOUT;
+						entity_ptr = new LayoutOrdered<StringT, IteratorT>(it, end);
+						entity_ptr->node_ = LAYOUT_LI;
+						break;
+					case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LINK:
+						Scanner<EntityT>::state_ = new Link<StringT, IteratorT>(it, end);
+
+						// the specific type can be updated during the pasing
+						entity_ptr = LINK_FREE;
+						break;
+					case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_HEADING:
+						Scanner<EntityT>::state_ = LAYOUT;
+						entity_ptr = new Layout<StringT, IteratorT>(it, end);
+						entity_ptr->node_ = LAYOUT_HEADING;
+						break;
+					default:
+						break;
+					}
+					return entity_ptr;
+				}
+		};
+
 	}
 }
 
