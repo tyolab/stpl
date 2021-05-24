@@ -36,14 +36,14 @@ namespace stpl {
 		class BasicXmlEntity : public StringBound<StringT, IteratorT> 
 		{
 			public:
-				static const char XML_KEY_OPEN = '<';
-				static const char XML_KEY_CLOSE = '>';
-				static const char XML_KEY_SLASH = '/';
+				static const char XML_KEY_OPEN =            '<';
+				static const char XML_KEY_CLOSE =           '>';
+				static const char XML_KEY_SLASH =           '/';
 				
 			protected:
-				XmlNodeType 									type_;
+				XmlNodeType 								type_;
 				BasicXmlEntity*								parent_ptr_;
-				StringBound<StringT, IteratorT> 	body_;
+				StringBound<StringT, IteratorT> 	        body_;
 					
 			private:
 				void init() {

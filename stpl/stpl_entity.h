@@ -41,6 +41,17 @@ namespace stpl {
 			typedef	StringT		string_type;
 			typedef IteratorT	iterator;
 
+		private:
+			StringT							content_;
+			//StringT&						content_ref_;
+
+			IteratorT 						begin_;
+			IteratorT 						end_;
+			unsigned long long int 			offset_;	 // used in creating the StringBound content
+
+			int								line_id_;    // for used the relative line id, where the beginning of a new entity the line id will be 0
+			                                             // for each line it comes across, ++line_id;			
+
 		public:
 			StringBound ()
 				//:
@@ -81,21 +92,21 @@ namespace stpl {
 			}
 
 			size_t length() {
-				//if (begin_ == NULL || end_ == NULL)
-				//	return 0;
 				 return end_ - begin_;
+			}
+
+			/**
+			 * begin of an entity
+			 */
+			bool bow(IteratorT it) {
+				return it <= this->begin();
 			}
 
 			/**
 			 * end of word or word-equivelant
 			 */
 			bool eow(IteratorT it) {
-				//if (this->end())
-				//if (begin_ == end_ )  // TODO find a better way to decide the end of the word
-				//	return false;
-				//else
-					return it >= this->end();
-				//return false;
+				return it >= this->end();
 			}
 
 			IteratorT skip_n_chars(IteratorT& it, int n) {
@@ -108,28 +119,43 @@ namespace stpl {
 			}
 
 			IteratorT skip_whitespace(IteratorT& next) {
-				//IteratorT next = it;
-				while (!eow(next) && isspace(*next))
-					next++;
+				while (!eow(next)) {
+					if (*next == '\n') {
+						++line_id_;
+						++next;
+					}
+					else if (isspace(*next)) {
+						++next;
+					}
+					else
+						break;
+				}
+					
 				return next;
 			}
 
 			IteratorT skip_whitespace_backward(IteratorT& pre) {
-				//IteratorT next = it;
-				while (isspace(*pre))
-					--pre;
+				while (!bow(pre)) {
+					if (*pre == '\n') {
+						--pre;
+						--line_id_;
+					}
+					else if (isspace(*pre)) {
+						--pre;
+					}
+					else
+						break;
+				}
 				return pre;
 			}
 
 			IteratorT skip_non_alnum_char(IteratorT& next) {
-				//IteratorT next = it;
 				while (!eow(next) && !isalnum(*next))
 					next++;
 				return next;
 			}
 
 			virtual IteratorT skip_invalid_chars(IteratorT& next) {
-				//return skip_whitespace(next);
 				while (!eow(next) && !is_valid_char(next))
 					next++;
 				return next;
@@ -151,7 +177,6 @@ namespace stpl {
 				return this->match(this->begin(), this->end());
 			}
 
-			//virtual bool match(IteratorT& begin, IteratorT& end)  { return false;};
 			virtual bool match(IteratorT begin, IteratorT end) {
 				if (begin == end)
 					return false;
@@ -176,7 +201,6 @@ namespace stpl {
 				if (this->begin() != begin) {
 					this->end(end);
 					bool ret = match_rest(begin);
-					//end = this->end();
 					return ret;
 				}
 
@@ -284,14 +308,6 @@ namespace stpl {
 				//detected_ = false;
 				//content_ref_ = content_;
 			}
-
-		private:
-			StringT							content_;
-			//StringT&						content_ref_;
-
-			IteratorT 						begin_;
-			IteratorT 						end_;
-			unsigned long long int 			offset_;	 // used in creating the StringBound content
 	};
 
 	template <typename EntityT,  typename ContainerT = std::vector<EntityT *> >

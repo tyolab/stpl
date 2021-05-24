@@ -31,11 +31,14 @@ namespace stpl {
 
 	template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 	class Property : public StringBound<StringT, IteratorT> {
+		public:
+		    char* delimiter_ = '=';
+
 		protected:
 			typedef StringBound<StringT, IteratorT> StringB;
 			StringB name_;
 			StringB	value_;
-			bool has_equal_;
+			bool has_delimiter_;
 			bool has_quote_;
 			bool force_end_quote_;  // if has quote, then it must end with quote
 			bool is_single_quote_;  // false is double quote, true for single quote
@@ -43,7 +46,7 @@ namespace stpl {
 
 		private:
 			void init() {
-				has_equal_ = false;
+				has_delimiter_ = true;
 				is_single_quote_ = false;
 				has_quote_ = false;
 				force_end_quote_ = false;
@@ -57,7 +60,7 @@ namespace stpl {
 						return true;
 				}
 				else {
-					if (has_equal_ && !has_quote_)
+					if (has_delimiter_ && !has_quote_)
 						return isspace(*it);
 				}
 				return false;
@@ -79,7 +82,7 @@ namespace stpl {
 				if (!ret) {
 					// if have the break character like "=, space" or something specified as the break char
 					// which mean the beginning of VALUE
-					if (has_equal_) {
+					if (has_delimiter_) {
 						bool check_end_char = false;
 						if (has_quote_) {
 							IteratorT pre = it;
@@ -116,7 +119,7 @@ namespace stpl {
 								this->skip_whitespace(it);
 
 							if (*it == '=') {
-								has_equal_ = true;
+								has_delimiter_ = true;
 
 								// deside where is the end of name
 								IteratorT pre = it;
@@ -135,7 +138,7 @@ namespace stpl {
 								//--it;
 							}
 
-							if (has_space && !has_equal_)
+							if (has_space && !has_delimiter_)
 								ret = true;
 						}
 					}
@@ -158,7 +161,7 @@ namespace stpl {
 			}
 
 			void end_notify(IteratorT& end) {
-				if (has_equal_) {
+				if (has_delimiter_) {
 					if (has_quote_) {
 						IteratorT pre = end;
 						pre--;

@@ -41,6 +41,7 @@ namespace stpl {
 		public:
 			typedef typename EntityT::string_type	 string_type;
 			typedef typename EntityT::iterator		 iterator;
+			typedef EntityT                          entity_type;
 			typedef DocumentT						 document_type;
 
 		private:

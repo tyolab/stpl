@@ -14,6 +14,7 @@
  *******************************************************************************
  *
  * @author				Ling-Xiang(Eric) Tang 
+ * @twitter				https://twitter.com/_e_tang
  *
  *******************************************************************************/
 
@@ -42,7 +43,7 @@ namespace stpl {
 
 		// NONE for un-initialized node, or just TEXT
 		// MISC node type includes COMMENT, PI or DOCTYPE (COMMENT)
-		enum WikiNode {NONE, 
+		enum WikiNodeGroup {NONE, 
 							// Sub node types of LAYOUT
 							LAYOUT_SECTION, 
 							LAYOUT_HEADING, 
@@ -102,6 +103,47 @@ namespace stpl {
 							}; 
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
+		class WikiProperty : public Property<StringT, IteratorT> {
+			public:
+				typedef std::map<StringT, WikiProperty*>	attributes_type;
+				
+			public:
+				WikiProperty() : 
+					Property<StringT, IteratorT>::Property() { init(); }
+				WikiProperty(IteratorT begin) :
+				    Property<StringT, IteratorT>::Property(begin) { init(); }				
+				WikiProperty(IteratorT begin, IteratorT end) :
+				    Property<StringT, IteratorT>::Property(begin, end) { init(); }
+				WikiProperty(StringT content) : 
+					Property<StringT, IteratorT>::Property(content) {
+				}
+				virtual ~WikiProperty() {}		
+				
+			private:
+				void init() {
+					this->delimiter_ = '|';
+					this->force_end_quote_ = true;
+				}
+				
+			protected:
+				virtual bool is_end_char(IteratorT& it) {
+					if (Property<StringT, IteratorT>::is_end_char(it))
+						return true;
+					else {
+						IteratorT next = it;						
+						// if (*next == '/') {							
+						// 	this->skip_whitespace(++next);
+						// }
+						// if (BasicXmlEntity<StringT, IteratorT>::is_end_symbol(next) ) {
+						// 	it = next;
+						// 	return true;
+						// }
+					}
+					return false;
+				}			
+		};
+
+		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 		class BasicWikiEntity : public StringBound<StringT, IteratorT> 
 		{
 			public:
@@ -117,14 +159,16 @@ namespace stpl {
 				static const char WIKI_KEY_SLASH = '/';
 				
 			protected:
-				WikiNode		 								node_;
+				WikiNodeGroup		 							group_;
 				WikiNodeType 									type_;
 				BasicWikiEntity*								parent_ptr_;
 				StringBound<StringT, IteratorT> 				body_;
+
+				int												id_;
 					
 			private:
 				void init() {
-					node_ = NONE;
+					group_ = NONE;
 					type_ = TEXT;
 					parent_ptr_ = NULL;
 				}
@@ -149,6 +193,12 @@ namespace stpl {
 				
 				virtual StringBound<StringT, IteratorT>& content() {
 					return body_;
+				}
+
+				virtual bool is_start(IteratorT& it) {
+					this->skip_whitespace(it);
+					this->begin(it);
+					return true;
 				}
 
 				static bool is_start_symbol(IteratorT it) {
@@ -187,7 +237,60 @@ namespace stpl {
 				}		
 
 				bool is_element() { return type() == TAG; }
-		};		
+
+				int get_id() const {
+					return id_;
+				}
+
+				void set_id(int id) {
+					id_ = id;
+				}
+
+				WikiNodeGroup get_group() const {
+					return group_;
+				}
+
+				void set_group(WikiNodeGroup group) {
+					group_ = group;
+				}
+
+				WikiNodeType get_type() const {
+					return type_;
+				}
+
+				void set_type(WikiNodeType type) {
+					type_ = type;
+				}
+		};
+
+		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
+		class WikiEntity : public BasicWikiEntity<StringT, IteratorT>
+		{
+			public:
+
+			private:
+				std::map<StringT, WikiEntity>	properties_;
+
+			private:
+				void init() {
+
+				}
+
+			public:
+				WikiEntity() : StringBound<StringT, IteratorT>::StringBound() {
+				}
+				WikiEntity(IteratorT it) : StringBound<StringT, IteratorT>::StringBound(it) {
+					init();
+				}
+				WikiEntity(IteratorT begin, IteratorT end) : StringBound<StringT, IteratorT>::StringBound(begin, end) {
+					init();
+				}
+				WikiEntity(StringT content) :
+					StringBound<StringT, IteratorT>::StringBound(content) {
+					init();
+				}
+				virtual ~WikiEntity() {}
+		};
 		
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 		class WikiAttribute : public Property<StringT, IteratorT> {

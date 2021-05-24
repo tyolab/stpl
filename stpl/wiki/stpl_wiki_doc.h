@@ -67,6 +67,8 @@ namespace stpl {
 
 				virtual StringT to_string() { return 0; }
 
+				std::vector<EntityT>& get_nodes() { return nodes_; }
+
 			private:
 				void init() {
 				}
@@ -148,50 +150,89 @@ namespace stpl {
 
 				}
 
+				virtual void reset_state(EntityT* entity_ptr) {
+					// set the new state
+					Scanner<EntityT>::state_ = TEXT;
+				}
+
 			protected:
+				EntityT* extract_text(IteratorT start, IteratorT end) {
+					if (end > start) {
+
+					}
+				}
+
 				virtual EntityT* state_check() {
-					IteratorT it = this->current();
+					IteratorT begin = this->current();
+					IteratorT it = begin;
 					IteratorT end = this->end();
 					EntityT* entity_ptr = NULL;
+					int previous_state = Scanner<EntityT>::state_;
 
 					/**
 					 * We only need the openings, and let the entity finish itself
+					 * but for the text node, we won't be able to do so, so anything that is between those
+					 * special nodes are text nodes
 					 */
-					switch (*it)
-					{
-					case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG:
-						Scanner<EntityT>::state_ = TAG;
-						entity_ptr = new ElemTag<StringT, IteratorT>(it, end);;
-						break;
-					case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TEMPLATE:
-						Scanner<EntityT>::state_ = TEMPLATE;
-						entity_ptr = new TBase<StringT, IteratorT>(it, end);
+					while (!this->eow(it)) {
+						switch (*it)
+						{
+						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG:
+						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TEMPLATE:
+						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LIST:
+						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LIST_ORDERED:
+						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LINK:
+						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_HEADING:
+							if (previous_state == TEXT && it > begin) {
+								return new Text<StringT, IteratorT>(begin, it);
+							}
+							break;
+						default:
+							break;
+						}
 
-						// entity_ptr->node_ = T_T;
-						break;
-					case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LIST:
-						Scanner<EntityT>::state_ = LAYOUT;
-						entity_ptr = new Layout<StringT, IteratorT>(it, end);
-						entity_ptr->node_ = LAYOUT_UL;
-						break;
-					case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LIST_ORDERED:
-						Scanner<EntityT>::state_ = LAYOUT;
-						entity_ptr = new LayoutOrdered<StringT, IteratorT>(it, end);
-						entity_ptr->node_ = LAYOUT_LI;
-						break;
-					case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LINK:
-						Scanner<EntityT>::state_ = new Link<StringT, IteratorT>(it, end);
 
-						// the specific type can be updated during the pasing
-						entity_ptr = LINK_FREE;
-						break;
-					case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_HEADING:
-						Scanner<EntityT>::state_ = LAYOUT;
-						entity_ptr = new Layout<StringT, IteratorT>(it, end);
-						entity_ptr->node_ = LAYOUT_HEADING;
-						break;
-					default:
-						break;
+						switch (*it)
+						{
+						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG:
+							// at current stage, all tags will be ignored, it will be just part of TEXT node
+	//						Scanner<EntityT>::state_ = TAG;
+	//						entity_ptr = new ElemTag<StringT, IteratorT>(it, end);
+							break;
+						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TEMPLATE:
+							Scanner<EntityT>::state_ = TEMPLATE;
+							entity_ptr = new TBase<StringT, IteratorT>(it, end);
+
+							// entity_ptr->node_ = T_T;
+							break;
+						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LIST:
+							Scanner<EntityT>::state_ = LAYOUT;
+							entity_ptr = new WikiEntityContainer<StringT, IteratorT>(it, end);
+							entity_ptr->node_ = LAYOUT_UL;
+							break;
+						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LIST_ORDERED:
+							Scanner<EntityT>::state_ = LAYOUT;
+							entity_ptr = new LayoutOrdered<StringT, IteratorT>(it, end);
+							entity_ptr->node_ = LAYOUT_LI;
+							break;
+						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LINK:
+							Scanner<EntityT>::state_ = new Link<StringT, IteratorT>(it, end);
+
+							// the specific type can be updated during the pasing
+							entity_ptr = LINK_FREE;
+							break;
+						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_HEADING:
+							Scanner<EntityT>::state_ = LAYOUT;
+							entity_ptr = new WikiEntityContainer<StringT, IteratorT>(it, end);
+							entity_ptr->node_ = LAYOUT_HEADING;
+							break;
+						default:
+							break;
+						}
+
+						if (!entity_ptr)
+							break;
+						++it;
 					}
 					return entity_ptr;
 				}

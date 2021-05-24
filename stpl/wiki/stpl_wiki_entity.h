@@ -59,20 +59,6 @@ namespace stpl {
 				virtual ~Text() {}
 
 			protected:
-				virtual bool is_start(IteratorT& it) {
-					this->skip_whitespace(it);
-					this->begin(it);
-					return true;
-				}
-
-				virtual bool is_end(IteratorT& it) {
-					return this->eow(it) || text_stop(it);
-				}
-
-				virtual bool text_stop(IteratorT next) {
-					return BasicWikiEntity<StringT, IteratorT>::is_start_symbol(next);
-				}
-
 				virtual void add_content(StringT& text) {
 					this->ref().append(text);
 				}
@@ -478,7 +464,7 @@ namespace stpl {
 		template <typename StringT = std::string,
 							typename IteratorT = typename StringT::iterator
 						  >
-		class Link : public BasicWikiEntity<StringT, IteratorT>
+		class Link : public WikiEntity<StringT, IteratorT>
 		{
 			public:
 				typedef	StringT	string_type;
@@ -488,21 +474,21 @@ namespace stpl {
 				void init() { this->type_ = TEMPLATE; }
 
 			public:
-				Link() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() {}
+				Link() : WikiEntity<StringT, IteratorT>::WikiEntity() {}
 				Link(IteratorT it) :
-					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(it) {
+					WikiEntity<StringT, IteratorT>::WikiEntity(it) {
 					init();
 				}
 				Link(IteratorT begin, IteratorT end) :
-					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(begin, end) { init(); }
+					WikiEntity<StringT, IteratorT>::WikiEntity(begin, end) { init(); }
 				Link(StringT content) :
-					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(content) {
+					WikiEntity<StringT, IteratorT>::WikiEntity(content) {
 					init();
 				}
 				virtual ~Link() {};
 
 				virtual bool match(IteratorT begin, IteratorT end) {
-					if (BasicWikiEntity<StringT, IteratorT>::match(begin, end)) {
+					if (WikiEntity<StringT, IteratorT>::match(begin, end)) {
 						if (this->type_ == TEMPLATE)
 							return true;
 					}
@@ -554,42 +540,6 @@ namespace stpl {
 		};
 
 
-		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
-		class DocType: public WikiKeyword<StringT, IteratorT>
-		{
-			public:
-				typedef	StringT	string_type;
-				typedef IteratorT	iterator;
-
-			private:
-				void init() { this->type_ = COMMENT; }
-
-			public:
-				DocType() : WikiKeyword<StringT, IteratorT>::WikiKeyword() {
-					init();
-				}
-				DocType(IteratorT it) :
-					WikiKeyword<StringT, IteratorT>::WikiKeyword(it){
-					init();
-				}
-				DocType(IteratorT begin, IteratorT end) :
-					WikiKeyword<StringT, IteratorT>::WikiKeyword(begin, end){
-					init();
-				}
-				DocType(StringT content) :
-					WikiKeyword<StringT, IteratorT>::WikiKeyword(content) {
-					init();
-				}
-				virtual ~DocType() {}
-
-				virtual bool match(IteratorT begin, IteratorT end) {
-					if (WikiKeyword<StringT, IteratorT>::match(begin, end)) {
-						if (this->type_ == COMMENT)
-							return true;
-					}
-					return false;
-				}
-		};
 
 		template <typename StringT = std::string
 			, typename IteratorT = typename StringT::iterator>
@@ -600,7 +550,7 @@ namespace stpl {
 				typedef ElemTag<StringT, IteratorT> 						tag_type;
 				typedef Text<StringT, IteratorT> 							text_type;
 				typedef Link<StringT, IteratorT> 							link_type;
-				typedef TBase<StringT, IteratorT> 						template_type;
+				typedef TBase<StringT, IteratorT> 						    template_type;
 				typedef Entity<basic_entity>								container_type;
 				typedef typename container_type::container_entity_type		container_entity_type;
 		};
@@ -609,87 +559,99 @@ namespace stpl {
 							, typename IteratorT = typename StringT::iterator
 							, typename NodeTypesT = WikiNodeTypes<StringT, IteratorT>
 						  >
-		class Layout: public NodeTypesT::basic_entity
+		class WikiEntityContainer: public NodeTypesT::basic_entity
 								 , public NodeTypesT::container_type
 		{
-			private:
-				typedef typename NodeTypesT::text_type 							TextT;
-				typedef typename NodeTypesT::tag_type							ElemTagT;
-				typedef typename NodeTypesT::keyword_type						WikiKeywordT;
-
 			public:
 				typedef StringT													string_type;
 				typedef IteratorT												iterator;
-				typedef Comment<StringT, IteratorT>								comment_type;
-				typedef typename NodeTypesT::basic_entity 						basic_entity;
-				typedef typename NodeTypesT::container_type						container_type;
-				typedef typename NodeTypesT::tag_type::attribute_type			attribute_type;
-				typedef typename container_type::entity_iterator				entity_iterator;
-				typedef list<
-					typename container_type::container_entity_type
-							>													tree_type;
-				typedef typename std::map<StringT, bool>						ie_map; /// include or exclude map
 
 			protected:
-				typedef StringBound<StringT, IteratorT> 						StringB;
-				StringB 														body_;
+				std::vector<typename NodeTypesT::basic_entity> 					children_;
 
-				ElemTagT* 														start_k_;
-				ElemTagT*														end_k_;
-				ElemTagT* 														last_tag_ptr_;
-
-				//Layout* parent_;
-				StringT															xpath_;
-
-			private:
-				void init() {
-					last_tag_ptr_ = NULL;
-					start_k_ = NULL;
-					end_k_ = NULL;
-					body_.begin(this->begin());
-					body_.end(this->begin());
-					this->type(TAG);
-				}
-
-				void cleanup() {
-					if (start_k_)
-						delete start_k_;
-					if (end_k_)
-						delete end_k_;
-					cleanup_last_tag();
-				}
-
-				void cleanup_last_tag() {
-					if (last_tag_ptr_) {
-						delete last_tag_ptr_;
-						last_tag_ptr_ = NULL;
-					}
-				}
 
 			public:
-				Layout() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity()
+				WikiEntityContainer() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity()
 							, Entity<BasicWikiEntity<StringT, IteratorT> >::Entity() { init(); }
-				Layout(IteratorT it) :
+				WikiEntityContainer(IteratorT it) :
 					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(it)/*, start_k_(it, it)*/
 					, Entity<BasicWikiEntity<StringT, IteratorT> >::Entity() { init(); }
-				Layout(IteratorT begin, IteratorT end) :
+				WikiEntityContainer(IteratorT begin, IteratorT end) :
 					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(begin, end)/*, start_k_(begin, begin)*/
 					, Entity<BasicWikiEntity<StringT, IteratorT> >::Entity() { init(); }
-				Layout(StringT name) :
-					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity()
-					, Entity<BasicWikiEntity<StringT, IteratorT> >::Entity() {
-					init();
-					this->create(name);
+
+				virtual ~WikiEntityContainer() {
 				}
 
-				virtual ~Layout() {
+			private:
+				void init() {}
+		};
+
+		template <typename StringT = std::string,
+				typename IteratorT = typename StringT::iterator,
+				typename NodeTypesT = WikiNodeTypes<StringT, IteratorT>
+				>
+		class WikiTag: public  WikiEntityContainer<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT	                                             string_type;
+				typedef IteratorT	                                         iterator;
+
+				typedef Comment<StringT, IteratorT>							 comment_type;
+				typedef typename NodeTypesT::basic_entity 					 basic_entity;
+				typedef typename NodeTypesT::container_type					 container_type;
+				typedef typename NodeTypesT::tag_type::attribute_type		 attribute_type;
+				typedef typename container_type::entity_iterator			 entity_iterator;
+
+				typedef typename std::map<StringT, bool>					 ie_map; /// include or exclude map
+
+				typedef typename container_type::container_entity_type		 container_entity_type;
+				typedef list<
+					typename container_type::container_entity_type
+							>												 tree_type;
+
+			protected:
+				typedef typename NodeTypesT::text_type 						 TextT;
+				typedef typename NodeTypesT::tag_type						 ElemTagT;
+				typedef typename NodeTypesT::keyword_type					 WikiKeywordT;
+				typedef StringBound<StringT, IteratorT> 					 StringB;
+
+			private:
+				ElemTagT* 													 start_k_;
+				ElemTagT*													 end_k_;
+				ElemTagT* 													 last_tag_ptr_;
+
+				//Layout* parent_;
+				StringT														 xpath_;
+
+			public:
+				WikiTag() : WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer() {
+					init();
+				}
+				WikiTag(IteratorT it) :
+					WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer(it){
+					init();
+				}
+				WikiTag(IteratorT begin, IteratorT end) :
+					WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer(begin, end){
+					init();
+				}
+				WikiTag(StringT name) :
+					WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer(name) {
+					init();
+					create(name);
+				}
+				virtual ~WikiTag() {
 					cleanup();
 				}
 
-				void init(IteratorT begin, IteratorT end) {
-					this->begin(begin);
-					this->end(end);
-				}
+//				virtual bool match(IteratorT begin, IteratorT end) {
+//					if (WikiKeyword<StringT, IteratorT>::match(begin, end)) {
+//						if (this->type_ == COMMENT)
+//							return true;
+//					}
+//					return false;
+//				}
 
 				void set_start_keyword(ElemTagT* start_k) {
 					start_k_ = start_k;
@@ -717,7 +679,7 @@ namespace stpl {
 					return "";
 				}
 
-				Layout *get_descendent_node_by_xpath(const char *xpath, StringT& attr_name, StringT& attr_value) {
+				WikiTag *get_descendent_node_by_xpath(const char *xpath, StringT& attr_name, StringT& attr_value) {
 					const char *pos = xpath;
 					StringT first_tag;
 					while (*pos != '\0' && *pos != '/' && *pos != '[' && *pos != ':')
@@ -733,7 +695,7 @@ namespace stpl {
 					}
 
 					int count = 0;
-					Layout *elem = NULL;
+					WikiTag *elem = NULL;
 					// allow non-stard wiki file with no single document root
 					entity_iterator	it;
 					for (it = this->iter_begin(); it != this->iter_end(); ++it) {
@@ -741,11 +703,11 @@ namespace stpl {
 
 						if (node->is_element()) {
 							++count;
-							elem = static_cast<Layout *>(node);
+							elem = static_cast<WikiTag *>(node);
 							StringT name = elem->name();
 							if (name == first_tag && (index == -1 || (count - 1) == index)) {
 								if (*pos == '/') {
-									Layout *d_elem = elem->get_descendent_node_by_xpath(++pos, attr_name, attr_value);
+									WikiTag *d_elem = elem->get_descendent_node_by_xpath(++pos, attr_name, attr_value);
 									elem = d_elem;
 								}
 								else if (attr_value.length() > 0) {
@@ -777,16 +739,16 @@ namespace stpl {
 									end_k_ = last_tag_ptr_;
 									last_tag_ptr_ = NULL;
 									IteratorT end = end_k_->begin();
-									body_.end(end);
+									this->children.end(end);
 
 									this->end(end_k_->end());
 								} else {
 									// TODO error message here for wiki
 									// but could be alright for html
 									if (this->parent() && this->parent()->is_element()) {
-										reinterpret_cast<Layout*>(this->parent())->set_last_tag(last_tag_ptr_);
+										reinterpret_cast<WikiTag*>(this->parent())->set_last_tag(last_tag_ptr_);
 										IteratorT end = last_tag_ptr_->begin();
-										body_.end(end);
+										this->children.end(end);
 										this->end(end);
 										last_tag_ptr_ = NULL;
 									}
@@ -801,8 +763,8 @@ namespace stpl {
 								end_k_ = last_tag_ptr_;
 								last_tag_ptr_ = NULL;
 								IteratorT begin = end_k_->begin();
-								body_.begin(begin);
-								body_.end(begin);
+								this->children.begin(begin);
+								this->children.end(begin);
 								this->end(end_k_->end());
 							}
 							return true;
@@ -827,10 +789,10 @@ namespace stpl {
 							if (ret) {
 								IteratorT end = last_tag_ptr_->begin();
 								if (this->parent() && this->parent()->is_element()) {
-									reinterpret_cast<Layout*>(this->parent())->set_last_tag(last_tag_ptr_);
+									reinterpret_cast<WikiTag*>(this->parent())->set_last_tag(last_tag_ptr_);
 									last_tag_ptr_ = NULL;
 								}
-								body_.end(end);
+								this->children.end(end);
 								this->end(end);
 							}
 							return ret;
@@ -856,7 +818,7 @@ namespace stpl {
 						this->type_ = TAG;
 						assert(start_k_);
 						this->begin(start_k_->begin());
-						body_.begin(start_k_->end());
+						this->children.begin(start_k_->end());
 					}
 					return ret;
 				}
@@ -874,7 +836,7 @@ namespace stpl {
 						}
 
 						if (ret) {
-							body_.end(start_k_->end());
+							this->children.end(start_k_->end());
 							return ret;
 						}
 					}
@@ -887,7 +849,7 @@ namespace stpl {
 						if (this->eow(it)) {
 							//TODO error message here for wiki
 							// but could be valid for html
-							body_.end(it);
+							this->children.end(it);
 							this->end(it);
 							return true;
 						}
@@ -907,7 +869,7 @@ namespace stpl {
 					IteratorT end = this->end();
 					IteratorT begin = last_tag_ptr_->begin();
 					IteratorT new_begin = last_tag_ptr_->end();
- 					Layout* child = new Layout(begin, end);
+ 					WikiTag* child = new WikiTag(begin, end);
 					child->set_parent(reinterpret_cast<basic_entity* >(this));
 					child->set_start_keyword(last_tag_ptr_);
 					child->content().begin(last_tag_ptr_->end());
@@ -934,7 +896,7 @@ namespace stpl {
 					}
 					// TODO someting must go wrong here, output error message
 					it = begin; // where the error happens
-					body_.end(it);
+					this->children.end(it);
 					delete child;
 					return true;
 
@@ -1149,7 +1111,7 @@ namespace stpl {
 					//	entity_iterator it = this->next();
 						tree.push_back(*it);
 						if ((*it)->is_element()) {
-							reinterpret_cast<Layout*>(*it)->traverse(tree);
+							reinterpret_cast<WikiTag*>(*it)->traverse(tree);
 						}
 					}
 				}
@@ -1172,14 +1134,14 @@ namespace stpl {
 					return;
 				}
 
-				Layout* find_child(StringT child_name, int index = -1) {
+				WikiTag* find_child(StringT child_name, int index = -1) {
 					entity_iterator it;
 					int count = -1;
-					Layout* child = NULL;
+					WikiTag* child = NULL;
 					for (it = this->iter_begin(); it != this->iter_end(); ++it) {
 						++count;
 						if ((*it)->is_element()) {
-							child = reinterpret_cast<Layout *>(*it);
+							child = reinterpret_cast<WikiTag *>(*it);
 							StringT name = child->name();
 							// debug
 							// cout << "comparing with " << name << endl;
@@ -1196,7 +1158,7 @@ namespace stpl {
 				}
 
 				virtual StringB& content() {
-					return body_;
+					return this->children;
 				}
 
 				void name(StringT name) {
@@ -1210,7 +1172,7 @@ namespace stpl {
 					this->add(reinterpret_cast<basic_entity*>(text_ptr));
 				}
 
-				void new_child(Layout* child_ptr) {
+				void new_child(WikiTag* child_ptr) {
 					this->add(reinterpret_cast<basic_entity*>(child_ptr));
 				}
 
@@ -1317,7 +1279,7 @@ namespace stpl {
 							}
 						}
 						else if ((*it)->is_element() && all_text) {
-							static_cast<Layout*>(*it)->text(text, all_text, nm, sub_text, force);
+							static_cast<WikiTag*>(*it)->text(text, all_text, nm, sub_text, force);
 						}
 					}
 
@@ -1349,7 +1311,7 @@ namespace stpl {
 					while (this->more()) {
 						entity_iterator it = this->next();
 						if ((*it)->type() == TAG) {
-							reinterpret_cast<Layout*>(*it)->print(out, level + 1);
+							reinterpret_cast<WikiTag*>(*it)->print(out, level + 1);
 						} else {
 							(*it)->print(out, level + 1);
 						}
@@ -1364,7 +1326,7 @@ namespace stpl {
 					entity_iterator it;
 					for (it = this->iter_begin(); it != this->iter_end(); ++it) {
 						if ((*it)->is_element()) {
-							Layout* child = reinterpret_cast<Layout*>(*it);
+							WikiTag* child = reinterpret_cast<WikiTag*>(*it);
 							StringT name = child->name();
 							// debug
 							// cout << "comparing with " << name << endl;
@@ -1382,7 +1344,32 @@ namespace stpl {
 					}
 					return;
 				}
+
+				void init() {
+					last_tag_ptr_ = NULL;
+					start_k_ = NULL;
+					end_k_ = NULL;
+					this->children.begin(this->begin());
+					this->children.end(this->begin());
+					this->type(TAG);
+				}
+
+				void cleanup() {
+					if (start_k_)
+						delete start_k_;
+					if (end_k_)
+						delete end_k_;
+					cleanup_last_tag();
+				}
+
+				void cleanup_last_tag() {
+					if (last_tag_ptr_) {
+						delete last_tag_ptr_;
+						last_tag_ptr_ = NULL;
+					}
+				}
 		};
+
 
 		template <
 			typename StringT = std::string, 
@@ -1393,9 +1380,6 @@ namespace stpl {
 			public:
 				typedef	StringT	string_type;
 				typedef IteratorT	iterator;
-
-			private:
-				void init() { this->type_ = TEXT; }
 
 			public:
 				Table() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() { init(); }
@@ -1428,26 +1412,26 @@ namespace stpl {
 				virtual void add_content(StringT& text) {
 					this->ref().append(text);
 				}
+
+			private:
+				void init() { }
 		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
-		class LayoutOrdered: public Layout<StringT, IteratorT>
+		class LayoutOrdered: public WikiEntityContainer<StringT, IteratorT>
 		{
 			public:
 				typedef	StringT	string_type;
 				typedef IteratorT	iterator;
 
-			private:
-				void init() { this->type_ = TEXT; }
-
 			public:
-				LayoutOrdered() : Layout<StringT, IteratorT>::Layout() { init(); }
+				LayoutOrdered() : WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer() { init(); }
 				LayoutOrdered(IteratorT it)
-					 : Layout<StringT, IteratorT>::Layout(it) { init(); }
+					 : WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer(it) { init(); }
 				LayoutOrdered(IteratorT begin, IteratorT end)
-					 : Layout<StringT, IteratorT>::Layout(begin, end) { init(); }
+					 : WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer(begin, end) { init(); }
 				LayoutOrdered(StringT content) :
-					Layout<StringT, IteratorT>::Layout() {
+					WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer() {
 					init();
 					this->create(content);
 				}
@@ -1471,17 +1455,21 @@ namespace stpl {
 				virtual void add_content(StringT& text) {
 					this->ref().append(text);
 				}
+
+			private:
+				void init() {  }
 		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 		class LayoutLeveled: public LayoutOrdered<StringT, IteratorT>				
 		{
 			public:
-				typedef	StringT	string_type;
+				typedef	StringT	    string_type;
 				typedef IteratorT	iterator;
 
 			private:
-				void init() { this->type_ = TEXT; }
+				int	level_;
+				int matched_levels_;
 
 			public:
 				LayoutLeveled() : LayoutOrdered<StringT, IteratorT>::LayoutOrdered() { init(); }
@@ -1498,22 +1486,41 @@ namespace stpl {
 
 			protected:
 				virtual bool is_start(IteratorT& it) {
+					while (*it == BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_HEADING) {
+						++level_;
+						++this->matched_levels;
+					}
 					this->skip_whitespace(it);
-					this->begin(it);
+					// this->begin(it);
 					return true;
 				}
 
 				virtual bool is_end(IteratorT& it) {
-					return this->eow(it) || text_stop(it);
-				}
-
-				virtual bool text_stop(IteratorT next) {
-					return LayoutOrdered<StringT, IteratorT>::is_start_symbol(next);
+					if (this->eow(it))
+						return true;
+					// when the line ends it ends
+					if (*it == '\n') {
+						return true;
+					}
+					else if (*it == BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_HEADING) {
+						while (*it == BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_HEADING && !this->eow(it)) {
+							--this->matched_levels;
+							if (this->matched_levels <= 0)
+								break;
+							++it;
+						}
+						level_ -= this->matched_levels;
+						return true;
+					}
+					return false; // this->eow(it) || text_stop(it);
 				}
 
 				virtual void add_content(StringT& text) {
 					this->ref().append(text);
 				}
+
+			private:
+				void init() { level_ = 1; }
 		};
 	}
 }
