@@ -91,26 +91,14 @@ namespace stpl {
 				// set the new state
 				state_ = -1;
 			}
-
-			virtual EntityT* state_check(EntityT* last_entity_ptr) {
-				// a state machine is maintained with different grammar
-				// may be overridden to fit the state machine
-				IteratorT	begin = this->current();
-				IteratorT	end = this->end();
-				return new EntityT(begin, end);
-			}
-
-			virtual void handle_child_entity(EntityT* entity_ptr, EntityT* child_entity) {
-				// nothing yet
-				delete child_entity;
-			}
 			 
 	 		EntityT* scan() {
 	 			EntityT* tmp_entity = NULL;
+				// EntityT* parent_entity = NULL;
 
 				if (!this->is_end()) {
-
-					tmp_entity = this->state_check(last_e_);
+					// Everything starts clean with no parent node
+					tmp_entity = this->state_check(this->current(), NULL);
 					/*
 					 * TODO make the skipping of the non-valid char happen here 
 					 */
@@ -119,25 +107,45 @@ namespace stpl {
 
 					IteratorT it = tmp_entity->match();
 
-					while (tmp_entity->isopen()) {
-						EntityT* new_entity = state_check(tmp_entity);
-						if (new_entity != tmp_entity) {
-							handle_child_entity(tmp_entity, new_entity);
+					// if (tmp_entity->isopen()) {
+					// 	parent_entity = tmp_entity;
+						while (tmp_entity && tmp_entity->isopen()) {
+							EntityT* new_entity = state_check(it, tmp_entity);
+							if (new_entity != tmp_entity) {
+								on_new_child_entity(tmp_entity, new_entity);
+								// now push the parent to the stack
+								stack_.push_front(tmp_entity);
+								tmp_entity = new_entity;
+								it = tmp_entity->match();
 
-							// now push the parent to the stack
-							stack_.push_front(tmp_entity);
-							tmp_entity = new_entity;
-							tmp_entity->match();
+								// now it we need to find out what to do
+								if (!tmp_entity->isopen()) {
+									// we are done with this one
+									if (stack_.size() > 0) {
+										tmp_entity = stack_.front(); // tmp_entity->get_parent();
+										stack_.pop_front();
+										// we will now continue previous adventure
+									}
+									// else
+									// 	tmp_entity = NULL;
+								}
+							}
+							// the entity is closed, now back to parent
+							else {
+								// OK, that is the end of a child entity
+								if (stack_.size() > 0) {
+									tmp_entity = stack_.front();
+									on_child_entity_done(tmp_entity, new_entity);
+									stack_.pop_front();
+									it = tmp_entity->match_rest(it);
+								}
+								// else
+								// 	tmp_entity = NULL;								
+							}
 						}
-						else {
-							// OK, that is the end of a child entity
-							tmp_entity = stack_.front();
-							stack_.pop_front();
-						}
-						it = tmp_entity->match_rest(it);
-					}
+					// }
 
-					if (tmp_entity->end() > tmp_entity->begin()) {
+					if (tmp_entity && tmp_entity->end() > tmp_entity->begin()) {
 						last_e_ = tmp_entity;
 						current_pos_ = last_e_->end();
 						reset_state(last_e_);
@@ -166,6 +174,22 @@ namespace stpl {
 			void skip() {
 				if (!is_end())
 					++current_pos_;
+			}
+
+	 	protected:
+			virtual EntityT* state_check(IteratorT begin, EntityT* last_entity_ptr) {
+				// a state machine is maintained with different grammar
+				// may be overridden to fit the state machine
+				IteratorT	end = this->end();
+				return new EntityT(begin, end);
+			}
+
+			virtual void on_new_child_entity(EntityT* entity_ptr, EntityT* child_entity) {
+				// nothing yet, you may build up the relationship here
+			}
+
+			virtual void on_child_entity_done(EntityT* entity_ptr, EntityT* child_entity) {
+				delete child_entity;
 			}
 				 		
 	 	private:

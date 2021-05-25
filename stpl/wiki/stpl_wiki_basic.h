@@ -37,7 +37,8 @@ namespace stpl {
 			LINK,
 			TBASE,
 			COMMENT,
-			TEXT
+			TEXT,
+			PROPERTY
 		};
 
 		// NONE for un-initialized node, or just TEXT
@@ -155,6 +156,7 @@ namespace stpl {
 				static const char WIKI_KEY_CLOSE_TEMPLATE = '}';
 				static const char WIKI_KEY_OPEN_LINK = '[';
 				static const char WIKI_KEY_CLOSE_LINK = ']';
+				static const char WIKI_KEY_PROPERTY_DELIMITER = '|';
 				static const char WIKI_KEY_SLASH = '/';
 				
 			protected:
@@ -261,6 +263,39 @@ namespace stpl {
 				void set_type(WikiNodeType type) {
 					type_ = type;
 				}
+
+				virtual bool is_pause(IteratorT& it) {
+					return *it == '[' || *it == '{' ;
+				}				
+		};
+
+		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
+		class Text: public BasicWikiEntity<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT	string_type;
+				typedef IteratorT	iterator;
+
+			private:
+				void init() { this->group_ = TEXT; }
+
+			public:
+				Text() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() { init(); }
+				Text(IteratorT it)
+					 : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(it) { init(); }
+				Text(IteratorT begin, IteratorT end)
+					 : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(begin, end) { init(); }
+				Text(StringT content) :
+					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() {
+					init();
+					this->create(content);
+				}
+				virtual ~Text() {}
+
+			protected:
+				virtual void add_content(StringT& text) {
+					this->ref().append(text);
+				}
 		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
@@ -269,13 +304,10 @@ namespace stpl {
 			public:
 
 			protected:
-				std::map<StringT, WikiEntity>	         properties_;
-				int                                      level_marks_;
+				std::map<StringT, WikiEntity>	         			properties_;
+				int                                      			level_marks_;
 
-			private:
-				void init() {
-
-				}
+				BasicWikiEntity<StringT, IteratorT>                 *last_child_;
 
 			public:
 				WikiEntity() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() {
@@ -291,6 +323,26 @@ namespace stpl {
 					init();
 				}
 				virtual ~WikiEntity() {}
+
+				virtual void create_text_child(IteratorT it) {
+					if (it > this->begin()) {
+						last_child_ = new Text<StringT, IteratorT>(this->begin(), it);
+						this->add(last_child_);
+					}
+				}
+
+				const BasicWikiEntity<StringT, IteratorT> *get_last_child() const {
+					return last_child_;
+				}
+
+				void set_last_child(const BasicWikiEntity<StringT, IteratorT> *lastChild) {
+					last_child_ = lastChild;
+				}
+
+			private:
+				void init() {
+					last_child_ = NULL;
+				}
 		};
 		
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>

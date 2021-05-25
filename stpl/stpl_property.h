@@ -32,10 +32,13 @@ namespace stpl {
 	template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 	class Property : public StringBound<StringT, IteratorT> {
 		public:
-		    char* delimiter_ = '=';
+			typedef StringBound<StringT, IteratorT> StringB;
+
+		public:
+		    char delimiter_ = '=';
 
 		protected:
-			typedef StringBound<StringT, IteratorT> StringB;
+
 			StringB name_;
 			StringB	value_;
 			bool has_delimiter_;
@@ -66,13 +69,25 @@ namespace stpl {
 				return false;
 			}
 
+			virtual bool is_delimiter(IteratorT& it) {
+				return *it == delimiter_;
+			}
+
 			virtual bool is_start(IteratorT& it) {
 				this->skip_whitespace(it);
 				name_.begin(it);
 				name_.end(it);
+
+				while (!this->is_delimiter(it))
+					++it;
+
+				name_.end(it);
+				++it;
+
 				value_.begin(it);
 				value_.end(it);
-				return StringBound<StringT, IteratorT>::is_start(it);
+
+				return name_.length() > 0; //StringBound<StringT, IteratorT>::is_start(it);
 			}
 
 			virtual bool is_end(IteratorT& it) {
@@ -211,18 +226,18 @@ namespace stpl {
 
 			void force_end_quote(bool b) { force_end_quote = b; }
 
-			virtual bool match() {
-				return StringBound<StringT, IteratorT>::match();
-			}
+//			virtual bool match() {
+//				return StringBound<StringT, IteratorT>::match();
+//			}
 
-			virtual bool match(IteratorT begin, IteratorT end) {
-				if (StringBound<StringT, IteratorT>::match(begin, end)) {
-					if (name_.length() <= 0)
-						return false;
-					return true;
-				}
-				return false;
-			}
+//			virtual bool match(IteratorT begin, IteratorT end) {
+//				if (StringBound<StringT, IteratorT>::match(begin, end)) {
+//					if (name_.length() <= 0)
+//						return false;
+//					return true;
+//				}
+//				return false;
+//			}
 
 			virtual bool equal(StringT what) {
 				return name_.to_string() ==  what;
@@ -247,6 +262,10 @@ namespace stpl {
 
 				this->ref().append(temp);
 			}
-	};
+
+			const StringB& get_value() const {
+				return value_;
+			}
+};
 }
 #endif /*STPL_ATTRIBUTE_H_*/

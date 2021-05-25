@@ -104,8 +104,17 @@ namespace stpl {
 
 			protected:
 
-				virtual EntityT* state_check(EntityT* last_entity_ptr) {
-					IteratorT begin = this->current();
+				virtual void on_new_child_entity(EntityT* entity_ptr, EntityT* child_entity) {
+					// nothing yet, you may build up the relationship here
+					child_entity->set_parent(entity_ptr);
+				}
+
+				virtual void on_child_entity_done(EntityT* entity_ptr, EntityT* child_entity) {
+					// delete child_entity;
+				}
+
+				virtual EntityT* state_check(IteratorT begin, EntityT* parent_ptr) {
+					// IteratorT begin = this->current();
 					IteratorT it = begin;
 					IteratorT end = this->end();
 					EntityT* entity_ptr = NULL;
@@ -120,6 +129,7 @@ namespace stpl {
 						switch (*it)
 						{
 						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG:
+							break;
 						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TEMPLATE:
 						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_LIST:
 						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_LIST_ORDERED:
@@ -134,14 +144,54 @@ namespace stpl {
 										entity_ptr->set_group(TEXT);
 									}
 								}
+								// if (parent_ptr && 
+								// 	parent_ptr->get_group() == PROPERTY 
+								// 	// && 
+								// 	// *it != BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG
+								// 	) 
+								else if (parent_ptr && parent_ptr->isopen()) {
+									// ok, now we are encountering embeded nodes for the property
+									// 
+									// ok, we need to create a text child for the text before this sub node
+									WikiEntity<StringT, IteratorT> *node_ptr = reinterpret_cast<WikiEntity<StringT, IteratorT> *>(parent_ptr);
+									if (!node_ptr->get_last_child())
+										node_ptr->create_text_child(it);
+								}
+	
 								break;
 							}
+						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_PROPERTY_DELIMITER:
+							if (parent_ptr && parent_ptr->get_group() == TBASE) {
+								entity_ptr = new WikiProperty<StringT, IteratorT>(++it, end);
+								previous_state = PROPERTY;
+							}
+							break;							
+						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_CLOSE_LINK:
+							if (parent_ptr && parent_ptr->get_group() == LINK) {
+								++it;
+								if (*it == BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_CLOSE_LINK) {
+									parent_ptr->end(++it);
+									parent_ptr->set_open(false);
+									return parent_ptr;
+								}
+							}
+							break;
+						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_CLOSE_TEMPLATE:
+							if (parent_ptr && parent_ptr->get_group() == TBASE) {
+								++it;
+								if (*it == BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_CLOSE_TEMPLATE) {
+									parent_ptr->end(++it);
+									parent_ptr->set_open(false);
+									return parent_ptr;
+								}
+							}
+							break;
 						default:
 							break;
 						}
 
+						if (!entity_ptr) {
 
-						if (!entity_ptr)
 							switch (*it)
 							{
 							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG:
@@ -150,10 +200,21 @@ namespace stpl {
 		//						entity_ptr = new ElemTag<StringT, IteratorT>(it, end);
 								break;
 							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TEMPLATE:
-								Scanner<EntityT>::state_ = TBASE;
-								entity_ptr = new TBase<StringT, IteratorT>(it, end);
+								++it;
+								if (*it == '{') {
+									Scanner<EntityT>::state_ = TBASE;
+									entity_ptr = new Template<StringT, IteratorT>(it - 1, end);
 
-								entity_ptr->set_group(TBASE);
+									entity_ptr->set_group(TBASE);
+									entity_ptr->set_type(TEMPLATE);
+								}
+								else if (*it == '|') {
+									Scanner<EntityT>::state_ = TBASE;
+									entity_ptr = new Table<StringT, IteratorT>(it - 1, end);
+
+									entity_ptr->set_group(TBASE);
+									entity_ptr->set_type(TABLE);
+								}
 								break;
 							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_LIST:
 								Scanner<EntityT>::state_ = LAYOUT;
@@ -168,10 +229,13 @@ namespace stpl {
 								entity_ptr->set_type(LAYOUT_LI);
 								break;
 							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LINK:
-								Scanner<EntityT>::state_ = LINK;
+								++it;
+								if (*it == BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LINK) {
+									Scanner<EntityT>::state_ = LINK;
 
-								// the specific type can be updated during the pasing
-								entity_ptr = new Link<StringT, IteratorT>(it, end);
+									// the specific type can be updated during the pasing
+									entity_ptr = new Link<StringT, IteratorT>(it - 1, end);
+								}
 								break;
 							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_HEADING:
 								Scanner<EntityT>::state_ = LAYOUT;
@@ -182,6 +246,7 @@ namespace stpl {
 							default:
 								break;
 							}
+						}
 
 						if (entity_ptr)
 							break;
