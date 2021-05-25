@@ -62,6 +62,10 @@ namespace stpl {
 
 			protected:
 
+				virtual bool is_start(IteratorT& it) {
+					return Property<StringT, IteratorT>::is_start(it);
+				}
+
 				virtual bool is_delimiter(IteratorT& it) {
 					return *it == this->delimiter_ || *it == '|' || *it == '}';
 				}
@@ -490,6 +494,14 @@ namespace stpl {
 				}
 				virtual ~Link() {};
 
+				virtual bool is_start(IteratorT& it) {
+					if (*it == '[' && (*++it) == '[') {
+						++it;
+						return true;
+					}
+					return false;
+				}
+
 				virtual bool is_end(IteratorT& it) {
 					if (*it == ']') {
 						++it;
@@ -565,7 +577,7 @@ namespace stpl {
 							, typename IteratorT = typename StringT::iterator
 							, typename NodeTypesT = WikiNodeTypes<StringT, IteratorT>
 						  >
-		class WikiEntityContainer: public WikiEntity<StringT, IteratorT>
+		class Layout: public WikiEntity<StringT, IteratorT>
 		{
 			public:
 				typedef StringT													string_type;
@@ -576,16 +588,16 @@ namespace stpl {
 
 
 			public:
-				WikiEntityContainer() : WikiEntity<StringT, IteratorT>::WikiEntity()
+				Layout() : WikiEntity<StringT, IteratorT>::WikiEntity()
 							 { init(); }
-				WikiEntityContainer(IteratorT it) :
+				Layout(IteratorT it) :
 					WikiEntity<StringT, IteratorT>::WikiEntity(it)/*, start_k_(it, it)*/
 					 { init(); }
-				WikiEntityContainer(IteratorT begin, IteratorT end) :
+				Layout(IteratorT begin, IteratorT end) :
 					WikiEntity<StringT, IteratorT>::WikiEntity(begin, end)/*, start_k_(begin, begin)*/
 					 { init(); }
 
-				virtual ~WikiEntityContainer() {
+				virtual ~Layout() {
 				}
 
 				void add_child(typename NodeTypesT::basic_entity *entity_ptr) {
@@ -600,7 +612,7 @@ namespace stpl {
 				typename IteratorT = typename StringT::iterator,
 				typename NodeTypesT = WikiNodeTypes<StringT, IteratorT>
 				>
-		class WikiTag: public  WikiEntityContainer<StringT, IteratorT>
+		class WikiTag: public  Layout<StringT, IteratorT>
 		{
 			public:
 				typedef	StringT	                                             string_type;
@@ -634,19 +646,19 @@ namespace stpl {
 				StringT														 xpath_;
 
 			public:
-				WikiTag() : WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer() {
+				WikiTag() : Layout<StringT, IteratorT>::Layout() {
 					init();
 				}
 				WikiTag(IteratorT it) :
-					WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer(it){
+					Layout<StringT, IteratorT>::Layout(it){
 					init();
 				}
 				WikiTag(IteratorT begin, IteratorT end) :
-					WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer(begin, end){
+					Layout<StringT, IteratorT>::Layout(begin, end){
 					init();
 				}
 				WikiTag(StringT name) :
-					WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer(name) {
+					Layout<StringT, IteratorT>::Layout(name) {
 					init();
 					create(name);
 				}
@@ -1404,6 +1416,12 @@ namespace stpl {
 				virtual ~Table() {}
 
 			protected:
+				virtual bool is_start(IteratorT& it) {
+					if (*it == '{' && (*++it) == '|')
+						return TBase<StringT, IteratorT>::is_start(it);
+					return false;
+				}
+
 				virtual bool is_pause(IteratorT& it) {
 					if (*it == '|') {
 						IteratorT next = it + 1;
@@ -1451,6 +1469,13 @@ namespace stpl {
 				virtual ~Template() {}
 
 			protected:
+
+				virtual bool is_start(IteratorT& it) {
+					if (*it == '{' && (*++it) == '{')
+						return TBase<StringT, IteratorT>::is_start(it);
+					return false;
+				}
+
 				virtual bool is_pause(IteratorT& it) {
 					return (*it == '|');
 				}
@@ -1471,20 +1496,20 @@ namespace stpl {
 		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
-		class LayoutOrdered: public WikiEntityContainer<StringT, IteratorT>
+		class LayoutOrdered: public Layout<StringT, IteratorT>
 		{
 			public:
 				typedef	StringT	string_type;
 				typedef IteratorT	iterator;
 
 			public:
-				LayoutOrdered() : WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer() { init(); }
+				LayoutOrdered() : Layout<StringT, IteratorT>::Layout() { init(); }
 				LayoutOrdered(IteratorT it)
-					 : WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer(it) { init(); }
+					 : Layout<StringT, IteratorT>::Layout(it) { init(); }
 				LayoutOrdered(IteratorT begin, IteratorT end)
-					 : WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer(begin, end) { init(); }
+					 : Layout<StringT, IteratorT>::Layout(begin, end) { init(); }
 				LayoutOrdered(StringT content) :
-					WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer() {
+					Layout<StringT, IteratorT>::Layout() {
 					init();
 					this->create(content);
 				}
@@ -1524,7 +1549,7 @@ namespace stpl {
 				virtual bool is_start(IteratorT& it) {
 					while (*it == BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_HEADING) {
 						++level_;
-						++this->matched_levels;
+						++this->matched_levels_;
 					}
 					this->skip_whitespace(it);
 					// this->begin(it);
@@ -1540,12 +1565,12 @@ namespace stpl {
 					}
 					else if (*it == BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_HEADING) {
 						while (*it == BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_HEADING && !this->eow(it)) {
-							--this->matched_levels;
-							if (this->matched_levels <= 0)
+							--this->matched_levels_;
+							if (this->matched_levels_ <= 0)
 								break;
 							++it;
 						}
-						level_ -= this->matched_levels;
+						level_ -= this->matched_levels_;
 						return true;
 					}
 					return false; // this->eow(it) || text_stop(it);

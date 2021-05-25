@@ -218,7 +218,7 @@ namespace stpl {
 								break;
 							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_LIST:
 								Scanner<EntityT>::state_ = LAYOUT;
-								entity_ptr = new WikiEntityContainer<StringT, IteratorT>(it, end);
+								entity_ptr = new Layout<StringT, IteratorT>(it, end);
 								entity_ptr->set_group(LAYOUT);
 								entity_ptr->set_type(LAYOUT_UL);
 								break;
@@ -239,7 +239,7 @@ namespace stpl {
 								break;
 							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_HEADING:
 								Scanner<EntityT>::state_ = LAYOUT;
-								entity_ptr = new WikiEntityContainer<StringT, IteratorT>(it, end);
+								entity_ptr = new LayoutLeveled<StringT, IteratorT>(it, end);
 								entity_ptr->set_group(LAYOUT);
 								entity_ptr->set_type(LAYOUT_HEADING);
 								break;

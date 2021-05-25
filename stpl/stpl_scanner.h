@@ -119,14 +119,17 @@ namespace stpl {
 								it = tmp_entity->match();
 
 								// now it we need to find out what to do
-								if (!tmp_entity->isopen()) {
+								// entity now is closed, it may come to a point all sub entities close at the same time
+								while (!tmp_entity->isopen()) {
 									// we are done with this one
 									if (stack_.size() > 0) {
 										tmp_entity = stack_.front(); // tmp_entity->get_parent();
 										stack_.pop_front();
 										// we will now continue previous adventure
+										it = tmp_entity->match_rest(it);
 									}
-									// else
+									else
+										break;
 									// 	tmp_entity = NULL;
 								}
 							}

@@ -197,11 +197,11 @@ namespace stpl {
 					return body_;
 				}
 
-				virtual bool is_start(IteratorT& it) {
-					this->skip_whitespace(it);
-					this->begin(it);
-					return true;
-				}
+				// virtual bool is_start(IteratorT& it) {
+				// 	this->skip_whitespace(it);
+				// 	this->begin(it);
+				// 	return true;
+				// }
 
 				static bool is_start_symbol(IteratorT it) {
 					if (*it == WIKI_KEY_OPEN_TAG
@@ -263,6 +263,8 @@ namespace stpl {
 				void set_type(WikiNodeType type) {
 					type_ = type;
 				}
+
+			protected:
 
 				virtual bool is_pause(IteratorT& it) {
 					return *it == '[' || *it == '{' ;
