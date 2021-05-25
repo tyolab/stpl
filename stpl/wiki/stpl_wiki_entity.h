@@ -43,7 +43,7 @@ namespace stpl {
 				typedef IteratorT	iterator;
 
 			private:
-				void init() { this->type_ = TEXT; }
+				void init() { this->group_ = TEXT; }
 
 			public:
 				Text() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() { init(); }
@@ -63,6 +63,55 @@ namespace stpl {
 					this->ref().append(text);
 				}
 		};
+
+		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
+				class WikiProperty : public WikiEntity<StringT, IteratorT> {
+					public:
+						typedef std::map<StringT, WikiProperty*>	attributes_type;
+
+					public:
+						WikiProperty() :
+							Property<StringT, IteratorT>::Property() { init(); }
+						WikiProperty(IteratorT begin) :
+						    Property<StringT, IteratorT>::Property(begin) { init(); }
+						WikiProperty(IteratorT begin, IteratorT end) :
+						    Property<StringT, IteratorT>::Property(begin, end) { init(); }
+						WikiProperty(StringT content) :
+							Property<StringT, IteratorT>::Property(content) {
+						}
+						virtual ~WikiProperty() {}
+
+					private:
+						void init() {
+							this->delimiter_ = '|';
+							this->force_end_quote_ = true;
+						}
+
+					protected:
+						virtual bool eow(IteratorT& it) {
+							return *it == '\n' || WikiEntity<StringT, IteratorT>::eow(it);
+						}
+
+						virtual bool is_end_char(IteratorT& it) {
+							if (Property<StringT, IteratorT>::is_end_char(it))
+								return true;
+							else {
+								IteratorT next = it;
+							}
+							return false;
+						}
+
+						virtual bool is_start(IteratorT& it) {
+							bool ret = false;
+							return ret;
+						}
+
+						virtual bool is_end(IteratorT& it) {
+							return false;
+						}
+
+				};
+
 
 		template <
 			typename StringT = std::string, 
@@ -112,7 +161,7 @@ namespace stpl {
 
 		template <typename StringT = std::string,
 			 typename IteratorT = typename StringT::iterator,
-			 typename AttributeT = WikiAttribute<StringT, IteratorT> >
+			 typename AttributeT = WikiProperty<StringT, IteratorT> >
 		class ElemTag: public Tag<StringT, IteratorT>
 		{
 			public:
@@ -223,7 +272,7 @@ namespace stpl {
 					return name_;
 				}
 
-				virtual bool match(IteratorT begin, IteratorT end) {
+				virtual IteratorT match(IteratorT begin, IteratorT end) {
 					if (Tag<StringT, IteratorT>::match(begin, end)) {
 						if (this->type_ == TEXT)
 							return true;
@@ -403,28 +452,33 @@ namespace stpl {
 		template <typename StringT = std::string,
 							typename IteratorT = typename StringT::iterator
 						  >
-		class TBase : public BasicWikiEntity<StringT, IteratorT>
+		class TBase : public WikiEntity<StringT, IteratorT>
 		{
 			public:
-				typedef	StringT	string_type;
-				typedef IteratorT	iterator;
+				typedef	StringT                                      string_type;
+				typedef IteratorT	                                 iterator;
+				typedef StringBound<StringT, IteratorT>              StringB;
+
+			private:
+				StringBound<StringT, IteratorT>                      name_;
+				int	                                                 level_marks_;
 
 			public:
-				TBase() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() {}
+				TBase() : WikiEntity<StringT, IteratorT>::WikiEntity() {}
 				TBase(IteratorT it) :
-					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(it) {
+					WikiEntity<StringT, IteratorT>::WikiEntity(it) {
 					init();
 				}
 				TBase(IteratorT begin, IteratorT end) :
-					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(begin, end) { init(); }
+					WikiEntity<StringT, IteratorT>::WikiEntity(begin, end) { init(); }
 				TBase(StringT content) :
-					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(content) {
+					WikiEntity<StringT, IteratorT>::WikiEntity(content) {
 					init();
 				}
 				virtual ~TBase() {};
 
-				// virtual bool match(IteratorT begin, IteratorT end) {
-				// 	if (BasicWikiEntity<StringT, IteratorT>::match(begin, end)) {
+				// virtual IteratorT match(IteratorT begin, IteratorT end) {
+				// 	if (WikiEntity<StringT, IteratorT>::match(begin, end)) {
 				// 		if (this->type_ == TEMPLATE)
 				// 			return true;
 				// 	}
@@ -433,25 +487,66 @@ namespace stpl {
 
 				virtual bool is_start(IteratorT& it) {
 					bool ret = false;
-					if (*it == '|') {
+					IteratorT next = ++it;
+					if (*next == '|') {
 						ret = true;
+						++it;
 						this->type_ = TABLE;
 					}
-					else if (*it == '{') {
+					else if (*next == '{') {
 						ret = true;
-
+						++it;
 						// it is a template, but we don't know what kind of template yet
 						this->type_ = TEMPLATE;
+						level_marks_ = 0;
+					}
+
+					if (ret) {
+						IteratorT from = it;
+						while (!this->eow(it) && *it != '\n')
+							++it;
+						name_.begin(from);
+						name_.end(it);
 					}
 
 					return ret;
 				}
 
+				virtual bool is_pause(IteratorT& it) {
+					return (*it == '|');
+				}
+
 				virtual bool is_end(IteratorT& it) {
-					if (*it == '|' || *it == '}') {
-						IteratorT it1 = it + 1;
-						if (*it == '}')
-							return true;
+
+					if (*it == '{') {
+						++it;
+						if (*it == '{') {
+							++it;
+							++level_marks_;
+						}
+					}
+					else if (*it == '}') {
+						// IteratorT next = it + 1;
+						// if (!this->eow(next) && *next == '}') {
+						// 	this->end(++next);
+						// 	return true;
+						// }
+						++it;
+						if (!this->eow(it)) {
+							if (*it == '}') {
+								--level_marks_;
+
+								if (level_marks_ < 0) {
+									this->end(++it);
+									return true;
+								}
+							}
+//							else {
+//								// it is a property
+//								WikiProperty<StringT, IteratorT> *property = new WikiProperty<StringT, IteratorT>();
+//								property->match(begin);
+//							}
+						}						
 					}
 					return false;
 				}
@@ -467,11 +562,11 @@ namespace stpl {
 		class Link : public WikiEntity<StringT, IteratorT>
 		{
 			public:
-				typedef	StringT	string_type;
+				typedef	StringT	    string_type;
 				typedef IteratorT	iterator;
 
 			private:
-				void init() { this->type_ = TEMPLATE; }
+				void init() { this->group_ = LINK; }
 
 			public:
 				Link() : WikiEntity<StringT, IteratorT>::WikiEntity() {}
@@ -487,13 +582,13 @@ namespace stpl {
 				}
 				virtual ~Link() {};
 
-				virtual bool match(IteratorT begin, IteratorT end) {
-					if (WikiEntity<StringT, IteratorT>::match(begin, end)) {
-						if (this->type_ == TEMPLATE)
-							return true;
-					}
-					return false;
-				}
+//				virtual IteratorT match(IteratorT begin, IteratorT end) {
+//					if (WikiEntity<StringT, IteratorT>::match(begin, end)) {
+//						if (this->group_ == TBASE)
+//							return true;
+//					}
+//					return false;
+//				}
 		};
 
 
@@ -530,7 +625,7 @@ namespace stpl {
 					return *this;
 				}
 
-				virtual bool match(IteratorT begin, IteratorT end) {
+				virtual IteratorT match(IteratorT begin, IteratorT end) {
 					if (WikiKeyword<StringT, IteratorT>::match(begin, end)) {
 						if (this->type_ == COMMENT)
 							return true;
@@ -581,6 +676,10 @@ namespace stpl {
 					, Entity<BasicWikiEntity<StringT, IteratorT> >::Entity() { init(); }
 
 				virtual ~WikiEntityContainer() {
+				}
+
+				void add_child(typename NodeTypesT::basic_entity *entity_ptr) {
+					children_.push_back(entity_ptr);
 				}
 
 			private:
@@ -645,7 +744,7 @@ namespace stpl {
 					cleanup();
 				}
 
-//				virtual bool match(IteratorT begin, IteratorT end) {
+//				virtual IteratorT match(IteratorT begin, IteratorT end) {
 //					if (WikiKeyword<StringT, IteratorT>::match(begin, end)) {
 //						if (this->type_ == COMMENT)
 //							return true;

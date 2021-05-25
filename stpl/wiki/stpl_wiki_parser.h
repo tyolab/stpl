@@ -21,7 +21,7 @@ namespace stpl {
 					typename DocumentT = WikiDoc<StringT, IteratorT>,
 					typename GrammarT = BasicWikiGrammar<DocumentT>,
 		 			typename EntityT = typename DocumentT::entity_type,
-					typename ScannerT = Scanner<EntityT>
+					typename ScannerT = WikiScanner<EntityT>
 				 >
 		class WikiParser : public Parser<
 									GrammarT

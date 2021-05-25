@@ -23,26 +23,45 @@
 #include "stpl_entity.h"
 #include "stpl_doc.h"
 #include "stpl_typetraits.h"
+
+#include <list>
 	
 namespace stpl {
 	
-	template<	typename EntityT  >
+	template< typename EntityT >
 	class Scanner{
+		public:
+			typedef std::list<EntityT *>									   stack_type;
+
 		private:										
-			typedef	typename EntityT::string_type StringT;
-			typedef typename EntityT::iterator	IteratorT;
+			typedef	typename EntityT::string_type                              StringT;
+			typedef typename EntityT::iterator	                               IteratorT;
 			
 		public:			
 			typedef	StringT string_type;
-			typedef IteratorT	iterator;			
+			typedef IteratorT	iterator;
+
+		protected:
+
+			int 		                                                      state_;        // maintain the current state of the state machine,
+
+		private:
+		    stack_type                                                         stack_;
+
+	 	private:
+	 		IteratorT 	current_pos_;
+	 		IteratorT 	end_;
+	 		IteratorT 	begin_;
+
+	 		EntityT*	last_e_;
 					
 	 	public:
-	 		Scanner() {}
-	 		Scanner(IteratorT begin, IteratorT end)
+	 		Scanner() : last_e_(NULL), state_(-1) {}
+	 		Scanner(IteratorT begin, IteratorT end) : last_e_(NULL), state_(-1)
 	 		/*: current_pos_(begin),  end_(end), begin_(begin)*/ {
 	 			set(begin, end);
 	 		}
-	 		~Scanner() {
+	 		virtual ~Scanner() {
 	 			clear_last();
 	 		}
 	 		
@@ -73,29 +92,55 @@ namespace stpl {
 				state_ = -1;
 			}
 
-			virtual EntityT* state_check() {
+			virtual EntityT* state_check(EntityT* last_entity_ptr) {
 				// a state machine is maintained with different grammar
 				// may be overridden to fit the state machine
 				IteratorT	begin = this->current();
 				IteratorT	end = this->end();
 				return new EntityT(begin, end);
 			}
+
+			virtual void handle_child_entity(EntityT* entity_ptr, EntityT* child_entity) {
+				// nothing yet
+				delete child_entity;
+			}
 			 
 	 		EntityT* scan() {
-				EntityT* entity_ptr = NULL; 
+	 			EntityT* tmp_entity = NULL;
+
 				if (!this->is_end()) {
 
-					EntityT* tmp_entity = state_check();
+					tmp_entity = this->state_check(last_e_);
 					/*
 					 * TODO make the skipping of the non-valid char happen here 
 					 */
 					int previous_state = state_;
 					IteratorT previous_pos = tmp_entity->begin();
-					bool ret = tmp_entity->match();
-					if (ret) {
-						entity_ptr = tmp_entity;
-						current_pos_ = entity_ptr->end();
-						reset_state(entity_ptr);
+
+					IteratorT it = tmp_entity->match();
+
+					while (tmp_entity->isopen()) {
+						EntityT* new_entity = state_check(tmp_entity);
+						if (new_entity != tmp_entity) {
+							handle_child_entity(tmp_entity, new_entity);
+
+							// now push the parent to the stack
+							stack_.push_front(tmp_entity);
+							tmp_entity = new_entity;
+							tmp_entity->match();
+						}
+						else {
+							// OK, that is the end of a child entity
+							tmp_entity = stack_.front();
+							stack_.pop_front();
+						}
+						it = tmp_entity->match_rest(it);
+					}
+
+					if (tmp_entity->end() > tmp_entity->begin()) {
+						last_e_ = tmp_entity;
+						current_pos_ = last_e_->end();
+						reset_state(last_e_);
 					}
 					else {
 						// need to restore to the previous state
@@ -105,7 +150,7 @@ namespace stpl {
 					}
 				}
 				
-				return entity_ptr;
+				return last_e_;
 	 		}	 		
 	 		
 	 		IteratorT current() { return current_pos_; }
@@ -130,17 +175,6 @@ namespace stpl {
 	 				last_e_ = NULL;
 	 			}	 			
 	 		}
-
-		protected:
-		    
-			int 		state_;        // maintain the current state of the state machine, 
-			
-	 	private:
-	 		IteratorT 	current_pos_;
-	 		IteratorT 	end_;
-	 		IteratorT 	begin_; 			
-	 		
-	 		EntityT*	last_e_;
 	};
 }
 

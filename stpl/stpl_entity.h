@@ -38,19 +38,19 @@ namespace stpl {
 	template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 	class StringBound : public Character<StringT, IteratorT> {
 		public:
-			typedef	StringT		string_type;
-			typedef IteratorT	iterator;
+			typedef	StringT		            string_type;
+			typedef IteratorT	            iterator;
 
 		private:
 			StringT							content_;
-			//StringT&						content_ref_;
 
 			IteratorT 						begin_;
 			IteratorT 						end_;
 			unsigned long long int 			offset_;	 // used in creating the StringBound content
 
 			int								line_id_;    // for used the relative line id, where the beginning of a new entity the line id will be 0
-			                                             // for each line it comes across, ++line_id;			
+			                                             // for each line it comes across, ++line_id;
+			bool							open_;
 
 		public:
 			StringBound ()
@@ -98,14 +98,14 @@ namespace stpl {
 			/**
 			 * begin of an entity
 			 */
-			bool bow(IteratorT it) {
+			virtual bool bow(IteratorT it) {
 				return it <= this->begin();
 			}
 
 			/**
 			 * end of word or word-equivelant
 			 */
-			bool eow(IteratorT it) {
+			virtual bool eow(IteratorT it) {
 				return it >= this->end();
 			}
 
@@ -119,7 +119,7 @@ namespace stpl {
 			}
 
 			IteratorT skip_whitespace(IteratorT& next) {
-				while (!eow(next)) {
+				while (!this->eow(next)) {
 					if (*next == '\n') {
 						++line_id_;
 						++next;
@@ -135,7 +135,7 @@ namespace stpl {
 			}
 
 			IteratorT skip_whitespace_backward(IteratorT& pre) {
-				while (!bow(pre)) {
+				while (!this->bow(pre)) {
 					if (*pre == '\n') {
 						--pre;
 						--line_id_;
@@ -150,13 +150,13 @@ namespace stpl {
 			}
 
 			IteratorT skip_non_alnum_char(IteratorT& next) {
-				while (!eow(next) && !isalnum(*next))
+				while (!this->eow(next) && !isalnum(*next))
 					next++;
 				return next;
 			}
 
 			virtual IteratorT skip_invalid_chars(IteratorT& next) {
-				while (!eow(next) && !is_valid_char(next))
+				while (!this->eow(next) && !this->is_valid_char(next))
 					next++;
 				return next;
 			}
@@ -172,55 +172,80 @@ namespace stpl {
 				out << to_string() << endl;
 			}
 
-
-			virtual bool match() {
-				return this->match(this->begin(), this->end());
+			virtual IteratorT match() {
+				return this->match(this->begin());
 			}
 
-			virtual bool match(IteratorT begin, IteratorT end) {
+			virtual IteratorT match(IteratorT begin, IteratorT end) {
 				if (begin == end)
-					return false;
+					return end;
 
 				this->begin(begin);
 				this->end(end);
-				bool ret = match(begin);
-				return ret;
+
+				return match(begin);
 			}
 
-			virtual bool match(IteratorT begin) {
-				IteratorT next = begin;
-				if (!detect(begin))
-					return false;
+			virtual IteratorT match(IteratorT begin) {
+				IteratorT it = detect(begin);
+				if (it >= end_) {
+					begin_ = end_;
+					set_open(false);
+					return end_;
+				}
 
-				next = begin;
-				begin_notify(begin);
-				return match_rest(next);
+				this->begin_notify(begin);
+				return this->match_rest(begin);
 			}
 
-			virtual bool resume_match(IteratorT begin, IteratorT end) {
+			IteratorT match_rest(IteratorT next_char) {
+				//IteratorT next_char = begin;
+				// in some cases,the last char cannot be set due to reach end of the string stream
+				// so test end of stream has to be done inside of is_end function or right hand side of it.
+				while (!this->eow(next_char)) {
+ 				  if (this->is_end(next_char)) {
+					   this->end(next_char);
+				       this->end_notify(next_char);
+
+				       this->set_open(false);
+
+					   break;
+				   }
+				   else if (this->is_pause(next_char)) {
+					   break;
+				   }
+
+				   ++next_char;
+				}
+
+				return next_char;
+			}
+
+			virtual IteratorT resume_match(IteratorT begin, IteratorT end) {
 				if (this->begin() != begin) {
 					this->end(end);
-					bool ret = match_rest(begin);
-					return ret;
+					return this->match_rest(begin);
 				}
 
 				return match(begin, end);
 			}
 
-			virtual bool detect(IteratorT& begin) {
-				bool ret = false;
-				skip_invalid_chars(begin);
+			virtual IteratorT detect(IteratorT& begin) {
+
+				this->skip_invalid_chars(begin);
 
 				/*
 				 * the begining of the entity should be decided in the is_start function
 				 */
-				if (is_start(begin)) {
-					ret = true;
-					while (!this->eow(begin))
-						begin++;
+				if (!this->is_start(begin)) {
+					while (!this->eow(++begin)) {
+						if (this->is_start(begin)) {
+							break;
+						}
+					}
 				}
 
-				return ret;
+				return begin;
 			}
 
 			virtual bool equal(StringT what) {
@@ -255,22 +280,20 @@ namespace stpl {
 				return true;
 			}
 
+			bool isopen() const {
+				return open_;
+			}
+
+			void set_open(bool open) {
+				open_ = open;
+			}
+
+
 		protected:
 			virtual void begin_notify(IteratorT& begin) {
 			}
 
 			virtual void end_notify(IteratorT& end) {
-			}
-
-			bool match_rest(IteratorT next_char) {
-				//IteratorT next_char = begin;
-				// in some cases,the last char cannot be set due to reach end of the string stream
-				// so test end of stream has to be done inside of is_end function or right hand side of it.
-				while (!this->eow(next_char) && /* && */!is_end(next_char))
-					next_char++;
-				this->end(next_char);
-				end_notify(next_char);
-				return !(this->begin() == this->end());
 			}
 
 			void print_spacing(std::ostream &out = cout, int level = 0) {
@@ -289,6 +312,18 @@ namespace stpl {
 				return eow(it);
 			}
 
+			virtual bool is_pause(IteratorT& it) {
+				return false;
+			}
+
+			virtual bool is_paused(IteratorT& it) {
+				return it < end_;
+			}
+
+			virtual bool is_closed(IteratorT& it) {
+				return it >= end_;
+			}
+
 			virtual void add_start(StringT& text) {
 			}
 
@@ -303,10 +338,12 @@ namespace stpl {
 				return offset_;
 			}
 
+
 		private:
 			void init() {
 				//detected_ = false;
 				//content_ref_ = content_;
+				open_ = true;
 			}
 	};
 
@@ -315,9 +352,9 @@ namespace stpl {
 	class Entity {
 		private:
 			typedef EntityT								*EntityPtr;
-			//typedef std::vector<EntityPtr>			ContainerT;
 
 		public:
+			typedef ContainerT							container_type;
 			typedef	EntityT								entity_type;
 			typedef EntityPtr							container_entity_type;
 			typedef typename ContainerT::iterator 		iterator;
@@ -383,12 +420,14 @@ namespace stpl {
 
 			void clear() {
 				iterator it;
-				for (it = children_.begin(); it != children_.end(); it++) {
-					if (*it) {
-						delete *it;
-						(*it) = NULL;
+				if (children_.size() > 0)
+					for (it = children_.begin(); it != children_.end(); it++) {
+						auto ptr = *it;
+						if (ptr) {
+							delete ptr;
+							ptr = NULL;
+						}
 					}
-				}
 				children_.clear();
 			}
 
@@ -441,9 +480,6 @@ namespace stpl {
 				return begin;
 			}
 
-//			virtual entity_iterator find_entity(EntityT& entity) {
-//				return std::find(this->iter_begin(), this->iter_end(), entity);
-//			}
 	};
 }
 
