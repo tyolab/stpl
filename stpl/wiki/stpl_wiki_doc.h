@@ -238,18 +238,34 @@ namespace stpl {
 								}
 								break;
 							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_HEADING:
-								Scanner<EntityT>::state_ = LAYOUT;
-								entity_ptr = new LayoutLeveled<StringT, IteratorT>(it, end);
-								entity_ptr->set_group(LAYOUT);
-								entity_ptr->set_type(LAYOUT_HEADING);
+								// It is not a heading if it has a parent
+								// or it is not a property
+								if (!parent_ptr || parent_ptr->get_group() != PROPERTY) {
+									Scanner<EntityT>::state_ = LAYOUT;
+									entity_ptr = new LayoutLeveled<StringT, IteratorT>(it, end);
+									entity_ptr->set_group(LAYOUT);
+									entity_ptr->set_type(LAYOUT_HEADING);
+								}
+								// else {
+								// 	// it could be part of a property entity
+
+								// }
 								break;
 							default:
 								break;
 							}
 						}
 
-						if (entity_ptr)
-							break;
+						if (entity_ptr) {
+							// found a new entity
+							return entity_ptr;
+						}
+						else {
+							// as we couldn't find a new entity, and parent entity is not closed yet
+							// so we return it
+							if (parent_ptr && parent_ptr->isopen())
+								return parent_ptr;							
+						}
 						++it;
 					}
 					return entity_ptr;

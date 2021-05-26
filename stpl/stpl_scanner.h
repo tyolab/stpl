@@ -110,41 +110,60 @@ namespace stpl {
 					// if (tmp_entity->isopen()) {
 					// 	parent_entity = tmp_entity;
 						while (tmp_entity && tmp_entity->isopen()) {
-							EntityT* new_entity = state_check(it, tmp_entity);
-							if (new_entity != tmp_entity) {
-								on_new_child_entity(tmp_entity, new_entity);
+							EntityT* child_entity = state_check(it, tmp_entity);
+							if (child_entity != tmp_entity) {
+								on_new_child_entity(tmp_entity, child_entity);
 								// now push the parent to the stack
 								stack_.push_front(tmp_entity);
-								tmp_entity = new_entity;
+								tmp_entity = child_entity;
 								it = tmp_entity->match();
 
-								// now it we need to find out what to do
-								// entity now is closed, it may come to a point all sub entities close at the same time
-								while (!tmp_entity->isopen()) {
-									// we are done with this one
-									if (stack_.size() > 0) {
-										tmp_entity = stack_.front(); // tmp_entity->get_parent();
-										stack_.pop_front();
-										// we will now continue previous adventure
-										it = tmp_entity->match_rest(it);
-									}
-									else
-										break;
-									// 	tmp_entity = NULL;
-								}
+								// // now it we need to find out what to do
+								// // entity now is closed, it may come to a point all sub entities close at the same time
+								// while (!tmp_entity->isopen()) {
+								// 	// we are done with this one
+								// 	if (stack_.size() > 0) {
+								// 		tmp_entity = stack_.front(); // tmp_entity->get_parent();
+								// 		stack_.pop_front();
+								// 		// we will now continue previous adventure
+								// 		it = tmp_entity->match_rest(it);
+								// 	}
+								// 	else
+								// 		break;
+								// 	// 	tmp_entity = NULL;
+								// }
 							}
 							// the entity is closed, now back to parent
-							else {
-								// OK, that is the end of a child entity
+							// else {
+							// 	// OK, that is the end of a child entity
+							// 	if (stack_.size() > 0) {
+							// 		tmp_entity = stack_.front();
+							// 		on_child_entity_done(tmp_entity, child_entity);
+							// 		stack_.pop_front();
+							// 		it = tmp_entity->match_rest(it);
+							// 	}
+							// 	// else
+							// 	// 	tmp_entity = NULL;								
+							// }
+
+							// now it we need to find out what to do
+							// entity now is closed, it may come to a point all sub entities close at the same time
+							while (!tmp_entity->isopen()) {
+								// we are done with this one
 								if (stack_.size() > 0) {
-									tmp_entity = stack_.front();
-									on_child_entity_done(tmp_entity, new_entity);
+									child_entity = tmp_entity;
+									tmp_entity = stack_.front(); // tmp_entity->get_parent();
 									stack_.pop_front();
+									
+									on_child_entity_done(tmp_entity, child_entity);
+
+									// we will now continue previous adventure
 									it = tmp_entity->match_rest(it);
 								}
-								// else
-								// 	tmp_entity = NULL;								
-							}
+								else
+									break;
+								// 	tmp_entity = NULL;
+							}							
 						}
 					// }
 

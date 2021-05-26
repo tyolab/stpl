@@ -74,6 +74,12 @@ namespace stpl {
 					return (*it == '|' || *it == '}');
 				}
 
+				virtual bool is_pause(IteratorT& it) {
+					// when it come to '=', it may be the start of a new entity
+					// so we pause and see
+					return *it == '=';
+				}
+
 			private:
 				void init() {
 					this->group_ = PROPERTY;

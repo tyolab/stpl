@@ -82,12 +82,13 @@ namespace stpl {
 					++it;
 
 				name_.end(it);
-				++it;
 
-				value_.begin(it);
-				value_.end(it);
+				//++it;
 
-				return name_.length() > 0; //StringBound<StringT, IteratorT>::is_start(it);
+				value_.begin(it + 1);
+				value_.end(it + 1);
+
+				return name_.length() > 0; 
 			}
 
 			virtual bool is_end(IteratorT& it) {
