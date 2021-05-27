@@ -119,6 +119,7 @@ namespace stpl {
 					IteratorT end = this->end();
 					EntityT* entity_ptr = NULL;
 					int previous_state = Scanner<EntityT>::state_;
+					IteratorT pre_it;
 
 					/**
 					 * We only need the openings, and let the entity finish itself
@@ -126,8 +127,17 @@ namespace stpl {
 					 * special nodes are text nodes
 					 */
 					while (it != end) {
+						pre_it = it;
+
 						switch (*it)
 						{
+						case ' ':
+							++it;
+							continue;
+						case '\r':
+						case '\n':
+							++it;
+							continue;						
 						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG:
 							break;
 						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TEMPLATE:
@@ -223,10 +233,16 @@ namespace stpl {
 								entity_ptr->set_type(LAYOUT_UL);
 								break;
 							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_LIST_ORDERED:
-								Scanner<EntityT>::state_ = LAYOUT;
-								entity_ptr = new LayoutOrdered<StringT, IteratorT>(it, end);
-								entity_ptr->set_group(LAYOUT);
-								entity_ptr->set_type(LAYOUT_LI);
+								{
+									IteratorT next = it + 1;
+									if (*next == ' '/* parent_ptr && parent_ptr->get_group() != PROPERTY */) {
+										Scanner<EntityT>::state_ = LAYOUT;
+										entity_ptr = new LayoutOrdered<StringT, IteratorT>(it, end);
+										entity_ptr->set_group(LAYOUT);
+										entity_ptr->set_type(LAYOUT_LI);
+									}
+								}
+															
 								break;
 							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LINK:
 								++it;
@@ -239,17 +255,12 @@ namespace stpl {
 								break;
 							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_HEADING:
 								// It is not a heading if it has a parent
-								// or it is not a property
-								if (!parent_ptr || parent_ptr->get_group() != PROPERTY) {
+								if (!parent_ptr) {
 									Scanner<EntityT>::state_ = LAYOUT;
 									entity_ptr = new LayoutLeveled<StringT, IteratorT>(it, end);
 									entity_ptr->set_group(LAYOUT);
 									entity_ptr->set_type(LAYOUT_HEADING);
 								}
-								// else {
-								// 	// it could be part of a property entity
-
-								// }
 								break;
 							default:
 								break;
@@ -260,13 +271,16 @@ namespace stpl {
 							// found a new entity
 							return entity_ptr;
 						}
-						else {
-							// as we couldn't find a new entity, and parent entity is not closed yet
-							// so we return it
-							if (parent_ptr && parent_ptr->isopen())
-								return parent_ptr;							
-						}
+														
+						// as we couldn't find a new entity based on current character, 
+						// forward one character, otherwise we will be stuck here
 						++it;
+
+						// also as we couldn't find a new entity based on current character, and parent entity is not closed yet
+						// so we return it
+						if (parent_ptr && parent_ptr->isopen()) {
+							return parent_ptr;
+						}		
 					}
 					return entity_ptr;
 				}

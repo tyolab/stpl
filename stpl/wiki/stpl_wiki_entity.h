@@ -77,7 +77,17 @@ namespace stpl {
 				virtual bool is_pause(IteratorT& it) {
 					// when it come to '=', it may be the start of a new entity
 					// so we pause and see
-					return *it == '=';
+					if (*it == '=') {
+						++it;
+
+						WikiEntity<StringT, IteratorT>::skip_invalid_chars(it);
+
+						this->value_.begin(it);
+						this->value_.end(it);
+
+						return true;
+					}
+					return false;
 				}
 
 			private:
