@@ -439,14 +439,16 @@ namespace stpl {
 	//template <typename StringT = std::string, typename IteratorT = typename StringT::iterator,
 	//typename EntityT = StringBound<StringT, IteratorT>/*,  typename ContainerT = std::vector<EntityT>*/ >
 	template <
-		typename EntityT = StringBound<> >
+		typename EntityT = StringBound<>,  
+		typename ContainerT = std::vector<EntityT *>  >
 	class StringEntity : public StringBound<typename EntityT::string_type, typename EntityT::iterator>
-							, public Entity<EntityT> {
+							, public Entity<EntityT, ContainerT> {
 		private:
 			typedef typename EntityT::string_type 				StringT;
 			typedef typename EntityT::iterator					IteratorT;
 
 		public:
+			typedef ContainerT									container_type;
 			typedef	StringT										string_type;
 			typedef IteratorT									iterator;
 			typedef	EntityT										entity_type;

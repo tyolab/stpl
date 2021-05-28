@@ -25,15 +25,15 @@
 
 namespace stpl {
 	
-	template<typename EntityT = StringBound<> >
-	class Document :  public StringEntity<//typename EntityT::string_type, 
-										//typename EntityT::iterator,
-										EntityT> {
+	template<typename EntityT = StringBound<>
+		,  typename ContainerT = std::vector<EntityT *>  >
+	class Document :  public StringEntity<EntityT, ContainerT> {
 		private:											
 			typedef	typename EntityT::string_type StringT;
 			typedef typename EntityT::iterator	IteratorT;
 		
 		public:
+			typedef ContainerT							container_type;
 			typedef EntityT	entity_type;
 			typedef StringT	string_type;
 			typedef IteratorT iterator;

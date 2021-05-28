@@ -28,14 +28,11 @@ namespace stpl {
 				>
 		class WikiDoc :  public Document<EntityT> {
 			public:
-				typedef EntityT										entity_type;
-				typedef StringT										string_type;
-				typedef IteratorT 									iterator;
-				typedef typename Document<EntityT>::entity_iterator entity_iterator;
-				typedef typename std::vector<EntityT* >             container_type;
-
-			private:
-				container_type                                  	nodes_;
+				typedef EntityT										                entity_type;
+				typedef StringT										                string_type;
+				typedef IteratorT 									                iterator;
+				typedef typename Document<EntityT>::entity_iterator                 entity_iterator;
+				typedef typename Document<EntityT>::container_type                  container_type;
 
 			public:
 				WikiDoc() : Document<EntityT>::Document() { init(); }
@@ -114,62 +111,69 @@ namespace stpl {
 				}
 
 				virtual EntityT* state_check(IteratorT begin, EntityT* parent_ptr) {
-					// IteratorT begin = this->current();
-					IteratorT it = begin;
 					IteratorT end = this->end();
+
+					while (begin <= end && isspace(*begin)) {
+						++begin;
+					}
+
+					IteratorT it = begin;
+
 					EntityT* entity_ptr = NULL;
 					int previous_state = Scanner<EntityT>::state_;
 					IteratorT pre_it;
+					// bool new_entity_check_passed = false;
 
 					/**
 					 * We only need the openings, and let the entity finish itself
 					 * but for the text node, we won't be able to do so, so anything that is between those
 					 * special nodes are text nodes
 					 */
-					while (it != end) {
+					while (it <= end) {
+						// skip white spaces
+						while (isspace(*it) && it != end) {
+							++it;
+						}
+
 						pre_it = it;
 
 						switch (*it)
-						{
-						case ' ':
-							++it;
-							continue;
-						case '\r':
-						case '\n':
-							++it;
-							continue;						
+						{					
 						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG:
 							break;
+						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_HEADING:
+							// there won't be any text in front of a heading
+							// new_entity_check_passed = true;
+							break;							
 						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TEMPLATE:
+						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LINK:
+						// list might be inside an entity
 						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_LIST:
 						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_LIST_ORDERED:
-						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LINK:
-						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_HEADING: 
 							{	
-								if (previous_state == TEXT) {
-									while (begin != end && isspace(*begin))
-										++begin;
+								// new_entity_check_passed = true;
+								// if (it > begin) {
 									if (it > begin) {
 										entity_ptr = new Text<StringT, IteratorT>(begin, it);
 										entity_ptr->set_group(TEXT);
 									}
-								}
-								// if (parent_ptr && 
-								// 	parent_ptr->get_group() == PROPERTY 
-								// 	// && 
-								// 	// *it != BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG
-								// 	) 
-								else if (parent_ptr && parent_ptr->isopen()) {
-									// ok, now we are encountering embeded nodes for the property
-									// 
-									// ok, we need to create a text child for the text before this sub node
-									WikiEntity<StringT, IteratorT> *node_ptr = reinterpret_cast<WikiEntity<StringT, IteratorT> *>(parent_ptr);
-									if (!node_ptr->get_last_child())
-										node_ptr->create_text_child(it);
-								}
-	
-								break;
+									
+									// if (parent_ptr && 
+									// 	parent_ptr->get_group() == PROPERTY 
+									// 	// && 
+									// 	// *it != BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG
+									// 	) 
+									// else if (parent_ptr && parent_ptr->isopen()) {
+									// 	// ok, now we are encountering embeded nodes for the property
+									// 	// 
+									// 	// ok, we need to create a text child for the text before this sub node
+									// 	WikiEntity<StringT, IteratorT> *node_ptr = reinterpret_cast<WikiEntity<StringT, IteratorT> *>(parent_ptr);
+									// 	if (!node_ptr->get_last_child())
+									// 		node_ptr->create_text_child(it);
+									// }
+								// }
 							}
+							break;
 						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_PROPERTY_DELIMITER:
 							if (parent_ptr && parent_ptr->get_group() == TBASE) {
 								entity_ptr = new WikiProperty<StringT, IteratorT>(++it, end);
@@ -201,7 +205,6 @@ namespace stpl {
 						}
 
 						if (!entity_ptr) {
-
 							switch (*it)
 							{
 							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG:
@@ -265,22 +268,26 @@ namespace stpl {
 							default:
 								break;
 							}
+
+							// if (!entity_ptr)
+							// 	// need to uncheck the indicator
+							// 	new_entity_check_passed = false;
 						}
 
 						if (entity_ptr) {
 							// found a new entity
 							return entity_ptr;
 						}
-														
-						// as we couldn't find a new entity based on current character, 
-						// forward one character, otherwise we will be stuck here
-						++it;
 
 						// also as we couldn't find a new entity based on current character, and parent entity is not closed yet
 						// so we return it
-						if (parent_ptr && parent_ptr->isopen()) {
+						else if (/* !new_entity_check_passed &&  */parent_ptr && parent_ptr->isopen()) {
 							return parent_ptr;
-						}		
+						}
+						
+						// as we couldn't find a new entity based on current character, 
+						// forward one character, otherwise we will be stuck here
+						++it;						
 					}
 					return entity_ptr;
 				}

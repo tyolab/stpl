@@ -87,6 +87,10 @@ namespace stpl {
 
 						return true;
 					}
+					else if (*it == '\n') {
+						++it;
+						return true;
+					}
 					return false;
 				}
 
@@ -1532,6 +1536,12 @@ namespace stpl {
 				virtual ~LayoutOrdered() {}
 
 			protected:
+				virtual bool is_end(IteratorT& it) {
+					if (*it == '\n' /*&& get_type() == LAYOUT_LI*/) {
+						return true;
+					}
+					return false;
+				}
 
 			private:
 				void init() {  }

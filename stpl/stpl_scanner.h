@@ -111,7 +111,7 @@ namespace stpl {
 					// 	parent_entity = tmp_entity;
 					while (tmp_entity && tmp_entity->isopen()) {
 						EntityT* child_entity = state_check(it, tmp_entity);
-						if (child_entity != tmp_entity) {
+						if (child_entity && child_entity != tmp_entity) {
 							on_new_child_entity(tmp_entity, child_entity);
 							// now push the parent to the stack
 							stack_.push_front(tmp_entity);
@@ -136,7 +136,11 @@ namespace stpl {
 						else {
 							// OK, there is no child entity found, we will continue
 							// of course it is open, so we come in here, so we don't need to check if it is open again
-							it = tmp_entity->match_rest(it);			
+							// nothing new, we better move to next char in case a dead loop
+							if (it < this->end()) 
+								it = tmp_entity->match_rest(++it);			
+							else
+								tmp_entity = NULL;
 						}
 						// the entity is closed, now back to parent
 						// else {
@@ -154,7 +158,7 @@ namespace stpl {
 						// now it we need to find out what to do
 						// entity now is closed, it may come to a point all sub entities close at the same time
 
-						while (!tmp_entity->isopen()) {
+						while (tmp_entity && !tmp_entity->isopen()) {
 							// we are done with this one
 							if (stack_.size() > 0) {
 								child_entity = tmp_entity;
@@ -164,11 +168,13 @@ namespace stpl {
 								on_child_entity_done(tmp_entity, child_entity);
 
 								// we will now continue previous adventure
-								it = tmp_entity->match_rest(it);
+								if (it < this->end())
+									it = tmp_entity->match_rest(++it);
 							}
-							else
+							else {
+								tmp_entity = NULL;
 								break;
-							// 	tmp_entity = NULL;
+							}
 						}
 											
 					}
@@ -209,7 +215,7 @@ namespace stpl {
 			virtual EntityT* state_check(IteratorT begin, EntityT* last_entity_ptr) {
 				// a state machine is maintained with different grammar
 				// may be overridden to fit the state machine
-				IteratorT	end = this->end();
+				IteratorT end = this->end();
 				return new EntityT(begin, end);
 			}
 

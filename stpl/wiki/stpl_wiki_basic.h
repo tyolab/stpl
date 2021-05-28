@@ -267,7 +267,7 @@ namespace stpl {
 			protected:
 
 				virtual bool is_pause(IteratorT& it) {
-					return *it == '[' || *it == '{' ;
+					return *it == '[' || *it == '{';
 				}				
 		};
 
