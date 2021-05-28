@@ -415,7 +415,7 @@ namespace stpl {
 			ContainerT& children() { return children_; }
 
 			void add(EntityT *entity_ptr) {
-				 children_.push_back(entity_ptr);
+				children_.push_back(entity_ptr);
 			}
 
 			void clear() {

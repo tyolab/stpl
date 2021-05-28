@@ -66,7 +66,7 @@ namespace stpl {
 	 		}
 	 		
 	 		bool is_end() {
-				return (current_pos_ == end_);	 			
+				return (current_pos_ >= end_);	 			
 	 		}
 	 		
 	 		EntityT* next() {
@@ -95,20 +95,29 @@ namespace stpl {
 	 		EntityT* scan() {
 	 			EntityT* tmp_entity = NULL;
 				// EntityT* parent_entity = NULL;
+				int previous_state = state_;
+				IteratorT previous_pos = this->current();
+				IteratorT it;
 
 				if (!this->is_end()) {
-					// Everything starts clean with no parent node
-					tmp_entity = this->state_check(this->current(), NULL);
 					/*
 					 * TODO make the skipping of the non-valid char happen here 
 					 */
-					int previous_state = state_;
-					IteratorT previous_pos = tmp_entity->begin();
-					// entity could have a pause here
-					IteratorT it = tmp_entity->match();
 
-					// if (tmp_entity->isopen()) {
-					// 	parent_entity = tmp_entity;
+					// Everything starts clean with no parent node
+					tmp_entity = this->state_check(this->current(), NULL);
+
+					// entity could have a pause here
+					if (tmp_entity) {
+
+						it = tmp_entity->match();
+						previous_pos = tmp_entity->begin();
+
+						if(tmp_entity->end() > tmp_entity->begin())
+							last_e_ = tmp_entity;
+
+					}
+
 					while (tmp_entity && tmp_entity->isopen()) {
 						EntityT* child_entity = state_check(it, tmp_entity);
 						if (child_entity && child_entity != tmp_entity) {
@@ -118,20 +127,6 @@ namespace stpl {
 							tmp_entity = child_entity;
 							it = tmp_entity->match();
 
-							// // now it we need to find out what to do
-							// // entity now is closed, it may come to a point all sub entities close at the same time
-							// while (!tmp_entity->isopen()) {
-							// 	// we are done with this one
-							// 	if (stack_.size() > 0) {
-							// 		tmp_entity = stack_.front(); // tmp_entity->get_parent();
-							// 		stack_.pop_front();
-							// 		// we will now continue previous adventure
-							// 		it = tmp_entity->match_rest(it);
-							// 	}
-							// 	else
-							// 		break;
-							// 	// 	tmp_entity = NULL;
-							// }
 						}
 						else {
 							// OK, there is no child entity found, we will continue
@@ -142,18 +137,6 @@ namespace stpl {
 							else
 								tmp_entity = NULL;
 						}
-						// the entity is closed, now back to parent
-						// else {
-						// 	
-						// 	if (stack_.size() > 0) {
-						// 		tmp_entity = stack_.front();
-						// 		on_child_entity_done(tmp_entity, child_entity);
-						// 		stack_.pop_front();
-						// 		it = tmp_entity->match_rest(it);
-						// 	}
-						// 	// else
-						// 	// 	tmp_entity = NULL;								
-						// }
 
 						// now it we need to find out what to do
 						// entity now is closed, it may come to a point all sub entities close at the same time
@@ -168,8 +151,8 @@ namespace stpl {
 								on_child_entity_done(tmp_entity, child_entity);
 
 								// we will now continue previous adventure
-								if (it < this->end())
-									it = tmp_entity->match_rest(++it);
+								// this will be a bit different with the previous code
+								it = tmp_entity->match_rest(it);
 							}
 							else {
 								tmp_entity = NULL;
@@ -180,8 +163,7 @@ namespace stpl {
 					}
 					// }
 
-					if (tmp_entity && tmp_entity->end() > tmp_entity->begin()) {
-						last_e_ = tmp_entity;
+					if (last_e_) {
 						current_pos_ = last_e_->end();
 						reset_state(last_e_);
 					}
@@ -192,14 +174,16 @@ namespace stpl {
 						delete tmp_entity;
 					}
 				}
-				
+				else
+					last_e_ = NULL;
+
 				return last_e_;
 	 		}	 		
 	 		
-	 		IteratorT current() { return current_pos_; }
-	 		IteratorT end() { return end_; }
+	 		IteratorT& current() { return current_pos_; }
+	 		IteratorT& end() { return end_; }
 	 		
-			void set(IteratorT begin, IteratorT end) {
+			void set(IteratorT& begin, IteratorT& end) {
 				begin_ = current_pos_ = begin;					
 				end_ = end;	
 				
@@ -212,7 +196,7 @@ namespace stpl {
 			}
 
 	 	protected:
-			virtual EntityT* state_check(IteratorT begin, EntityT* last_entity_ptr) {
+			virtual EntityT* state_check(IteratorT& begin, EntityT* last_entity_ptr) {
 				// a state machine is maintained with different grammar
 				// may be overridden to fit the state machine
 				IteratorT end = this->end();

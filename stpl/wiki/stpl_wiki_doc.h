@@ -110,7 +110,7 @@ namespace stpl {
 					// delete child_entity;
 				}
 
-				virtual EntityT* state_check(IteratorT begin, EntityT* parent_ptr) {
+				virtual EntityT* state_check(IteratorT& begin, EntityT* parent_ptr) {
 					IteratorT end = this->end();
 
 					while (begin <= end && isspace(*begin)) {
@@ -307,32 +307,15 @@ namespace stpl {
 			private:
 				typedef Rule<EntityT, DocumentT, ScannerT> RuleT;
 
-				// typedef Layout<
-				// 				string_type,
-				// 				iterator,
-				// 				WikiNodeTypes<string_type, iterator>
-				// 				> TempLayout;
-
-				// typedef Text<
-				// 				string_type,
-				// 				iterator
-				// 				> TempTextNode;
-
 				typedef NRule<
 								EntityT,
 								DocumentT, Scanner<EntityT>
 								>	ManyEntitiessRule;
 
-				// typedef NRule<
-				// 				TempTextNode,
-				// 				DocumentT, Scanner<TempTextNode>
-				// 				>	NInfoNodeRule;
-
 			protected:
 				void add_rules() {
 					RuleT* rule_ptr = new RuleT(this->document_ptr_);
 					rule_ptr->set_continue(true);
-					//rule_ptr->add_rule(reinterpret_cast<BaseRuleT*>(new NInfoNodeRule(this->document_ptr_)));
 					rule_ptr->add_rule(reinterpret_cast<BaseRuleT*>(new ManyEntitiessRule(this->document_ptr_)));
 					this->add(reinterpret_cast<BaseRuleT*>(rule_ptr));
 				}
