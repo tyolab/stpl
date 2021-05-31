@@ -143,9 +143,7 @@ namespace stpl {
 				}
 		};
 
-		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
-		class BasicWikiEntity : public StringBound<StringT, IteratorT> 
-		{
+		class WikiEntityConstants {
 			public:
 				static const char WIKI_KEY_OPEN_TAG = '<';
 				static const char WIKI_KEY_CLOSE_TAG = '>';
@@ -158,7 +156,11 @@ namespace stpl {
 				static const char WIKI_KEY_CLOSE_LINK = ']';
 				static const char WIKI_KEY_PROPERTY_DELIMITER = '|';
 				static const char WIKI_KEY_SLASH = '/';
-				
+		};
+
+		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
+		class BasicWikiEntity : public StringBound<StringT, IteratorT> 
+		{
 			protected:
 				WikiNodeGroup		 							group_;
 				WikiNodeType 									type_;
@@ -197,29 +199,23 @@ namespace stpl {
 					return body_;
 				}
 
-				// virtual bool is_start(IteratorT& it) {
-				// 	this->skip_whitespace(it);
-				// 	this->begin(it);
-				// 	return true;
-				// }
-
 				static bool is_start_symbol(IteratorT it) {
-					if (*it == WIKI_KEY_OPEN_TAG
-						|| *it == WIKI_KEY_HEADING
-						|| *it == WIKI_KEY_LIST
-						|| *it == WIKI_KEY_LIST_ORDERED
-						|| *it == WIKI_KEY_OPEN_TEMPLATE
-						|| *it == WIKI_KEY_OPEN_LINK
+					if (*it == WikiEntityConstants::WIKI_KEY_OPEN_TAG
+						|| *it == WikiEntityConstants::WIKI_KEY_HEADING
+						|| *it == WikiEntityConstants::WIKI_KEY_LIST
+						|| *it == WikiEntityConstants::WIKI_KEY_LIST_ORDERED
+						|| *it == WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE
+						|| *it == WikiEntityConstants::WIKI_KEY_OPEN_LINK
 						)
 						return true;
 					return false;
 				}
 				
 				static bool is_end_symbol(IteratorT it) {
-					if (*it == WIKI_KEY_CLOSE_TAG
-						|| *it == WIKI_KEY_HEADING
-						|| *it == WIKI_KEY_CLOSE_TEMPLATE
-						|| *it == WIKI_KEY_CLOSE_LINK
+					if (*it == WikiEntityConstants::WIKI_KEY_CLOSE_TAG
+						|| *it == WikiEntityConstants::WIKI_KEY_HEADING
+						|| *it == WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE
+						|| *it == WikiEntityConstants::WIKI_KEY_CLOSE_LINK
 					)
 						return true;
 					return false;
@@ -295,8 +291,15 @@ namespace stpl {
 				virtual ~Text() {}
 
 			protected:
-				virtual void add_content(StringT& text) {
-					this->ref().append(text);
+
+				/**
+				 * For the text node, most likely it will encounter a link or template which will mark
+				 * the end of it
+				 */
+				virtual bool is_end(IteratorT& it) {
+					if (*it == '[' || *it == '{' || *it == '\n')
+						return true;
+					return false;
 				}
 		};
 
@@ -518,9 +521,9 @@ namespace stpl {
 				
 				virtual void add_start(StringT& text) {
 					//TODO body_.set_begin()
-					this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG);
+					this->ref().push_back(WikiEntityConstants::WIKI_KEY_OPEN_TAG);
 					if (this->is_end_wiki_keyword_)
-						this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TEMPLATE);					
+						this->ref().push_back(WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE);					
 				}
 				
 				virtual void add_content(StringT& text) {	
@@ -530,8 +533,8 @@ namespace stpl {
 				virtual void add_end(StringT& text) {
 					//TODO body_.set_end()
 					if (this->is_ended_wiki_keyword_ && !this->is_end_wiki_keyword_)
-						this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TEMPLATE);
-					this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_CLOSE_TAG);					
+						this->ref().push_back(WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE);
+					this->ref().push_back(WikiEntityConstants::WIKI_KEY_CLOSE_TAG);					
 				}		
 
 			private:

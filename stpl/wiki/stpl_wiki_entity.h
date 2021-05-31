@@ -63,21 +63,44 @@ namespace stpl {
 			protected:
 
 				virtual bool is_start(IteratorT& it) {
-					return Property<StringT, IteratorT>::is_start(it);
+					this->name_.begin(it);
+					this->name_.end(it);
+					this->value_.begin(it);
+					this->value_.end(it);
+					Property<StringT, IteratorT>::is_start(it);
+					return true;
 				}
 
 				virtual bool is_delimiter(IteratorT& it) {
-					return *it == this->delimiter_ || *it == '|' || *it == '}';
+					if ( *it == '|' || *it == '}') {
+						if (this->value_.begin() > this->name_.end())
+							this->value_.end(it);
+						return true;
+					}
+					else if (*it == this->delimiter_) {
+						this->name_.end(it);
+						Property<StringT, IteratorT>::skip_invalid_chars (++it);
+						this->value_.begin(it);
+						this->value_.end(it);
+						return true;
+					}
+					return false;
 				}
 
 				virtual bool is_end(IteratorT& it) {
-					return (*it == '|' || *it == '}');
+					if (*it == '|' || *it == '}') {
+						return true;
+					}	
+					return false;
 				}
 
 				virtual bool is_pause(IteratorT& it) {
 					// when it come to '=', it may be the start of a new entity
 					// so we pause and see
-					if (*it == '=') {
+					if (WikiEntity<StringT, IteratorT>::is_pause(it)) {
+						return true;
+					}
+					else if (*it == '=') {
 						++it;
 
 						WikiEntity<StringT, IteratorT>::skip_invalid_chars(it);
@@ -234,11 +257,11 @@ namespace stpl {
 				 */
 				bool is_valid_name_char(IteratorT it) {
 					if (isspace(*it) || iscntrl(*it)
-							|| (BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_CLOSE_TAG == *it)
-							|| (BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG == *it)
+							|| (WikiEntityConstants::WIKI_KEY_CLOSE_TAG == *it)
+							|| (WikiEntityConstants::WIKI_KEY_OPEN_TAG == *it)
 							)
 						return false;
-					else if (BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TEMPLATE == *it) {
+					else if (WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE == *it) {
 						this->is_ended_wiki_keyword_ = true;
 						return false;
 					}
@@ -321,10 +344,10 @@ namespace stpl {
 					this->ref().erase();
 					this->ref().insert(0, indent);
 
-					this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG);
+					this->ref().push_back(WikiEntityConstants::WIKI_KEY_OPEN_TAG);
 
 					if (this->is_end_wiki_keyword()) {
-						this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TEMPLATE);
+						this->ref().push_back(WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE);
 						this->ref().append(name_.to_string());
 					}
 					else {
@@ -335,7 +358,7 @@ namespace stpl {
 							for (; it!= attributes_.end(); it++) {
 								temp.append(" ");
 
-//								std::string::size_type pos = this->ref().rfind(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_CLOSE_TAG);
+//								std::string::size_type pos = this->ref().rfind(WikiEntityConstants::WIKI_KEY_CLOSE_TAG);
 //								if (pos == std::string::npos)
 //									pos = this->ref().length();
 
@@ -349,10 +372,10 @@ namespace stpl {
 						}
 
 						if (this->is_ended_wiki_keyword())
-							this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TEMPLATE);
+							this->ref().push_back(WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE);
 					}
 
-					this->ref().push_back(BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_CLOSE_TAG);
+					this->ref().push_back(WikiEntityConstants::WIKI_KEY_CLOSE_TAG);
 				}
 
 			private:
@@ -467,7 +490,7 @@ namespace stpl {
 
 				virtual bool is_start(IteratorT& it) {
 					IteratorT from = it;
-					while (!this->eow(it) && (*it != '\n' && *it != '\r'))
+					while (!this->eow(it) && ( *it != '|' && *it != '}' && *it != '\n' && *it != '\r'))
 						++it;
 					name_.begin(from);
 					name_.end(it);
@@ -1492,7 +1515,7 @@ namespace stpl {
 
 				virtual bool is_start(IteratorT& it) {
 					if (*it == '{' && (*++it) == '{')
-						return TBase<StringT, IteratorT>::is_start(it);
+						return TBase<StringT, IteratorT>::is_start(++it);
 					return false;
 				}
 
@@ -1573,7 +1596,7 @@ namespace stpl {
 
 			protected:
 				virtual bool is_start(IteratorT& it) {
-					while (*it == BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_HEADING) {
+					while (*it == WikiEntityConstants::WIKI_KEY_HEADING) {
 						++level_;
 						++this->matched_levels_;
 					}
@@ -1586,11 +1609,11 @@ namespace stpl {
 					if (this->eow(it))
 						return true;
 					// when the line ends it ends
-					if (*it == '\n') {
+					else if (*it == '\n') {
 						return true;
 					}
-					else if (*it == BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_HEADING) {
-						while (*it == BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_HEADING && !this->eow(it)) {
+					else if (*it == WikiEntityConstants::WIKI_KEY_HEADING) {
+						while (*it == WikiEntityConstants::WIKI_KEY_HEADING && !this->eow(it)) {
 							--this->matched_levels_;
 							if (this->matched_levels_ <= 0)
 								break;

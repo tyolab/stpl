@@ -122,10 +122,17 @@ namespace stpl {
 						EntityT* child_entity = state_check(it, tmp_entity);
 						if (child_entity && child_entity != tmp_entity) {
 							on_new_child_entity(tmp_entity, child_entity);
-							// now push the parent to the stack
-							stack_.push_front(tmp_entity);
-							tmp_entity = child_entity;
-							it = tmp_entity->match();
+
+							if (child_entity->isopen()) {
+								// now push the parent to the stack
+								stack_.push_front(tmp_entity);
+								tmp_entity = child_entity;
+								it = tmp_entity->match();
+							}
+							else
+								// as the child entity is closed, there is no point to matching it again, 
+								// we will simply continue parent entity
+								continue;
 
 						}
 						else {
@@ -133,7 +140,7 @@ namespace stpl {
 							// of course it is open, so we come in here, so we don't need to check if it is open again
 							// nothing new, we better move to next char in case a dead loop
 							if (it < this->end()) 
-								it = tmp_entity->match_rest(++it);			
+								it = tmp_entity->match_rest(it);			
 							else
 								tmp_entity = NULL;
 						}
@@ -150,9 +157,10 @@ namespace stpl {
 								
 								on_child_entity_done(tmp_entity, child_entity);
 
-								// we will now continue previous adventure
+								// initially it was set that  now continue previous adventure
 								// this will be a bit different with the previous code
-								it = tmp_entity->match_rest(it);
+								// no we could not match rest here, as we may missout the text node
+								// it = tmp_entity->match_rest(it);
 							}
 							else {
 								tmp_entity = NULL;

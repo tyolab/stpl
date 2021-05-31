@@ -111,9 +111,11 @@ namespace stpl {
 				}
 
 				virtual EntityT* state_check(IteratorT& begin, EntityT* parent_ptr) {
+					bool start_from_newline = false;
+
 					IteratorT end = this->end();
 
-					while (begin <= end && isspace(*begin)) {
+					while (begin <= end && *begin == ' ') {
 						++begin;
 					}
 
@@ -122,7 +124,7 @@ namespace stpl {
 					EntityT* entity_ptr = NULL;
 					int previous_state = Scanner<EntityT>::state_;
 					IteratorT pre_it;
-					// bool new_entity_check_passed = false;
+					int new_entity_check_passed = -1;
 
 					/**
 					 * We only need the openings, and let the entity finish itself
@@ -131,37 +133,55 @@ namespace stpl {
 					 */
 					while (it <= end) {
 						// skip white spaces
-						while (isspace(*it) && it != end) {
+						while (*it == ' ' && it != end) {
 							++it;
 						}
 
 						pre_it = it;
 
 						switch (*it)
-						{					
-						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG:
+						{
+
+						case '\n':
+							{
+								start_from_newline = true;
+
+								// some entities need newline to end
+								// for example list, there may be others add them here later
+								if (parent_ptr && parent_ptr->get_type() == LAYOUT_UL) {
+									++it;
+									parent_ptr->end(it);
+									parent_ptr->set_open(false);
+									return parent_ptr;
+								}
+
+							}
+							break;			
+						case WikiEntityConstants::WIKI_KEY_OPEN_TAG:
 							break;
-						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_HEADING:
+						case WikiEntityConstants::WIKI_KEY_HEADING:
 							// there won't be any text in front of a heading
 							// new_entity_check_passed = true;
 							break;							
-						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TEMPLATE:
-						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LINK:
+						case WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE:
+						case WikiEntityConstants::WIKI_KEY_OPEN_LINK:
 						// list might be inside an entity
-						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_LIST:
-						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_LIST_ORDERED:
+						case WikiEntityConstants::WIKI_KEY_LIST:
+						case WikiEntityConstants::WIKI_KEY_LIST_ORDERED:
 							{	
-								// new_entity_check_passed = true;
+								new_entity_check_passed = 1;
 								// if (it > begin) {
 									if (it > begin) {
 										entity_ptr = new Text<StringT, IteratorT>(begin, it);
+										entity_ptr->set_open(false);
 										entity_ptr->set_group(TEXT);
+										begin = it;
 									}
 									
 									// if (parent_ptr && 
 									// 	parent_ptr->get_group() == PROPERTY 
 									// 	// && 
-									// 	// *it != BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG
+									// 	// *it != WikiEntityConstants::WIKI_KEY_OPEN_TAG
 									// 	) 
 									// else if (parent_ptr && parent_ptr->isopen()) {
 									// 	// ok, now we are encountering embeded nodes for the property
@@ -174,26 +194,29 @@ namespace stpl {
 								// }
 							}
 							break;
-						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_PROPERTY_DELIMITER:
+						case WikiEntityConstants::WIKI_KEY_PROPERTY_DELIMITER:
+							new_entity_check_passed = 1;
 							if (parent_ptr && parent_ptr->get_group() == TBASE) {
 								entity_ptr = new WikiProperty<StringT, IteratorT>(++it, end);
 								previous_state = PROPERTY;
 							}
 							break;							
-						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_CLOSE_LINK:
+						case WikiEntityConstants::WIKI_KEY_CLOSE_LINK:
+							new_entity_check_passed = 1;
 							if (parent_ptr && parent_ptr->get_group() == LINK) {
 								++it;
-								if (*it == BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_CLOSE_LINK) {
+								if (*it == WikiEntityConstants::WIKI_KEY_CLOSE_LINK) {
 									parent_ptr->end(++it);
 									parent_ptr->set_open(false);
 									return parent_ptr;
 								}
 							}
 							break;
-						case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_CLOSE_TEMPLATE:
+						case WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE:
+							new_entity_check_passed = 1;
 							if (parent_ptr && parent_ptr->get_group() == TBASE) {
 								++it;
-								if (*it == BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_CLOSE_TEMPLATE) {
+								if (*it == WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE) {
 									parent_ptr->end(++it);
 									parent_ptr->set_open(false);
 									return parent_ptr;
@@ -207,12 +230,12 @@ namespace stpl {
 						if (!entity_ptr) {
 							switch (*it)
 							{
-							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TAG:
+							case WikiEntityConstants::WIKI_KEY_OPEN_TAG:
 								// at current stage, all tags will be ignored, it will be just part of TEXT node
 		//						Scanner<EntityT>::state_ = TAG;
 		//						entity_ptr = new ElemTag<StringT, IteratorT>(it, end);
 								break;
-							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_TEMPLATE:
+							case WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE:
 								++it;
 								if (*it == '{') {
 									Scanner<EntityT>::state_ = TBASE;
@@ -229,13 +252,20 @@ namespace stpl {
 									entity_ptr->set_type(TABLE);
 								}
 								break;
-							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_LIST:
-								Scanner<EntityT>::state_ = LAYOUT;
-								entity_ptr = new Layout<StringT, IteratorT>(it, end);
-								entity_ptr->set_group(LAYOUT);
-								entity_ptr->set_type(LAYOUT_UL);
+							case WikiEntityConstants::WIKI_KEY_LIST:
+								if (parent_ptr && parent_ptr->get_type() == LAYOUT_UL) {
+									parent_ptr->end(it);
+									parent_ptr->set_open(false);
+									return parent_ptr;
+								}
+								else {
+									Scanner<EntityT>::state_ = LAYOUT;
+									entity_ptr = new Layout<StringT, IteratorT>(it, end);
+									entity_ptr->set_group(LAYOUT);
+									entity_ptr->set_type(LAYOUT_UL);
+								}
 								break;
-							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_LIST_ORDERED:
+							case WikiEntityConstants::WIKI_KEY_LIST_ORDERED:
 								{
 									IteratorT next = it + 1;
 									if (*next == ' '/* parent_ptr && parent_ptr->get_group() != PROPERTY */) {
@@ -247,16 +277,16 @@ namespace stpl {
 								}
 															
 								break;
-							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LINK:
+							case WikiEntityConstants::WIKI_KEY_OPEN_LINK:
 								++it;
-								if (*it == BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_OPEN_LINK) {
+								if (*it == WikiEntityConstants::WIKI_KEY_OPEN_LINK) {
 									Scanner<EntityT>::state_ = LINK;
 
 									// the specific type can be updated during the pasing
 									entity_ptr = new Link<StringT, IteratorT>(it - 1, end);
 								}
 								break;
-							case BasicWikiEntity<StringT, IteratorT>::WIKI_KEY_HEADING:
+							case WikiEntityConstants::WIKI_KEY_HEADING:
 								// It is not a heading if it has a parent
 								if (!parent_ptr) {
 									Scanner<EntityT>::state_ = LAYOUT;
@@ -269,9 +299,10 @@ namespace stpl {
 								break;
 							}
 
-							// if (!entity_ptr)
-							// 	// need to uncheck the indicator
-							// 	new_entity_check_passed = false;
+							if (new_entity_check_passed == 1 && !entity_ptr) {
+								// need to uncheck the indicator
+								new_entity_check_passed = 0;
+							}
 						}
 
 						if (entity_ptr) {
@@ -281,7 +312,7 @@ namespace stpl {
 
 						// also as we couldn't find a new entity based on current character, and parent entity is not closed yet
 						// so we return it
-						else if (/* !new_entity_check_passed &&  */parent_ptr && parent_ptr->isopen()) {
+						else if (new_entity_check_passed == 0 &&  parent_ptr && parent_ptr->isopen()) {
 							return parent_ptr;
 						}
 						

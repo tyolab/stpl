@@ -78,15 +78,15 @@ namespace stpl {
 				name_.begin(it);
 				name_.end(it);
 
-				while (!this->is_delimiter(it))
+				while (!this->is_pause(it) && !this->is_delimiter(it))
 					++it;
 
-				name_.end(it);
+				if (this->is_delimiter(it)) {
+					name_.end(it);
 
-				//++it;
-
-				value_.begin(it + 1);
-				value_.end(it + 1);
+					value_.begin(it + 1);
+					value_.end(it + 1);
+				}
 
 				return name_.length() > 0; 
 			}
