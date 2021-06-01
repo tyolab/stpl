@@ -1460,8 +1460,10 @@ namespace stpl {
 
 			protected:
 				virtual bool is_start(IteratorT& it) {
-					if (*it == '{' && (*++it) == '|')
-						return TBase<StringT, IteratorT>::is_start(it);
+					if (*it == '{' && (*++it) == '|') {
+						++it;
+						return true; // TBase<StringT, IteratorT>::is_start(it);
+					}
 					return false;
 				}
 
@@ -1474,10 +1476,10 @@ namespace stpl {
 				}
 
 				virtual bool is_end(IteratorT& it) {
-					if (*it == '}') {
-						++it;
-						if (*it == '}') {
-							++it;
+					if (*it == '|') {
+						IteratorT next = it + 1;
+						if (*next == '}') {
+							it = next + 1;
 							return true;
 						}
 					}
@@ -1599,6 +1601,7 @@ namespace stpl {
 					while (*it == WikiEntityConstants::WIKI_KEY_HEADING) {
 						++level_;
 						++this->matched_levels_;
+						++it;
 					}
 					this->skip_whitespace(it);
 					// this->begin(it);
@@ -1615,9 +1618,9 @@ namespace stpl {
 					else if (*it == WikiEntityConstants::WIKI_KEY_HEADING) {
 						while (*it == WikiEntityConstants::WIKI_KEY_HEADING && !this->eow(it)) {
 							--this->matched_levels_;
+							++it;
 							if (this->matched_levels_ <= 0)
 								break;
-							++it;
 						}
 						level_ -= this->matched_levels_;
 						return true;
@@ -1630,7 +1633,7 @@ namespace stpl {
 				}
 
 			private:
-				void init() { level_ = 1; }
+				void init() { level_ = 0; }
 		};
 	}
 }

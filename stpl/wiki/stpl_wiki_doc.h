@@ -115,8 +115,15 @@ namespace stpl {
 
 					IteratorT end = this->end();
 
-					while (begin <= end && *begin == ' ') {
-						++begin;
+					while (begin <= end) {
+						if (*begin == ' ')
+							++begin;
+						else if (*begin == '\n') {
+							++begin;
+							start_from_newline = true;
+						}	   
+						else
+							break;
 					}
 
 					IteratorT it = begin;
@@ -141,7 +148,8 @@ namespace stpl {
 
 						switch (*it)
 						{
-
+						case ' ':
+							break;
 						case '\n':
 							{
 								start_from_newline = true;
@@ -158,6 +166,7 @@ namespace stpl {
 							}
 							break;			
 						case WikiEntityConstants::WIKI_KEY_OPEN_TAG:
+							start_from_newline = false;
 							break;
 						case WikiEntityConstants::WIKI_KEY_HEADING:
 							// there won't be any text in front of a heading
@@ -170,32 +179,19 @@ namespace stpl {
 						case WikiEntityConstants::WIKI_KEY_LIST_ORDERED:
 							{	
 								new_entity_check_passed = 1;
-								// if (it > begin) {
-									if (it > begin) {
-										entity_ptr = new Text<StringT, IteratorT>(begin, it);
-										entity_ptr->set_open(false);
-										entity_ptr->set_group(TEXT);
-										begin = it;
-									}
+								start_from_newline = false;
+								if (it > begin) {
+									entity_ptr = new Text<StringT, IteratorT>(begin, it);
+									entity_ptr->set_open(false);
+									entity_ptr->set_group(TEXT);
+									begin = it;
+								}
 									
-									// if (parent_ptr && 
-									// 	parent_ptr->get_group() == PROPERTY 
-									// 	// && 
-									// 	// *it != WikiEntityConstants::WIKI_KEY_OPEN_TAG
-									// 	) 
-									// else if (parent_ptr && parent_ptr->isopen()) {
-									// 	// ok, now we are encountering embeded nodes for the property
-									// 	// 
-									// 	// ok, we need to create a text child for the text before this sub node
-									// 	WikiEntity<StringT, IteratorT> *node_ptr = reinterpret_cast<WikiEntity<StringT, IteratorT> *>(parent_ptr);
-									// 	if (!node_ptr->get_last_child())
-									// 		node_ptr->create_text_child(it);
-									// }
-								// }
 							}
 							break;
 						case WikiEntityConstants::WIKI_KEY_PROPERTY_DELIMITER:
 							new_entity_check_passed = 1;
+							start_from_newline = false;
 							if (parent_ptr && parent_ptr->get_group() == TBASE) {
 								entity_ptr = new WikiProperty<StringT, IteratorT>(++it, end);
 								previous_state = PROPERTY;
@@ -203,6 +199,7 @@ namespace stpl {
 							break;							
 						case WikiEntityConstants::WIKI_KEY_CLOSE_LINK:
 							new_entity_check_passed = 1;
+							start_from_newline = false;
 							if (parent_ptr && parent_ptr->get_group() == LINK) {
 								++it;
 								if (*it == WikiEntityConstants::WIKI_KEY_CLOSE_LINK) {
@@ -214,6 +211,7 @@ namespace stpl {
 							break;
 						case WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE:
 							new_entity_check_passed = 1;
+							start_from_newline = false;
 							if (parent_ptr && parent_ptr->get_group() == TBASE) {
 								++it;
 								if (*it == WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE) {
@@ -224,6 +222,7 @@ namespace stpl {
 							}
 							break;
 						default:
+							start_from_newline = false;
 							break;
 						}
 
@@ -288,11 +287,12 @@ namespace stpl {
 								break;
 							case WikiEntityConstants::WIKI_KEY_HEADING:
 								// It is not a heading if it has a parent
-								if (!parent_ptr) {
+								if (start_from_newline && !parent_ptr) {
 									Scanner<EntityT>::state_ = LAYOUT;
 									entity_ptr = new LayoutLeveled<StringT, IteratorT>(it, end);
 									entity_ptr->set_group(LAYOUT);
 									entity_ptr->set_type(LAYOUT_HEADING);
+									start_from_newline = false;
 								}
 								break;
 							default:
