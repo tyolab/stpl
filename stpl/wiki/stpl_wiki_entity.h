@@ -514,53 +514,6 @@ namespace stpl {
 		template <typename StringT = std::string,
 							typename IteratorT = typename StringT::iterator
 						  >
-		class Link : public WikiEntity<StringT, IteratorT>
-		{
-			public:
-				typedef	StringT	    string_type;
-				typedef IteratorT	iterator;
-
-			private:
-				void init() { this->group_ = LINK; }
-
-			public:
-				Link() : WikiEntity<StringT, IteratorT>::WikiEntity() {}
-				Link(IteratorT it) :
-					WikiEntity<StringT, IteratorT>::WikiEntity(it) {
-					init();
-				}
-				Link(IteratorT begin, IteratorT end) :
-					WikiEntity<StringT, IteratorT>::WikiEntity(begin, end) { init(); }
-				Link(StringT content) :
-					WikiEntity<StringT, IteratorT>::WikiEntity(content) {
-					init();
-				}
-				virtual ~Link() {};
-
-				virtual bool is_start(IteratorT& it) {
-					if (*it == '[' && (*++it) == '[') {
-						++it;
-						return true;
-					}
-					return false;
-				}
-
-				virtual bool is_end(IteratorT& it) {
-					if (*it == ']') {
-						++it;
-						if (*it == ']') {
-							++it;
-							return true;
-						}
-					}
-					return false;
-				}
-		};
-
-
-		template <typename StringT = std::string,
-							typename IteratorT = typename StringT::iterator
-						  >
 		class Comment : public WikiKeyword<StringT, IteratorT>
 		{
 			public:
@@ -610,7 +563,7 @@ namespace stpl {
 				typedef WikiKeyword<StringT, IteratorT>						keyword_type;
 				typedef ElemTag<StringT, IteratorT> 						tag_type;
 				typedef Text<StringT, IteratorT> 							text_type;
-				typedef Link<StringT, IteratorT> 							link_type;
+				// typedef Link<StringT, IteratorT> 							link_type;
 				typedef TBase<StringT, IteratorT> 						    template_type;
 				typedef Entity<basic_entity>								container_type;
 				typedef typename container_type::container_entity_type		container_entity_type;
@@ -620,7 +573,7 @@ namespace stpl {
 							, typename IteratorT = typename StringT::iterator
 							, typename NodeTypesT = WikiNodeTypes<StringT, IteratorT>
 						  >
-		class Layout: public WikiEntity<StringT, IteratorT>
+		class WikiEntityContainer: public WikiEntity<StringT, IteratorT>
 		{
 			public:
 				typedef StringT													string_type;
@@ -631,16 +584,16 @@ namespace stpl {
 
 
 			public:
-				Layout() : WikiEntity<StringT, IteratorT>::WikiEntity()
+				WikiEntityContainer() : WikiEntity<StringT, IteratorT>::WikiEntity()
 							 { init(); }
-				Layout(IteratorT it) :
+				WikiEntityContainer(IteratorT it) :
 					WikiEntity<StringT, IteratorT>::WikiEntity(it)/*, start_k_(it, it)*/
 					 { init(); }
-				Layout(IteratorT begin, IteratorT end) :
+				WikiEntityContainer(IteratorT begin, IteratorT end) :
 					WikiEntity<StringT, IteratorT>::WikiEntity(begin, end)/*, start_k_(begin, begin)*/
 					 { init(); }
 
-				virtual ~Layout() {
+				virtual ~WikiEntityContainer() {
 				}
 
 				void add_child(typename NodeTypesT::basic_entity *entity_ptr) {
@@ -655,7 +608,7 @@ namespace stpl {
 				typename IteratorT = typename StringT::iterator,
 				typename NodeTypesT = WikiNodeTypes<StringT, IteratorT>
 				>
-		class WikiTag: public  Layout<StringT, IteratorT>
+		class WikiTag: public  WikiEntityContainer<StringT, IteratorT>
 		{
 			public:
 				typedef	StringT	                                             string_type;
@@ -689,19 +642,19 @@ namespace stpl {
 				StringT														 xpath_;
 
 			public:
-				WikiTag() : Layout<StringT, IteratorT>::Layout() {
+				WikiTag() : WikiEntityContainer<StringT, IteratorT>::Layout() {
 					init();
 				}
 				WikiTag(IteratorT it) :
-					Layout<StringT, IteratorT>::Layout(it){
+					WikiEntityContainer<StringT, IteratorT>::Layout(it){
 					init();
 				}
 				WikiTag(IteratorT begin, IteratorT end) :
-					Layout<StringT, IteratorT>::Layout(begin, end){
+					WikiEntityContainer<StringT, IteratorT>::Layout(begin, end){
 					init();
 				}
 				WikiTag(StringT name) :
-					Layout<StringT, IteratorT>::Layout(name) {
+					WikiEntityContainer<StringT, IteratorT>::Layout(name) {
 					init();
 					create(name);
 				}
@@ -1541,28 +1494,28 @@ namespace stpl {
 		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
-		class LayoutOrdered: public Layout<StringT, IteratorT>
+		class WikiEntityOrdered: public WikiEntity<StringT, IteratorT>
 		{
 			public:
 				typedef	StringT	string_type;
 				typedef IteratorT	iterator;
 
 			public:
-				LayoutOrdered() : Layout<StringT, IteratorT>::Layout() { init(); }
-				LayoutOrdered(IteratorT it)
-					 : Layout<StringT, IteratorT>::Layout(it) { init(); }
-				LayoutOrdered(IteratorT begin, IteratorT end)
-					 : Layout<StringT, IteratorT>::Layout(begin, end) { init(); }
-				LayoutOrdered(StringT content) :
-					Layout<StringT, IteratorT>::Layout() {
+				WikiEntityOrdered() : WikiEntity<StringT, IteratorT>::WikiEntity() { init(); }
+				WikiEntityOrdered(IteratorT it)
+					 : WikiEntity<StringT, IteratorT>::WikiEntity(it) { init(); }
+				WikiEntityOrdered(IteratorT begin, IteratorT end)
+					 : WikiEntity<StringT, IteratorT>::WikiEntity(begin, end) { init(); }
+				WikiEntityOrdered(StringT content) :
+					WikiEntity<StringT, IteratorT>::WikiEntity() {
 					init();
 					this->create(content);
 				}
-				virtual ~LayoutOrdered() {}
+				virtual ~WikiEntityOrdered() {}
 
 			protected:
 				virtual bool is_end(IteratorT& it) {
-					if (*it == '\n' /*&& get_type() == LAYOUT_LI*/) {
+					if (*it == '\n' /*&& get_type() == WikiEntity_LI*/) {
 						return true;
 					}
 					return false;
@@ -1573,32 +1526,35 @@ namespace stpl {
 		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
-		class LayoutLeveled: public LayoutOrdered<StringT, IteratorT>				
+		class WikiEntityLeveled: public WikiEntityOrdered<StringT, IteratorT>				
 		{
 			public:
 				typedef	StringT	    string_type;
 				typedef IteratorT	iterator;
 
+			protected:
+				char          *wiki_key_char_;
+
 			private:
-				int	level_;
-				int matched_levels_;
+				int			  level_;
+				int           matched_levels_;
 
 			public:
-				LayoutLeveled() : LayoutOrdered<StringT, IteratorT>::LayoutOrdered() { init(); }
-				LayoutLeveled(IteratorT it)
-					 : LayoutOrdered<StringT, IteratorT>::LayoutOrdered(it) { init(); }
-				LayoutLeveled(IteratorT begin, IteratorT end)
-					 : LayoutOrdered<StringT, IteratorT>::LayoutOrdered(begin, end) { init(); }
-				LayoutLeveled(StringT content) :
-					LayoutOrdered<StringT, IteratorT>::LayoutOrdered() {
+				WikiEntityLeveled() : WikiEntityOrdered<StringT, IteratorT>::WikiEntityOrdered() { init(); }
+				WikiEntityLeveled(IteratorT it)
+					 : WikiEntityOrdered<StringT, IteratorT>::WikiEntityOrdered(it) { init(); }
+				WikiEntityLeveled(IteratorT begin, IteratorT end)
+					 : WikiEntityOrdered<StringT, IteratorT>::WikiEntityOrdered(begin, end) { init(); }
+				WikiEntityLeveled(StringT content) :
+					WikiEntityOrdered<StringT, IteratorT>::WikiEntityOrdered() {
 					init();
 					this->create(content);
 				}
-				virtual ~LayoutLeveled() {}
+				virtual ~WikiEntityLeveled() {}
 
 			protected:
 				virtual bool is_start(IteratorT& it) {
-					while (*it == WikiEntityConstants::WIKI_KEY_HEADING) {
+					while (*it == this->wiki_key_char_) {
 						++level_;
 						++this->matched_levels_;
 						++it;
@@ -1615,8 +1571,8 @@ namespace stpl {
 					else if (*it == '\n') {
 						return true;
 					}
-					else if (*it == WikiEntityConstants::WIKI_KEY_HEADING) {
-						while (*it == WikiEntityConstants::WIKI_KEY_HEADING && !this->eow(it)) {
+					else if (*it == this->wiki_key_char_) {
+						while (*it == this->wiki_key_char_ && !this->eow(it)) {
 							--this->matched_levels_;
 							++it;
 							if (this->matched_levels_ <= 0)
@@ -1632,9 +1588,96 @@ namespace stpl {
 					this->ref().append(text);
 				}
 
+				virtual void set_wiki_key_char() = 0;
+
 			private:
-				void init() { level_ = 0; }
+				void init() {
+					level_ = 0;
+					set_wiki_key_char();
+				}
 		};
+
+		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
+		class LayoutLeveled: public WikiEntityLeveled<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT	string_type;
+				typedef IteratorT	iterator;
+
+			public:
+				LayoutLeveled() : WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled() { init(); }
+				LayoutLeveled(IteratorT it)
+					 : WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled(it) { init(); }
+				LayoutLeveled(IteratorT begin, IteratorT end)
+					 : WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled(begin, end) { init(); }
+				LayoutLeveled(StringT content) :
+					WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled() {
+					init();
+					this->create(content);
+				}
+				virtual ~LayoutLeveled() {}
+
+			protected:
+				void set_wiki_key_char() {
+					this->wiki_key_char_ = WikiEntityConstants::WIKI_KEY_HEADING;
+				}
+
+			private:
+				void init() {  }
+
+		};
+
+		template <typename StringT = std::string,
+				  typename IteratorT = typename StringT::iterator
+				  >
+		class Link : public WikiEntityLeveled<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT	    string_type;
+				typedef IteratorT	iterator;
+
+			private:
+				void init() { this->group_ = LINK; }
+
+			public:
+				Link() : WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled() {}
+				Link(IteratorT it) :
+					WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled(it) {
+					init();
+				}
+				Link(IteratorT begin, IteratorT end) :
+					WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled(begin, end) { init(); }
+				Link(StringT content) :
+					WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled(content) {
+					init();
+				}
+				virtual ~Link() {};
+
+				virtual bool is_start(IteratorT& it) {
+					if (*it == '[' && (*++it) == '[') {
+						++it;
+						return true;
+					}
+					return false;
+				}
+
+				virtual bool is_end(IteratorT& it) {
+					if (*it == ']') {
+						++it;
+						if (*it == ']') {
+							++it;
+							return true;
+						}
+					}
+					return false;
+				}
+
+			protected:
+				void set_wiki_key_char() {
+					this->wiki_key_char_ = WikiEntityConstants::WIKI_KEY_OPEN_LINK;
+				}
+		};
+
 	}
 }
 

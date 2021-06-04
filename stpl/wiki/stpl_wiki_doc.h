@@ -259,7 +259,7 @@ namespace stpl {
 								}
 								else {
 									Scanner<EntityT>::state_ = LAYOUT;
-									entity_ptr = new Layout<StringT, IteratorT>(it, end);
+									entity_ptr = new WikiEntityContainer<StringT, IteratorT>(it, end);
 									entity_ptr->set_group(LAYOUT);
 									entity_ptr->set_type(LAYOUT_UL);
 								}
@@ -269,7 +269,7 @@ namespace stpl {
 									IteratorT next = it + 1;
 									if (*next == ' '/* parent_ptr && parent_ptr->get_group() != PROPERTY */) {
 										Scanner<EntityT>::state_ = LAYOUT;
-										entity_ptr = new LayoutOrdered<StringT, IteratorT>(it, end);
+										entity_ptr = new WikiEntityOrdered<StringT, IteratorT>(it, end);
 										entity_ptr->set_group(LAYOUT);
 										entity_ptr->set_type(LAYOUT_LI);
 									}
@@ -289,7 +289,7 @@ namespace stpl {
 								// It is not a heading if it has a parent
 								if (start_from_newline && !parent_ptr) {
 									Scanner<EntityT>::state_ = LAYOUT;
-									entity_ptr = new LayoutLeveled<StringT, IteratorT>(it, end);
+									entity_ptr = new WikiEntityLeveled<StringT, IteratorT>(it, end);
 									entity_ptr->set_group(LAYOUT);
 									entity_ptr->set_type(LAYOUT_HEADING);
 									start_from_newline = false;
