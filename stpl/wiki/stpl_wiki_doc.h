@@ -277,19 +277,19 @@ namespace stpl {
 															
 								break;
 							case WikiEntityConstants::WIKI_KEY_OPEN_LINK:
-								++it;
-								if (*it == WikiEntityConstants::WIKI_KEY_OPEN_LINK) {
+								//++it;
+								//if (*it == WikiEntityConstants::WIKI_KEY_OPEN_LINK) {
 									Scanner<EntityT>::state_ = LINK;
 
 									// the specific type can be updated during the pasing
-									entity_ptr = new Link<StringT, IteratorT>(it - 1, end);
-								}
+									entity_ptr = new Link<StringT, IteratorT>(it, end);
+								//}
 								break;
 							case WikiEntityConstants::WIKI_KEY_HEADING:
 								// It is not a heading if it has a parent
 								if (start_from_newline && !parent_ptr) {
 									Scanner<EntityT>::state_ = LAYOUT;
-									entity_ptr = new WikiEntityLeveled<StringT, IteratorT>(it, end);
+									entity_ptr = new LayoutLeveled<StringT, IteratorT>(it, end);
 									entity_ptr->set_group(LAYOUT);
 									entity_ptr->set_type(LAYOUT_HEADING);
 									start_from_newline = false;

@@ -1525,6 +1525,13 @@ namespace stpl {
 				void init() {  }
 		};
 
+		/**
+		 * @TODO
+		 *
+		 * make it become matching sequence(s)
+		 * like the template {{}}
+		 *          table    {||}
+		 */
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 		class WikiEntityLeveled: public WikiEntityOrdered<StringT, IteratorT>				
 		{
@@ -1533,7 +1540,7 @@ namespace stpl {
 				typedef IteratorT	iterator;
 
 			protected:
-				char          *wiki_key_char_;
+				char          wiki_key_char_;
 
 			private:
 				int			  level_;
@@ -1567,10 +1574,6 @@ namespace stpl {
 				virtual bool is_end(IteratorT& it) {
 					if (this->eow(it))
 						return true;
-					// when the line ends it ends
-					else if (*it == '\n') {
-						return true;
-					}
 					else if (*it == this->wiki_key_char_) {
 						while (*it == this->wiki_key_char_ && !this->eow(it)) {
 							--this->matched_levels_;
@@ -1593,7 +1596,6 @@ namespace stpl {
 			private:
 				void init() {
 					level_ = 0;
-					set_wiki_key_char();
 				}
 		};
 
@@ -1618,12 +1620,22 @@ namespace stpl {
 				virtual ~LayoutLeveled() {}
 
 			protected:
-				void set_wiki_key_char() {
+				virtual void set_wiki_key_char() override {
 					this->wiki_key_char_ = WikiEntityConstants::WIKI_KEY_HEADING;
 				}
 
+				virtual bool is_end(IteratorT& it) {
+					// when the line ends it ends
+					if (*it == '\n') {
+						return true;
+					}
+					return WikiEntityLeveled<StringT, IteratorT>::is_end(it);
+				}
+
 			private:
-				void init() {  }
+				void init() {
+					this->set_wiki_key_char();
+				}
 
 		};
 
@@ -1635,9 +1647,6 @@ namespace stpl {
 			public:
 				typedef	StringT	    string_type;
 				typedef IteratorT	iterator;
-
-			private:
-				void init() { this->group_ = LINK; }
 
 			public:
 				Link() : WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled() {}
@@ -1673,8 +1682,14 @@ namespace stpl {
 				}
 
 			protected:
-				void set_wiki_key_char() {
+				virtual void set_wiki_key_char() override {
 					this->wiki_key_char_ = WikiEntityConstants::WIKI_KEY_OPEN_LINK;
+				}
+
+			private:
+				void init() {
+					this->group_ = LINK;
+					this->set_wiki_key_char();
 				}
 		};
 
