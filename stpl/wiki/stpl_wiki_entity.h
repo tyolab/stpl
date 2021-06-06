@@ -1645,8 +1645,15 @@ namespace stpl {
 		class Link : public WikiEntityLeveled<StringT, IteratorT>
 		{
 			public:
-				typedef	StringT	    string_type;
-				typedef IteratorT	iterator;
+				typedef	StringT	                                    string_type;
+				typedef IteratorT	                                iterator;
+				typedef StringBound<StringT, IteratorT>             StringB;
+
+			private:
+				StringB                                             url_;
+				StringB                                             anchor_;
+
+				bool                                                external_;
 
 			public:
 				Link() : WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled() {}
@@ -1662,23 +1669,49 @@ namespace stpl {
 				}
 				virtual ~Link() {};
 
+				bool is_external() {
+					return external_;
+				}
+
 				virtual bool is_start(IteratorT& it) {
-					if (*it == '[' && (*++it) == '[') {
-						++it;
-						return true;
+					bool ret = WikiEntityLeveled<StringT, IteratorT>::is_start(it);
+					if (ret) {
+						this->external_ = this->matched_levels_ == 1;
+						url_.begin(it);
+						url_.end(it);
 					}
-					return false;
+					return ret;
 				}
 
 				virtual bool is_end(IteratorT& it) {
-					if (*it == ']') {
-						++it;
-						if (*it == ']') {
-							++it;
-							return true;
-						}
+					// when the line ends it ends
+					if (url_.end() == url_.begin() && (external_ && *it == ' ') || *it == '|') {
+						url.end(it++);
+						anchor_.begin(it);
+						anchor.end(it);
+						return false;
 					}
-					return false;
+					bool ret = WikiEntityLeveled<StringT, IteratorT>::is_end(it);
+					if (ret) {
+						anchor_.end(it);
+					}
+					return ret;
+				}
+
+				const StringB& get_anchor() const {
+					return anchor_;
+				}
+
+				void set_anchor(const StringB &anchor) {
+					anchor_ = anchor;
+				}
+
+				const StringB& get_url() const {
+					return url_;
+				}
+
+				void set_url(const StringB &url) {
+					url_ = url;
 				}
 
 			protected:
