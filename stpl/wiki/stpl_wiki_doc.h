@@ -192,9 +192,20 @@ namespace stpl {
 						case WikiEntityConstants::WIKI_KEY_PROPERTY_DELIMITER:
 							new_entity_check_passed = 1;
 							start_from_newline = false;
-							if (parent_ptr && parent_ptr->get_group() == TBASE) {
-								entity_ptr = new WikiProperty<StringT, IteratorT>(++it, end);
-								previous_state = PROPERTY;
+							if (parent_ptr) {
+								if (parent_ptr->get_group() == PROPERTY) {
+									// a property can't not be the paranet of another property
+									parent_ptr->set_open(false);
+									parent_ptr->end(it);
+									// entity_ptr = new WikiProperty<StringT, IteratorT>(++it, end);
+									// entity_ptr->set_parent(parent_ptr->get_parent());
+									// previous_state = PROPERTY;
+									entity_ptr = parent_ptr;
+								}
+								else if (parent_ptr->get_group() == TBASE) {
+									entity_ptr = new WikiProperty<StringT, IteratorT>(++it, end);
+									previous_state = PROPERTY;
+								}
 							}
 							break;							
 						case WikiEntityConstants::WIKI_KEY_CLOSE_LINK:

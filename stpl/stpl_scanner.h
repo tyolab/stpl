@@ -120,12 +120,16 @@ namespace stpl {
 
 					while (tmp_entity && tmp_entity->isopen()) {
 						EntityT* child_entity = state_check(it, tmp_entity);
+
 						if (child_entity && child_entity != tmp_entity) {
-							on_new_child_entity(tmp_entity, child_entity);
+							EntityT* parent_entity = child_entity->get_parent();
+							if (!parent_entity)
+								parent_entity = tmp_entity;
+							on_new_child_entity(parent_entity, child_entity);
 
 							if (child_entity->isopen()) {
 								// now push the parent to the stack
-								stack_.push_front(tmp_entity);
+								stack_.push_front(parent_entity);
 								tmp_entity = child_entity;
 								it = tmp_entity->match();
 							}
@@ -139,8 +143,14 @@ namespace stpl {
 							// OK, there is no child entity found, we will continue
 							// of course it is open, so we come in here, so we don't need to check if it is open again
 							// nothing new, we better move to next char in case a dead loop
-							if (it < this->end()) 
-								it = tmp_entity->match_rest(it);			
+							if (it < this->end()) {
+								// IteratorT pre = it;
+								it = tmp_entity->match_rest(it);
+								// if (pre == it) {
+								// 	// there is no more rest
+								// 	++it;
+								// }			
+							}
 							else
 								tmp_entity = NULL;
 						}

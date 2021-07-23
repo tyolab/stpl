@@ -1540,9 +1540,9 @@ namespace stpl {
 				typedef IteratorT	iterator;
 
 			protected:
-				char          wiki_key_char_;
+				char          wiki_key_char_start_;
+				char          wiki_key_char_end_;
 
-			private:
 				int			  level_;
 				int           matched_levels_;
 
@@ -1561,7 +1561,7 @@ namespace stpl {
 
 			protected:
 				virtual bool is_start(IteratorT& it) {
-					while (*it == this->wiki_key_char_) {
+					while (*it == this->wiki_key_char_start_) {
 						++level_;
 						++this->matched_levels_;
 						++it;
@@ -1574,8 +1574,8 @@ namespace stpl {
 				virtual bool is_end(IteratorT& it) {
 					if (this->eow(it))
 						return true;
-					else if (*it == this->wiki_key_char_) {
-						while (*it == this->wiki_key_char_ && !this->eow(it)) {
+					else if (*it == this->wiki_key_char_end_) {
+						while (*it == this->wiki_key_char_end_ && !this->eow(it)) {
 							--this->matched_levels_;
 							++it;
 							if (this->matched_levels_ <= 0)
@@ -1621,7 +1621,8 @@ namespace stpl {
 
 			protected:
 				virtual void set_wiki_key_char() override {
-					this->wiki_key_char_ = WikiEntityConstants::WIKI_KEY_HEADING;
+					this->wiki_key_char_start_ = WikiEntityConstants::WIKI_KEY_HEADING;
+					this->wiki_key_char_end_ = WikiEntityConstants::WIKI_KEY_HEADING;
 				}
 
 				virtual bool is_end(IteratorT& it) {
@@ -1686,9 +1687,9 @@ namespace stpl {
 				virtual bool is_end(IteratorT& it) {
 					// when the line ends it ends
 					if (url_.end() == url_.begin() && (external_ && *it == ' ') || *it == '|') {
-						url.end(it++);
+						url_.end(it++);
 						anchor_.begin(it);
-						anchor.end(it);
+						anchor_.end(it);
 						return false;
 					}
 					bool ret = WikiEntityLeveled<StringT, IteratorT>::is_end(it);
@@ -1716,7 +1717,8 @@ namespace stpl {
 
 			protected:
 				virtual void set_wiki_key_char() override {
-					this->wiki_key_char_ = WikiEntityConstants::WIKI_KEY_OPEN_LINK;
+					this->wiki_key_char_start_ = WikiEntityConstants::WIKI_KEY_OPEN_LINK;
+					this->wiki_key_char_end_ = WikiEntityConstants::WIKI_KEY_CLOSE_LINK;
 				}
 
 			private:

@@ -230,6 +230,7 @@ namespace stpl {
 				// static WikiNodeType element_type() { return TAG; }
 				
 				BasicWikiEntity* parent() { return parent_ptr_; }
+				BasicWikiEntity* get_parent() { return parent_ptr_; }
 				void set_parent(BasicWikiEntity* parent_ptr) {
 					parent_ptr_ = parent_ptr;
 				}		
