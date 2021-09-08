@@ -240,9 +240,9 @@ namespace stpl {
 //				return false;
 //			}
 
-			virtual bool equal(StringT what) {
-				return name_.to_string() ==  what;
-			}
+			// virtual bool equal(StringT what) {
+			// 	return name_.to_std_string() ==  what;
+			// }
 
 			virtual void create() {
 				create(name(), value());

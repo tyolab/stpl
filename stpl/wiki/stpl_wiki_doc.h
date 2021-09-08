@@ -66,8 +66,6 @@ namespace stpl {
 					}
 				}
 
-				virtual StringT to_string() { return 0; }
-
 			private:
 				void init() {
 				}

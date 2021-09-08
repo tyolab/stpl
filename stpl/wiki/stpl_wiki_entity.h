@@ -470,7 +470,7 @@ namespace stpl {
 				typedef IteratorT	                                 iterator;
 				typedef StringBound<StringT, IteratorT>              StringB;
 
-			private:
+			protected:
 				StringBound<StringT, IteratorT>                      name_;
 				int	                                                 level_marks_;
 
@@ -578,9 +578,10 @@ namespace stpl {
 			public:
 				typedef StringT													string_type;
 				typedef IteratorT												iterator;
+				typedef std::vector<typename NodeTypesT::basic_entity>          children_container_type;
 
 			protected:
-				std::vector<typename NodeTypesT::basic_entity> 					children_;
+				children_container_type 										children_;
 
 
 			public:
@@ -1466,6 +1467,32 @@ namespace stpl {
 				}
 				virtual ~Template() {}
 
+				virtual std::string to_html() {
+					std::stringstream ss;
+	
+					std::string name = this->name_.to_std_string();
+					if (name == "lang") {
+						ss << "<span type=\"template\" lang=";
+						auto it = this->children_.begin();
+						int count = 0;
+						while (it != this->children_.end()) {
+							if (count == 0) 
+								ss << "\"" << *it << "\"";
+							else if (count == 1)
+								break;
+
+							++count;
+							++it;
+						}
+						ss << ">";
+						if (it != this->children_.end())
+							ss << *it;
+						ss << "</span>";
+
+					}
+					return ss.str();
+				}
+
 			protected:
 
 				virtual bool is_start(IteratorT& it) {
@@ -1694,7 +1721,7 @@ namespace stpl {
 					}
 					bool ret = WikiEntityLeveled<StringT, IteratorT>::is_end(it);
 					if (ret) {
-						anchor_.end(it);
+						if (anchor_.begin() > url_.end()) anchor_.end(it);
 					}
 					return ret;
 				}

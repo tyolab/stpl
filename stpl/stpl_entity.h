@@ -35,8 +35,28 @@ namespace stpl {
 
 	const char SPACING[] = {"  "};
 
+	/**
+	 * The smallest object in the class chain
+	 */
+	class Atom {
+		public:
+			static int                                      counter;
+
+		protected:
+			int												id_;	
+
+		public:
+			int get_id() const {
+				return id_;
+			}
+
+			void set_id(int id) {
+				id_ = id;
+			}
+	};	
+
 	template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
-	class StringBound : public Character<StringT, IteratorT> {
+	class StringBound : public Atom, public Character<StringT, IteratorT> {
 		public:
 			typedef	StringT		            string_type;
 			typedef IteratorT	            iterator;
@@ -167,9 +187,19 @@ namespace stpl {
 				return StringT(begin_, end_);
 			}
 
+			/**
+			 * As if the StringT is char*, it won't work
+			 * so we have to make it std::string
+			 */
+			virtual std::string to_std_string() {
+				if (begin_ == end_)
+					return std::string("");
+				return std::string(begin_, end_);
+			}
+
 			void print(std::ostream &out = cout, int level = 0) {
 				print_spacing(out, level);
-				out << to_string() << endl;
+				out << to_std_string() << endl;
 			}
 
 			virtual IteratorT match() {
@@ -253,7 +283,7 @@ namespace stpl {
 			}
 
 			friend bool operator == (const StringBound& left, const StringBound& right) {
-				return left.to_string() == right.to_string();
+				return left.to_std_string() == right.to_std_string();
 			}
 
 			virtual void create(StringT text="") {

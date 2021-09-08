@@ -161,19 +161,22 @@ namespace stpl {
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 		class BasicWikiEntity : public StringBound<StringT, IteratorT> 
 		{
+			public:
+				static int                                      counter;
+
 			protected:
 				WikiNodeGroup		 							group_;
 				WikiNodeType 									type_;
 				BasicWikiEntity*								parent_ptr_;
 				StringBound<StringT, IteratorT> 				body_;
-
-				int												id_;
 					
 			private:
 				void init() {
 					group_ = TEXT;
 					type_ = NONE;
 					parent_ptr_ = NULL;
+
+					Atom::set_id(Atom::counter++);
 				}
 				
 			public:
@@ -237,14 +240,6 @@ namespace stpl {
 
 				bool is_element() { return type() == TAG; }
 
-				int get_id() const {
-					return id_;
-				}
-
-				void set_id(int id) {
-					id_ = id;
-				}
-
 				WikiNodeGroup get_group() const {
 					return group_;
 				}
@@ -259,6 +254,13 @@ namespace stpl {
 
 				void set_type(WikiNodeType type) {
 					type_ = type;
+				}
+
+				/**
+				 * By default we don't output
+				 */
+				virtual std::string to_html() {
+					return "";
 				}
 
 			protected:
@@ -289,7 +291,11 @@ namespace stpl {
 					init();
 					this->create(content);
 				}
-				virtual ~Text() {}
+				virtual ~Text() {}	
+
+				virtual std::string to_html() {
+					return this->to_std_string();
+				}						
 
 			protected:
 
