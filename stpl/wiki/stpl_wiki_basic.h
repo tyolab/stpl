@@ -263,6 +263,10 @@ namespace stpl {
 					return "";
 				}
 
+				virtual void add_child(BasicWikiEntity* child) {
+					// no children 
+				}
+
 			protected:
 
 				virtual bool is_pause(IteratorT& it) {
@@ -350,6 +354,10 @@ namespace stpl {
 				void set_last_child(const BasicWikiEntity<StringT, IteratorT> *lastChild) {
 					last_child_ = lastChild;
 				}
+
+				virtual void add_child(BasicWikiEntity<StringT, IteratorT>* child) {
+					this->add(child);
+				}				
 
 			private:
 				void init() {

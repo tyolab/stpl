@@ -60,6 +60,18 @@ namespace stpl {
 					}
 				}
 
+				/**
+				 * For all properties, it could be a property name or property value, which is decided by 
+				 * the appearing order
+				 */
+				virtual std::string to_html() {
+					std::string name = std::string(this->name_.begin(), this->name_.end());
+					if (this->value_.begin() != this->value_.end()) {
+						return name + "=\"" + std::string(this->value_.begin(), this->value_.end()) + "\"";
+					}
+					return name;
+				}
+
 			protected:
 
 				virtual bool is_start(IteratorT& it) {
@@ -578,11 +590,6 @@ namespace stpl {
 			public:
 				typedef StringT													string_type;
 				typedef IteratorT												iterator;
-				typedef std::vector<typename NodeTypesT::basic_entity>          children_container_type;
-
-			protected:
-				children_container_type 										children_;
-
 
 			public:
 				WikiEntityContainer() : WikiEntity<StringT, IteratorT>::WikiEntity()
@@ -595,10 +602,6 @@ namespace stpl {
 					 { init(); }
 
 				virtual ~WikiEntityContainer() {
-				}
-
-				void add_child(typename NodeTypesT::basic_entity *entity_ptr) {
-					children_.push_back(entity_ptr);
 				}
 
 			private:
@@ -1477,7 +1480,7 @@ namespace stpl {
 						int count = 0;
 						while (it != this->children_.end()) {
 							if (count == 0) 
-								ss << "\"" << *it << "\"";
+								ss << "\"" << (*it)->to_html() << "\"";
 							else if (count == 1)
 								break;
 
@@ -1486,7 +1489,7 @@ namespace stpl {
 						}
 						ss << ">";
 						if (it != this->children_.end())
-							ss << *it;
+							ss << (*it)->to_html();
 						ss << "</span>";
 
 					}

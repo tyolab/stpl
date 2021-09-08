@@ -38,22 +38,22 @@ namespace stpl {
 			typedef typename EntityT::iterator	                               IteratorT;
 			
 		public:			
-			typedef	StringT string_type;
-			typedef IteratorT	iterator;
+			typedef	StringT                                                    string_type;
+			typedef IteratorT                                                  iterator;
 
 		protected:
 
-			int 		                                                      state_;        // maintain the current state of the state machine,
+			int 		                                                       state_;        // maintain the current state of the state machine,
 
 		private:
 		    stack_type                                                         stack_;
 
 	 	private:
-	 		IteratorT 	current_pos_;
-	 		IteratorT 	end_;
-	 		IteratorT 	begin_;
+	 		IteratorT 	                                                       current_pos_;
+	 		IteratorT 	                                                       end_;
+	 		IteratorT 	                                                       begin_;
 
-	 		EntityT*	last_e_;
+	 		EntityT*	                                                       last_e_;
 					
 	 	public:
 	 		Scanner() : last_e_(NULL), state_(-1) {}

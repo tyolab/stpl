@@ -102,6 +102,7 @@ namespace stpl {
 				virtual void on_new_child_entity(EntityT* entity_ptr, EntityT* child_entity) {
 					// nothing yet, you may build up the relationship here
 					child_entity->set_parent(entity_ptr);
+					entity_ptr->add_child(child_entity);
 				}
 
 				virtual void on_child_entity_done(EntityT* entity_ptr, EntityT* child_entity) {
