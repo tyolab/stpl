@@ -181,15 +181,15 @@ namespace stpl {
 							// 2) there could be text before the first section
 							// new_entity_check_passed = true;
 							// break;
-							{	
-								if (start_from_newline && it > begin) {
-									entity_ptr = new Text<StringT, IteratorT>(begin, it);
-									entity_ptr->set_open(false);
-									entity_ptr->set_group(TEXT);
-									begin = it;
-								}
-								break;					
-							}
+							// {	
+							// 	if (it > begin) {
+							// 		entity_ptr = new Text<StringT, IteratorT>(begin, it);
+							// 		entity_ptr->set_open(false);
+							// 		entity_ptr->set_group(TEXT);
+							// 		begin = it;
+							// 	}
+							// 	break;					
+							// }
 						case WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE:
 						case WikiEntityConstants::WIKI_KEY_OPEN_LINK:
 						// list might be inside an entity
@@ -316,12 +316,22 @@ namespace stpl {
 								break;
 							case WikiEntityConstants::WIKI_KEY_HEADING:
 								// It is not a heading if it has a parent
-								if (start_from_newline && !parent_ptr) {
-									Scanner<EntityT>::state_ = LAYOUT;
-									entity_ptr = new LayoutLeveled<StringT, IteratorT>(it, end);
-									entity_ptr->set_group(LAYOUT);
-									entity_ptr->set_type(LAYOUT_HEADING);
-									start_from_newline = false;
+								// but it is not necessary to start with a newline as last section could go until
+								// it sees a new HEADNING
+								{
+									IteratorT prev_it = this->begin_;
+									if (it > prev_it)
+										prev_it = it - 1;
+									if (!start_from_newline && (prev_it == this->begin_ || *prev_it == '\n'))
+										start_from_newline = true;
+
+									if (start_from_newline && !parent_ptr) {
+										Scanner<EntityT>::state_ = LAYOUT;
+										entity_ptr = new LayoutLeveled<StringT, IteratorT>(it, end);
+										entity_ptr->set_group(LAYOUT);
+										entity_ptr->set_type(LAYOUT_HEADING);
+										start_from_newline = false;
+									}
 								}
 								break;
 							default:

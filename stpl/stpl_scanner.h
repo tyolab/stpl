@@ -46,10 +46,8 @@ namespace stpl {
 
 			int 		                                                       state_;        // maintain the current state of the state machine,
 
-		private:
 		    stack_type                                                         stack_;
 
-	 	private:
 	 		IteratorT 	                                                       current_pos_;
 	 		IteratorT 	                                                       end_;
 	 		IteratorT 	                                                       begin_;
