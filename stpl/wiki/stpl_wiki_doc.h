@@ -370,6 +370,8 @@ namespace stpl {
 						// also as we couldn't find a new entity based on current character, and parent entity is not closed yet
 						// so we return it
 						else if (new_entity_check_passed == 0 &&  parent_ptr && parent_ptr->isopen()) {
+							// otherwise, if something bad happened, it will get stuck
+							begin = it;
 							return parent_ptr;
 						}
 						
