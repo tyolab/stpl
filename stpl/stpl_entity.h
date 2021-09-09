@@ -123,7 +123,8 @@ namespace stpl {
 			}
 
 			/**
-			 * end of word or word-equivelant
+			 * end of word or word-equivelant, or end of the world
+			 * we reach the end of the input
 			 */
 			virtual bool eow(IteratorT it) {
 				return it >= this->end();

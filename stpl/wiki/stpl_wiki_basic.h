@@ -131,13 +131,6 @@ namespace stpl {
 						return true;
 					else {
 						IteratorT next = it;
-						// if (*next == '/') {
-						// 	this->skip_whitespace(++next);
-						// }
-						// if (BasicXmlEntity<StringT, IteratorT>::is_end_symbol(next) ) {
-						// 	it = next;
-						// 	return true;
-						// }
 					}
 					return false;
 				}
@@ -177,6 +170,9 @@ namespace stpl {
 					parent_ptr_ = NULL;
 
 					Atom::set_id(Atom::counter++);
+									// for debuging
+					if (Atom::get_id() == 210)
+						parent_ptr_ = NULL;
 				}
 				
 			public:
@@ -264,7 +260,7 @@ namespace stpl {
 				}
 
 				virtual void add_child(BasicWikiEntity* child) {
-					// no children 
+					// if it doesn't get implemented, it has no children 
 				}
 
 			protected:

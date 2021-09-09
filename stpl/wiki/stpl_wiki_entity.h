@@ -1475,7 +1475,7 @@ namespace stpl {
 	
 					std::string name = this->name_.to_std_string();
 					if (name == "lang") {
-						ss << "<span type=\"template\" lang=";
+						//ss << "<span type=\"template\" lang=";
 						auto it = this->children_.begin();
 						int count = 0;
 						while (it != this->children_.end()) {
@@ -1487,10 +1487,10 @@ namespace stpl {
 							++count;
 							++it;
 						}
-						ss << ">";
+						//ss << ">";
 						if (it != this->children_.end())
 							ss << (*it)->to_html();
-						ss << "</span>";
+						//ss << "</span>";
 
 					}
 					return ss.str();
@@ -1576,6 +1576,8 @@ namespace stpl {
 				int			  level_;
 				int           matched_levels_;
 
+				bool          end_in_same_line_;
+
 			public:
 				WikiEntityLeveled() : WikiEntityOrdered<StringT, IteratorT>::WikiEntityOrdered() { init(); }
 				WikiEntityLeveled(IteratorT it)
@@ -1593,25 +1595,38 @@ namespace stpl {
 				virtual bool is_start(IteratorT& it) {
 					while (*it == this->wiki_key_char_start_) {
 						++level_;
-						++this->matched_levels_;
+						this->matched_levels_ = -level_;
 						++it;
 					}
-					this->skip_whitespace(it);
+					// this->skip_whitespace(it);
 					// this->begin(it);
 					return true;
 				}
 
 				virtual bool is_end(IteratorT& it) {
-					if (this->eow(it))
+					if (this->end_in_same_line_ && *it == '\n') {
+						if (this->matched_levels_ != 0) {
+							// OK, this is not a valid entity
+							this->begin(it);
+							this->end(it);
+						}
+
+						return true;
+					}
+					else if (this->eow(it))
 						return true;
 					else if (*it == this->wiki_key_char_end_) {
 						while (*it == this->wiki_key_char_end_ && !this->eow(it)) {
-							--this->matched_levels_;
+							++this->matched_levels_;
 							++it;
-							if (this->matched_levels_ <= 0)
+							if (this->matched_levels_ >= 0)
+								break;
+							else if (this->end_in_same_line_ && *it == '\n')
 								break;
 						}
-						level_ -= this->matched_levels_;
+						level_ += this->matched_levels_;
+						// now there is a delimma, should we go strict or auto correct?
+						
 						return true;
 					}
 					return false; // this->eow(it) || text_stop(it);
@@ -1626,6 +1641,7 @@ namespace stpl {
 			private:
 				void init() {
 					level_ = 0;
+					end_in_same_line_ = false;
 				}
 		};
 
@@ -1666,6 +1682,7 @@ namespace stpl {
 			private:
 				void init() {
 					this->set_wiki_key_char();
+					this->end_in_same_line_ = true;
 				}
 
 		};
@@ -1710,6 +1727,8 @@ namespace stpl {
 						this->external_ = this->matched_levels_ == 1;
 						url_.begin(it);
 						url_.end(it);
+						anchor_.begin(it);
+						anchor_.end(it);						
 					}
 					return ret;
 				}
@@ -1724,7 +1743,9 @@ namespace stpl {
 					}
 					bool ret = WikiEntityLeveled<StringT, IteratorT>::is_end(it);
 					if (ret) {
-						if (anchor_.begin() > url_.end()) anchor_.end(it);
+						anchor_.end(it - this->level_);
+						// anchor and url are the same if there is only one property
+						//if (anchor_.begin() > url_.end()) anchor_.end(it);
 					}
 					return ret;
 				}
@@ -1743,6 +1764,10 @@ namespace stpl {
 
 				void set_url(const StringB &url) {
 					url_ = url;
+				}
+
+				virtual std::string to_html() {
+					return this->anchor_.to_std_string();
 				}
 
 			protected:

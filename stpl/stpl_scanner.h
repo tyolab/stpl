@@ -25,7 +25,8 @@
 #include "stpl_typetraits.h"
 
 #include <list>
-	
+#include <stdexcept>	
+
 namespace stpl {
 	
 	template< typename EntityT >
@@ -107,17 +108,22 @@ namespace stpl {
 					// Everything starts clean with no parent node
 					tmp_entity = this->state_check(this->current(), NULL);
 
-					// entity could have a pause here
+					// entity could have a pause here, and if it is a text node it would bec losed already
 					if (tmp_entity) {
+						if (tmp_entity->isopen()) {
 
-						it = tmp_entity->match();
-						previous_pos = tmp_entity->begin();
+							it = tmp_entity->match();
+							previous_pos = tmp_entity->begin();
+
+							}
+						else
+							it = tmp_entity->end();
 
 						if(tmp_entity->end() > tmp_entity->begin())
-							last_e_ = tmp_entity;
-
+							last_e_ = tmp_entity;							
 					}
-
+					// as if the entity does't close on the first match it means it has children
+					// anything happens inside here, nothing to do with last_e_
 					while (tmp_entity && tmp_entity->isopen()) {
 						EntityT* child_entity = state_check(it, tmp_entity);
 
@@ -187,7 +193,8 @@ namespace stpl {
 					}
 					else {
 						// need to restore to the previous state
-						current_pos_ = ++previous_pos;
+						last_e_ = handle_char(previous_pos, (current_pos_ = ++previous_pos));
+;
 						state_ = previous_state;
 						delete tmp_entity;
 					}
@@ -197,6 +204,13 @@ namespace stpl {
 
 				return last_e_;
 	 		}	 		
+
+			/**
+			 * There is a char not recognised in the parser
+			 */
+			virtual EntityT* handle_char(IteratorT begin, IteratorT end) {
+				throw std::logic_error("The current parser doesn't recongize this char: " + std::string(begin, end));
+			}
 	 		
 	 		IteratorT& current() { return current_pos_; }
 	 		IteratorT& end() { return end_; }

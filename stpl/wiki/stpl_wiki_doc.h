@@ -97,6 +97,13 @@ namespace stpl {
 					Scanner<EntityT>::state_ = TEXT;
 				}
 
+				/**
+				 * There is a char not recognised in the parser
+				 */
+				virtual EntityT* handle_char(IteratorT begin, IteratorT end) {
+					return new Text<StringT, IteratorT>(begin, end);
+				}				
+
 			protected:
 
 				virtual void on_new_child_entity(EntityT* entity_ptr, EntityT* child_entity) {
@@ -168,9 +175,21 @@ namespace stpl {
 							start_from_newline = false;
 							break;
 						case WikiEntityConstants::WIKI_KEY_HEADING:
-							// there won't be any text in front of a heading
+							// there won't be any text in front of a heading, WHO said that???????
+							// This is most rediculous statement ever
+							// 1) there could be text from the last section
+							// 2) there could be text before the first section
 							// new_entity_check_passed = true;
-							break;							
+							// break;
+							{	
+								if (start_from_newline && it > begin) {
+									entity_ptr = new Text<StringT, IteratorT>(begin, it);
+									entity_ptr->set_open(false);
+									entity_ptr->set_group(TEXT);
+									begin = it;
+								}
+								break;					
+							}
 						case WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE:
 						case WikiEntityConstants::WIKI_KEY_OPEN_LINK:
 						// list might be inside an entity
