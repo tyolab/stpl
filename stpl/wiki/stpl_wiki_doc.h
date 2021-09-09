@@ -170,7 +170,25 @@ namespace stpl {
 								}
 
 							}
-							break;			
+							break;
+						case '-':
+							{
+								IteratorT next_it = it + 1;
+								// confirmation
+								if (*it == '{') {
+									entity_ptr = new LangVariant<StringT, IteratorT>(it);
+								}
+							}
+							break;								
+						case '\'':
+							{
+								IteratorT next_it = it + 1;
+								// confirmation
+								if (*it == '\'') {
+									entity_ptr = new Style<StringT, IteratorT>(it);
+								}
+							}
+							break;								
 						case WikiEntityConstants::WIKI_KEY_OPEN_TAG:
 							start_from_newline = false;
 							break;

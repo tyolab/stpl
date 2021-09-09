@@ -25,6 +25,7 @@
 #include <cassert>
 #include <map>
 #include <list>
+#include <regex>
 
 #include "stpl_wiki_basic.h"
 
@@ -50,6 +51,7 @@ namespace stpl {
 					WikiEntity<StringT, IteratorT>::WikiEntity(begin, end) { init(); }
 				WikiProperty(StringT content) :
 					WikiEntity<StringT, IteratorT>::WikiEntity(content) {
+					init();
 				}
 				virtual ~WikiProperty() {}
 
@@ -66,9 +68,15 @@ namespace stpl {
 				 */
 				virtual std::string to_html() {
 					std::string name = std::string(this->name_.begin(), this->name_.end());
-					if (this->value_.begin() != this->value_.end()) {
-						return name + "=\"" + std::string(this->value_.begin(), this->value_.end()) + "\"";
+					std::string value;
+					if (this->has_delimiter()) {
+						value = this->value_.to_std_string();
+						value = std::regex_replace(value, std::regex("'"), "&apos;");
+						value = std::regex_replace(value, std::regex("\""), "&quot;");
+
+						return name + "=\"" + value + "\"";
 					}
+
 					return name;
 				}
 
@@ -113,6 +121,8 @@ namespace stpl {
 						return true;
 					}
 					else if (*it == '=') {
+						this->has_delimiter_ = true;
+
 						++it;
 
 						WikiEntity<StringT, IteratorT>::skip_invalid_chars(it);
@@ -131,6 +141,7 @@ namespace stpl {
 
 			private:
 				void init() {
+					this->has_delimiter_ = false;
 					this->group_ = PROPERTY;
 				}
 		};
@@ -1448,6 +1459,61 @@ namespace stpl {
 		};
 
 		template <
+			typename StringT = std::string, 
+			typename IteratorT = typename StringT::iterator
+			>
+		class LangVariant: public TBase<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT	string_type;
+				typedef IteratorT	iterator;
+
+			public:
+				LangVariant() : TBase<StringT, IteratorT>::TBase() { init(); }
+				LangVariant(IteratorT it)
+					 : TBase<StringT, IteratorT>::TBase(it) { init(); }
+				LangVariant(IteratorT begin, IteratorT end)
+					 : TBase<StringT, IteratorT>::TBase(begin, end) { init(); }
+				LangVariant(StringT content) :
+					TBase<StringT, IteratorT>::TBase() {
+					init();
+					this->create(content);
+				}
+				virtual ~LangVariant() {}
+
+				virtual std::string to_html() {
+					return "";
+				}
+
+			protected:
+				virtual bool is_start(IteratorT& it) {
+					if (*it == '-' && (*++it) == '{') {
+						++it;
+						return true; // TBase<StringT, IteratorT>::is_start(it);
+					}
+					return false;
+				}
+
+				virtual bool is_pause(IteratorT& it) {
+					return *it == ';';
+				}
+
+				virtual bool is_end(IteratorT& it) {
+					if (*it == '}') {
+						IteratorT next = it + 1;
+						if (*next == '-') {
+							it = next + 1;
+							return true;
+						}
+					}
+					return false;
+				}
+
+			private:
+				void init() { }
+		};		
+
+		template <
 			typename StringT = std::string,
 			typename IteratorT = typename StringT::iterator
 			>
@@ -1472,12 +1538,11 @@ namespace stpl {
 
 				virtual std::string to_html() {
 					std::stringstream ss;
-	
+					int count = 0;
 					std::string name = this->name_.to_std_string();
 					if (name == "lang") {
-						//ss << "<span type=\"template\" lang=";
+						ss << "<span type=\"template\" lang=";
 						auto it = this->children_.begin();
-						int count = 0;
 						while (it != this->children_.end()) {
 							if (count == 0) 
 								ss << "\"" << (*it)->to_html() << "\"";
@@ -1487,11 +1552,43 @@ namespace stpl {
 							++count;
 							++it;
 						}
-						//ss << ">";
+						ss << ">";
 						if (it != this->children_.end())
 							ss << (*it)->to_html();
-						//ss << "</span>";
+						ss << "</span>";
 
+					}
+					else {
+						
+						
+						auto it = this->children_.begin();
+
+						if (this->children_.size() == 1) {
+							ss << "<template ";
+							ss << " name=\"" << name << "\"";
+							ss << " value=\"" << (*it)->to_html() << "\"";
+							ss << "></template>";
+						}
+						else if (this->children_.size() == 2) {
+							ss << "<span type=\"template\"";
+							ss << " " << name <<  "=\"" << (*it++)->to_html() << "\"";
+							ss << ">" << (*it)->to_html() << "</spane>";
+						}
+						else {
+							ss << "<template ";
+							ss << " name=\"" << name << "\"";
+							while (it != this->children_.end()) {
+								if (count == 0) 
+									ss  << (*it)->to_html();
+								else if (count == 1)
+									break;
+
+								++count;
+								++it;
+							}
+							ss << "></template>";
+						}
+						
 					}
 					return ss.str();
 				}
@@ -1577,6 +1674,7 @@ namespace stpl {
 				int           matched_levels_;
 
 				bool          end_in_same_line_;
+				bool          strict_;
 
 			public:
 				WikiEntityLeveled() : WikiEntityOrdered<StringT, IteratorT>::WikiEntityOrdered() { init(); }
@@ -1619,12 +1717,17 @@ namespace stpl {
 						while (*it == this->wiki_key_char_end_ && !this->eow(it)) {
 							++this->matched_levels_;
 							++it;
-							if (this->matched_levels_ >= 0)
+							if (this->matched_levels_ > 0)
 								break;
 							else if (this->end_in_same_line_ && *it == '\n')
 								break;
 						}
 						level_ += this->matched_levels_;
+
+						if (strict_ && this->matched_levels_ != 0) {
+							this->begin(it);
+							this->end(it);
+						}
 						// now there is a delimma, should we go strict or auto correct?
 						
 						return true;
@@ -1642,6 +1745,7 @@ namespace stpl {
 				void init() {
 					level_ = 0;
 					end_in_same_line_ = false;
+					strict_ = false;
 				}
 		};
 
@@ -1686,6 +1790,41 @@ namespace stpl {
 				}
 
 		};
+
+		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
+		class Style: public WikiEntityLeveled<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT	string_type;
+				typedef IteratorT	iterator;
+
+			public:
+				Style() : WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled() { init(); }
+				Style(IteratorT it)
+					 : WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled(it) { init(); }
+				Style(IteratorT begin, IteratorT end)
+					 : WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled(begin, end) { init(); }
+				Style(StringT content) :
+					WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled() {
+					init();
+					this->create(content);
+				}
+				virtual ~Style() {}
+
+			protected:
+				virtual void set_wiki_key_char() override {
+					this->wiki_key_char_start_ = '\'';
+					this->wiki_key_char_end_ = '\'';
+				}
+
+			private:
+				void init() {
+					this->set_wiki_key_char();
+					this->end_in_same_line_ = true;
+					this->strict_ = true;
+				}
+
+		};		
 
 		template <typename StringT = std::string,
 				  typename IteratorT = typename StringT::iterator
