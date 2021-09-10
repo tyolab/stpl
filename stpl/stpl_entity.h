@@ -55,6 +55,11 @@ namespace stpl {
 			}
 	};	
 
+	/**
+	 * There are two types of boundaries
+	 * 1) boundary given by a beging and an end, obviously in this sitation, boundary is very clear
+	 * 2) boundary by separators (delimiters)
+	 */
 	template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 	class StringBound : public Atom, public Character<StringT, IteratorT> {
 		public:
@@ -72,11 +77,13 @@ namespace stpl {
 			                                             // for each line it comes across, ++line_id;
 			bool							open_;
 
+			std::vector<char>			    delimiters_; // the separators for the string bounds
+														  // it can work as a string
+														  // or it can work as different delimiters
+			bool                            many_delimiters_;
+
 		public:
 			StringBound ()
-				//:
-				//begin_((IteratorT)content_.begin())
-				//, end_((IteratorT)content_.end())
 				{ init(); }
 			StringBound (IteratorT it) :
 				 begin_(it) , end_(it) { init(); }
@@ -85,12 +92,7 @@ namespace stpl {
 			StringBound (StringT content) /*: content_ref_(content_) */ {
 				content_ = content;
 				init();
-				//begin(content_.begin());
-				//end(content_.end());
 			}
-			//StringBound (StringT& content) :
-			//	 content_ref_(content), begin_(content.begin()), end_(content.end()) {
-			//}
 			virtual ~StringBound() {}
 
 			StringBound& operator= (StringBound& se) {
@@ -369,6 +371,16 @@ namespace stpl {
 				return offset_;
 			}
 
+			virtual bool is_separated(IteratorT& it) {
+				return false;
+			}
+
+			/**
+			 * The delimiter can work as a single char or a string
+			 */
+			virtual bool is_delimiter(IteratorT& it) {
+				return false;
+			}
 
 		private:
 			void init() {
@@ -467,8 +479,6 @@ namespace stpl {
 			}
 	};
 
-	//template <typename StringT = std::string, typename IteratorT = typename StringT::iterator,
-	//typename EntityT = StringBound<StringT, IteratorT>/*,  typename ContainerT = std::vector<EntityT>*/ >
 	template <
 		typename EntityT = StringBound<>,  
 		typename ContainerT = std::vector<EntityT *>  >

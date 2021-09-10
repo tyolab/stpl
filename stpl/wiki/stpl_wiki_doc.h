@@ -66,6 +66,30 @@ namespace stpl {
 					}
 				}
 
+				std::string to_html() {
+					std::stringstream ss;
+					ss << "<html>" << std::endl;
+					ss << "<body>" << std::endl;
+					auto nodes = this->children();
+					for (auto it = nodes.begin(); it != nodes.end(); ++it) {
+						ss << '(' << (*it)->get_id() << ") ";
+						ss << (*it)->to_html();
+						ss << std::endl;
+					}
+					ss << "<html>";
+					return ss.str();
+				}
+
+				std::string to_json() {
+					std::stringstream ss;
+					auto nodes = this->children();
+					for (auto it = nodes.begin(); it != nodes.end(); ++it) {
+						ss << (*it)->to_html();
+						ss << std::endl;
+					}
+					return ss.str();
+				}				
+
 			private:
 				void init() {
 				}
@@ -175,20 +199,26 @@ namespace stpl {
 							{
 								IteratorT next_it = it + 1;
 								// confirmation
-								if (*it == '{') {
-									entity_ptr = new LangVariant<StringT, IteratorT>(it);
+								if (*next_it == '{') {
+									new_entity_check_passed = 1;
 								}
 							}
 							break;								
-						case '\'':
+						case WikiEntityConstants::WIKI_KEY_STYLE:
 							{
 								IteratorT next_it = it + 1;
 								// confirmation
-								if (*it == '\'') {
-									entity_ptr = new Style<StringT, IteratorT>(it);
+								if (*next_it == WikiEntityConstants::WIKI_KEY_STYLE) {
+									new_entity_check_passed = 1;
 								}
 							}
-							break;								
+							break;
+						case WikiEntityConstants::WIKI_KEY_STYLE_INDENT:
+							{
+								if (*it == WikiEntityConstants::WIKI_KEY_STYLE_INDENT) 
+									new_entity_check_passed = 1;
+							}
+							break;													
 						case WikiEntityConstants::WIKI_KEY_OPEN_TAG:
 							start_from_newline = false;
 							break;
@@ -215,14 +245,7 @@ namespace stpl {
 						case WikiEntityConstants::WIKI_KEY_LIST_ORDERED:
 							{	
 								new_entity_check_passed = 1;
-								start_from_newline = false;
-								if (it > begin) {
-									entity_ptr = new Text<StringT, IteratorT>(begin, it);
-									entity_ptr->set_open(false);
-									entity_ptr->set_group(TEXT);
-									begin = it;
-								}
-									
+								start_from_newline = false;	
 							}
 							break;
 						case WikiEntityConstants::WIKI_KEY_PROPERTY_DELIMITER:
@@ -273,9 +296,53 @@ namespace stpl {
 							break;
 						}
 
+						/**
+						 * Before we go any further we need to handle the text node first
+						 */
+						if (!entity_ptr && new_entity_check_passed && it > begin) {
+							entity_ptr = new Text<StringT, IteratorT>(begin, it);
+							entity_ptr->set_open(false);
+							entity_ptr->set_group(TEXT);
+							begin = it;
+						}
+
 						if (!entity_ptr) {
 							switch (*it)
 							{
+							case '-':
+								{
+									IteratorT next_it = it + 1;
+									// confirmation
+									if (*next_it == '{') {
+										entity_ptr = new LangVariant<StringT, IteratorT>(it);
+										entity_ptr->set_group(LANG);
+										entity_ptr->set_type(LANG_VARIANT);					
+									}
+								}
+								break;								
+							case WikiEntityConstants::WIKI_KEY_STYLE:
+								{
+									IteratorT next_it = it + 1;
+									// confirmation
+									if (*next_it == WikiEntityConstants::WIKI_KEY_STYLE) {
+										entity_ptr = new Style<StringT, IteratorT>(it);
+										entity_ptr->set_group(STYLE);
+										entity_ptr->set_type(STYLE_ITALIC);					
+									}
+								}
+								break;
+							case WikiEntityConstants::WIKI_KEY_STYLE_INDENT:
+								{
+									IteratorT next_it = it + 1;
+									// confirmation
+									if (*next_it == WikiEntityConstants::WIKI_KEY_STYLE_INDENT) {
+										entity_ptr = new StyleIndent<StringT, IteratorT>(it);
+										entity_ptr = new Style<StringT, IteratorT>(it);
+										entity_ptr->set_group(STYLE);
+										entity_ptr->set_type(STYLE_INDENT);											
+									}
+								}
+								break;																					
 							case WikiEntityConstants::WIKI_KEY_OPEN_TAG:
 								// at current stage, all tags will be ignored, it will be just part of TEXT node
 		//						Scanner<EntityT>::state_ = TAG;
@@ -313,12 +380,18 @@ namespace stpl {
 								break;
 							case WikiEntityConstants::WIKI_KEY_LIST_ORDERED:
 								{
-									IteratorT next = it + 1;
-									if (*next == ' '/* parent_ptr && parent_ptr->get_group() != PROPERTY */) {
-										Scanner<EntityT>::state_ = LAYOUT;
-										entity_ptr = new WikiEntityOrdered<StringT, IteratorT>(it, end);
-										entity_ptr->set_group(LAYOUT);
-										entity_ptr->set_type(LAYOUT_LI);
+									// could be redirect node
+									if (*(it + 1) == 'R' && *(it + 2) == 'E' && *(it + 3) == 'D' && *(it + 4) == 'I' && *(it + 5) == 'R' && *(it + 6) == 'E' && *(it + 7) == 'C' && *(it + 8) == 'T') {
+											entity_ptr = new Redirect<StringT, IteratorT>(it, end);
+									}
+									else {
+										IteratorT next = it + 1;
+										if (*next == ' '/* parent_ptr && parent_ptr->get_group() != PROPERTY */) {
+											Scanner<EntityT>::state_ = LAYOUT;
+											entity_ptr = new WikiEntityOrdered<StringT, IteratorT>(it, end);
+											entity_ptr->set_group(LAYOUT);
+											entity_ptr->set_type(LAYOUT_LI);
+										}
 									}
 								}
 															

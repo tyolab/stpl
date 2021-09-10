@@ -139,6 +139,10 @@ namespace stpl {
 					return false;
 				}
 
+				virtual bool is_separated(IteratorT& it) {
+					return *it == WikiEntityConstants::WIKI_KEY_PROPERTY_DELIMITER;
+				}				
+
 			private:
 				void init() {
 					this->has_delimiter_ = false;
@@ -481,6 +485,112 @@ namespace stpl {
 		};
 
 		/**
+		 * 
+		 * The unit inside a container
+		 * for those without a clear boundary
+		 */
+		template <typename StringT = std::string,
+							typename IteratorT = typename StringT::iterator
+						  >
+		class ListItem : public WikiEntity<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT                                      string_type;
+				typedef IteratorT	                                 iterator;
+				typedef StringBound<StringT, IteratorT>              StringB;
+
+			protected:
+				bool                                                 ordered_;
+				char                                                 start_with_;
+
+			public:
+				ListItem() : WikiEntity<StringT, IteratorT>::WikiEntity() {}
+				ListItem(IteratorT it) :
+					WikiEntity<StringT, IteratorT>::WikiEntity(it) {
+					init();
+				}
+				ListItem(IteratorT begin, IteratorT end) :
+					WikiEntity<StringT, IteratorT>::WikiEntity(begin, end) { init(); }
+				ListItem(StringT content) :
+					WikiEntity<StringT, IteratorT>::WikiEntity(content) {
+					init();
+				}
+				virtual ~ListItem() {};
+
+			protected:
+				virtual bool is_end(IteratorT& it) {
+					return *it == '\n';
+				}
+
+			private:
+				void init() { }			
+		};
+
+		template <typename StringT = std::string,
+							typename IteratorT = typename StringT::iterator
+						  >
+		class ListItemUnordered : public ListItem<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT                                      string_type;
+				typedef IteratorT	                                 iterator;
+				typedef StringBound<StringT, IteratorT>              StringB;
+
+			public:
+				ListItemUnordered() : ListItem<StringT, IteratorT>::ListItem() {}
+				ListItemUnordered(IteratorT it) :
+					ListItem<StringT, IteratorT>::ListItem(it) {
+					init();
+				}
+				ListItemUnordered(IteratorT begin, IteratorT end) :
+					ListItem<StringT, IteratorT>::ListItem(begin, end) { init(); }
+				ListItemUnordered(StringT content) :
+					ListItem<StringT, IteratorT>::ListItem(content) {
+					init();
+				}
+				virtual ~ListItemUnordered() {};
+
+				virtual bool is_start(IteratorT& it) {
+					return *it = WikiEntityConstants::WIKI_KEY_LIST;
+				}
+
+			private:
+				void init() { }			
+		};	
+
+		template <typename StringT = std::string,
+							typename IteratorT = typename StringT::iterator
+						  >
+		class ListItemOrdered : public ListItem<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT                                      string_type;
+				typedef IteratorT	                                 iterator;
+				typedef StringBound<StringT, IteratorT>              StringB;
+
+			public:
+				ListItemOrdered() : ListItem<StringT, IteratorT>::ListItem() {}
+				ListItemOrdered(IteratorT it) :
+					ListItem<StringT, IteratorT>::ListItem(it) {
+					init();
+				}
+				ListItemOrdered(IteratorT begin, IteratorT end) :
+					ListItem<StringT, IteratorT>::ListItem(begin, end) { init(); }
+				ListItemOrdered(StringT content) :
+					ListItem<StringT, IteratorT>::ListItem(content) {
+					init();
+				}
+				virtual ~ListItemOrdered() {};
+
+				virtual bool is_start(IteratorT& it) {
+					return *it = WikiEntityConstants::WIKI_KEY_LIST_ORDERED;
+				}
+
+			private:
+				void init() { }			
+		};				
+
+		/**
 		 * Can be either Template or Table
 		 */
 		template <typename StringT = std::string,
@@ -577,7 +687,6 @@ namespace stpl {
 		};
 
 
-
 		template <typename StringT = std::string
 			, typename IteratorT = typename StringT::iterator>
 		class WikiNodeTypes {
@@ -613,6 +722,27 @@ namespace stpl {
 					 { init(); }
 
 				virtual ~WikiEntityContainer() {
+				}
+
+			protected:
+				virtual bool is_start(IteratorT& it) {
+					return *it == WikiEntityConstants::WIKI_KEY_LIST;
+				}
+
+				virtual bool is_pause(IteratorT& it) {
+					if (*it == WikiEntityConstants::WIKI_KEY_LIST) {
+						return true;
+					}
+					return BasicWikiEntity<StringT, IteratorT>::is_pause(it);
+				}
+
+				virtual bool is_end(IteratorT& it) {
+					if (*it == '\n') {
+						IteratorT next = it + 1;
+						this->skip_whitespace(next);
+						return *next != '*';
+					}
+					return false;
 				}
 
 			private:
@@ -676,14 +806,6 @@ namespace stpl {
 				virtual ~WikiTag() {
 					cleanup();
 				}
-
-//				virtual IteratorT match(IteratorT begin, IteratorT end) {
-//					if (WikiKeyword<StringT, IteratorT>::match(begin, end)) {
-//						if (this->type_ == COMMENT)
-//							return true;
-//					}
-//					return false;
-//				}
 
 				void set_start_keyword(ElemTagT* start_k) {
 					start_k_ = start_k;
@@ -938,18 +1060,6 @@ namespace stpl {
 					//return true;
 				}
 
-				/*
-				void get_next_tag(IteratorT it) {
-					if (!last_tag_ptr_) {
-						last_tag_ptr_ = new ElemTagT(it, it);
-						bool ret = skip_comment_unknown_node(last_tag_ptr_, it);
-						if (!ret) {
-							cleanup_last_tag();
-							return true;
-						}
-					}
-				}
-				*/
 				bool assign_start_tag(IteratorT begin, IteratorT end) {
 					bool ret = false;
 					if (!last_tag_ptr_) {
@@ -968,13 +1078,6 @@ namespace stpl {
 				virtual IteratorT skip_invalid_chars(IteratorT& it) {
 					this->skip_whitespace(it);
 
-					//if (!start_k_)
-					//	start_k_ = new ElemTagT(next, next);
-
-					//while (!this->eow(next) && start_k_->length() <= 0 ) {
-					//	if (!skip_comment_unknown_node(start_k_, next))
-					//		break;
-					//}
 					if (!last_tag_ptr_) {
 						last_tag_ptr_ = new ElemTagT(it, it);
 
@@ -1050,9 +1153,6 @@ namespace stpl {
 				}
 
 				virtual void add_start(StringT& text) {
-					// debug
-					// this->ref().append(text + " element\n");
-					//cout << "add start from element ..." << endl;
 					this->add_start_tag(text);
 				}
 
@@ -1238,9 +1338,6 @@ namespace stpl {
 
 						n_flag = true;
 					}
-
-					//if (n_flag && level > 0)
-					//	this->ref().append(indent);
 
 					if (end_k_ && !start_k_->is_ended_wiki_keyword()) {
 						end_k_->flush(level);
@@ -1621,20 +1718,20 @@ namespace stpl {
 		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
-		class WikiEntityOrdered: public WikiEntity<StringT, IteratorT>
+		class WikiEntityOrdered: public WikiEntityContainer<StringT, IteratorT>
 		{
 			public:
 				typedef	StringT	string_type;
 				typedef IteratorT	iterator;
 
 			public:
-				WikiEntityOrdered() : WikiEntity<StringT, IteratorT>::WikiEntity() { init(); }
+				WikiEntityOrdered() : WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer() { init(); }
 				WikiEntityOrdered(IteratorT it)
-					 : WikiEntity<StringT, IteratorT>::WikiEntity(it) { init(); }
+					 : WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer(it) { init(); }
 				WikiEntityOrdered(IteratorT begin, IteratorT end)
-					 : WikiEntity<StringT, IteratorT>::WikiEntity(begin, end) { init(); }
+					 : WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer(begin, end) { init(); }
 				WikiEntityOrdered(StringT content) :
-					WikiEntity<StringT, IteratorT>::WikiEntity() {
+					WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer() {
 					init();
 					this->create(content);
 				}
@@ -1642,8 +1739,10 @@ namespace stpl {
 
 			protected:
 				virtual bool is_end(IteratorT& it) {
-					if (*it == '\n' /*&& get_type() == WikiEntity_LI*/) {
-						return true;
+					if (*it == '\n') {
+						IteratorT next = it + 1;
+						this->skip_whitespace(next);
+						return *next != '#';
 					}
 					return false;
 				}
@@ -1825,6 +1924,41 @@ namespace stpl {
 				}
 
 		};		
+
+		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
+		class StyleIndent: public Style<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT	string_type;
+				typedef IteratorT	iterator;
+
+			public:
+				StyleIndent() : Style<StringT, IteratorT>::Style() { init(); }
+				StyleIndent(IteratorT it)
+					 : Style<StringT, IteratorT>::Style(it) { init(); }
+				StyleIndent(IteratorT begin, IteratorT end)
+					 : Style<StringT, IteratorT>::Style(begin, end) { init(); }
+				StyleIndent(StringT content) :
+					Style<StringT, IteratorT>::Style() {
+					init();
+					this->create(content);
+				}
+				virtual ~StyleIndent() {}
+
+			protected:
+				virtual void set_wiki_key_char() override {
+					this->wiki_key_char_start_ = ':';
+					this->wiki_key_char_end_ = '\n';
+				}
+
+			private:
+				void init() {
+					this->set_wiki_key_char();
+					this->end_in_same_line_ = true;
+					this->strict_ = true;
+				}
+
+		};			
 
 		template <typename StringT = std::string,
 				  typename IteratorT = typename StringT::iterator

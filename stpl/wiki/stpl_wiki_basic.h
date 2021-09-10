@@ -38,12 +38,23 @@ namespace stpl {
 			TBASE,
 			COMMENT,
 			TEXT,
-			PROPERTY
+			PROPERTY,
+			STYLE,
+			LANG,
 		};
 
 		// NONE for un-initialized node, or just TEXT
 		// MISC node type includes COMMENT, PI or DOCTYPE (COMMENT)
 		enum WikiNodeType {NONE,
+							// Sub node of LANG
+							LANG_VARIANT,
+
+							// Sub node types of STYLE
+							STYLE_ITALIC,
+							STYLE_BOLD,
+							STYLE_BOTH,
+							STYLE_INDENT,
+
 							// Sub node types of LAYOUT
 							LAYOUT_SECTION, 
 							LAYOUT_HEADING, 
@@ -139,6 +150,8 @@ namespace stpl {
 		class WikiEntityConstants {
 			public:
 				static const char WIKI_KEY_OPEN_TAG = '<';
+				static const char WIKI_KEY_STYLE = '\'';
+				static const char WIKI_KEY_STYLE_INDENT = ':';
 				static const char WIKI_KEY_CLOSE_TAG = '>';
 				static const char WIKI_KEY_HEADING = '=';
 				static const char WIKI_KEY_LIST = '*';
@@ -259,6 +272,13 @@ namespace stpl {
 					return "";
 				}
 
+				/**
+				 * By default we use what it is for html
+				 */
+				virtual std::string to_json() {
+					return "";
+				}				
+
 				virtual void add_child(BasicWikiEntity* child) {
 					// if it doesn't get implemented, it has no children 
 				}
@@ -266,8 +286,12 @@ namespace stpl {
 			protected:
 
 				virtual bool is_pause(IteratorT& it) {
-					return *it == '[' || *it == '{'  || *it == '-';
-				}				
+					return *it == '[' || *it == '{'  || *it == '-' || *it == '\'' || *it == '#' || *it == '*' || *it == ':';
+				}			
+
+				virtual bool is_separated(IteratorT& it) {
+					return this->parent_ptr_ && this->parent_ptr_->is_delimiter(it);
+				}					
 		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
@@ -309,6 +333,48 @@ namespace stpl {
 					return false;
 				}
 		};
+
+		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
+		class Redirect: public BasicWikiEntity<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT	string_type;
+				typedef IteratorT	iterator;
+
+			private:
+				void init() { this->group_ = TEXT; }
+
+			public:
+				Redirect() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() { init(); }
+				Redirect(IteratorT it)
+					 : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(it) { init(); }
+				Redirect(IteratorT begin, IteratorT end)
+					 : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(begin, end) { init(); }
+				Redirect(StringT content) :
+					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() {
+					init();
+					this->create(content);
+				}
+				virtual ~Redirect() {}	
+
+				virtual std::string to_html() {
+					return this->to_std_string();
+				}						
+
+			protected:
+				virtual bool is_start(IteratorT& it) {
+					return true;
+				}
+
+				virtual bool is_pause(IteratorT& it) {
+					return false;
+				}
+
+				/**
+				 * For the text node, most likely it will encounter a link or template which will mark
+				 * the end of it
+				 */
+		};			
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 		class WikiEntity : public BasicWikiEntity<StringT, IteratorT>, public Entity<BasicWikiEntity<StringT, IteratorT> >
@@ -353,7 +419,12 @@ namespace stpl {
 
 				virtual void add_child(BasicWikiEntity<StringT, IteratorT>* child) {
 					this->add(child);
-				}				
+				}
+
+			protected:
+				virtual bool is_end(IteratorT& it) {
+					return this->is_separated(it) || BasicWikiEntity<StringT, IteratorT>::is_end(it);
+				}
 
 			private:
 				void init() {
