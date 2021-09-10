@@ -367,11 +367,11 @@ namespace stpl {
 								}
 								break;
 							case WikiEntityConstants::WIKI_KEY_LIST:
-								if (parent_ptr && parent_ptr->get_type() == LAYOUT_UL) {
-									if (parent_ptr && parent_ptr->get_group() == LAYOUT_ITEM && parent_ptr->isopen()) {
-										parent_ptr->end(it);
-										parent_ptr->set_open(false);
-									}
+								if (parent_ptr && parent_ptr->get_group() == LAYOUT_ITEM && parent_ptr->isopen()) {
+									parent_ptr->end(it);
+									parent_ptr->set_open(false);
+								}							
+								else if (parent_ptr && parent_ptr->get_type() == LAYOUT_UL) {
 									entity_ptr = new ListItemUnordered<StringT, IteratorT>(it, end);
 									// entity_ptr->set_group(LAYOUT);
 									// entity_ptr->set_type(LAYOUT_UL);
@@ -397,12 +397,11 @@ namespace stpl {
 									else {
 										IteratorT next = it + 1;
 										if (*next == ' '/* parent_ptr && parent_ptr->get_group() != PROPERTY */) {
-											if (parent_ptr && parent_ptr->get_type() == LAYOUT_LI) {
-									if (parent_ptr && parent_ptr->get_group() == LAYOUT_ITEM && parent_ptr->isopen()) {
-										parent_ptr->end(it);
-										parent_ptr->set_open(false);
-									}
-																					
+											if (parent_ptr && parent_ptr->get_group() == LAYOUT_ITEM && parent_ptr->isopen()) {
+												parent_ptr->end(it);
+												parent_ptr->set_open(false);
+											}
+											else if (parent_ptr && parent_ptr->get_type() == LAYOUT_LI) {
 												entity_ptr = new ListItemOrdered<StringT, IteratorT>(it, end);
 											}
 											else {
