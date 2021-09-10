@@ -148,12 +148,13 @@ namespace stpl {
 							// of course it is open, so we come in here, so we don't need to check if it is open again
 							// nothing new, we better move to next char in case a dead loop
 							if (it < this->end()) {
-								// IteratorT pre = it;
+								IteratorT pre = it;
 								it = tmp_entity->match_rest(it);
-								// if (pre == it) {
-								// 	// there is no more rest
-								// 	++it;
-								// }			
+								// It is not a good idea to do it here
+								if (tmp_entity->isopen() && pre == it) {
+									// there is no more rest
+									current_pos_ =  ++it;
+								}			
 							}
 							else
 								tmp_entity = NULL;

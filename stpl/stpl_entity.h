@@ -236,10 +236,8 @@ namespace stpl {
 				// in some cases,the last char cannot be set due to reach end of the string stream
 				// so test end of stream has to be done inside of is_end function or right hand side of it.
 				while (!this->eow(next_char)) {
- 				  if (this->is_pause(next_char)) {
-					   break;
-				   }
-				   else if (this->is_end(next_char)) {
+					// we need to check if it is end first before checking it is pause
+					if (this->is_end(next_char)) {
 					   this->end(next_char);
 				       this->end_notify(next_char);
 
@@ -247,6 +245,9 @@ namespace stpl {
 
 					   break;
 				   }
+ 				   else if (this->is_pause(next_char)) {
+					   break;
+				   }				   
 
 				   ++next_char;
 				}

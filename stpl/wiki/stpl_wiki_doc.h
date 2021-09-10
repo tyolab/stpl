@@ -76,7 +76,8 @@ namespace stpl {
 						ss << (*it)->to_html();
 						ss << std::endl;
 					}
-					ss << "<html>";
+					ss << "</body>" << std::endl;
+					ss << "</html>";
 					return ss.str();
 				}
 
@@ -145,7 +146,7 @@ namespace stpl {
 
 					IteratorT end = this->end();
 
-					while (begin <= end) {
+					while (begin < end) {
 						if (*begin == ' ')
 							++begin;
 						else if (*begin == '\n') {
@@ -168,7 +169,7 @@ namespace stpl {
 					 * but for the text node, we won't be able to do so, so anything that is between those
 					 * special nodes are text nodes
 					 */
-					while (it <= end) {
+					while (it < end) {
 						// skip white spaces
 						while (*it == ' ' && it != end) {
 							++it;
@@ -183,15 +184,15 @@ namespace stpl {
 						case '\n':
 							{
 								start_from_newline = true;
-
+								// it has been handled
 								// some entities need newline to end
 								// for example list, there may be others add them here later
-								if (parent_ptr && parent_ptr->get_type() == LAYOUT_UL) {
-									++it;
-									parent_ptr->end(it);
-									parent_ptr->set_open(false);
-									return parent_ptr;
-								}
+								// if (parent_ptr && parent_ptr->get_type() == LAYOUT_UL) {
+								// 	++it;
+								// 	parent_ptr->end(it);
+								// 	parent_ptr->set_open(false);
+								// 	return parent_ptr;
+								// }
 
 							}
 							break;
@@ -299,7 +300,7 @@ namespace stpl {
 						/**
 						 * Before we go any further we need to handle the text node first
 						 */
-						if (!entity_ptr && new_entity_check_passed && it > begin) {
+						if (!entity_ptr && new_entity_check_passed == 1 && it > begin) {
 							entity_ptr = new Text<StringT, IteratorT>(begin, it);
 							entity_ptr->set_open(false);
 							entity_ptr->set_group(TEXT);
@@ -314,7 +315,7 @@ namespace stpl {
 									IteratorT next_it = it + 1;
 									// confirmation
 									if (*next_it == '{') {
-										entity_ptr = new LangVariant<StringT, IteratorT>(it);
+										entity_ptr = new LangVariant<StringT, IteratorT>(it, end);
 										entity_ptr->set_group(LANG);
 										entity_ptr->set_type(LANG_VARIANT);					
 									}
@@ -325,7 +326,7 @@ namespace stpl {
 									IteratorT next_it = it + 1;
 									// confirmation
 									if (*next_it == WikiEntityConstants::WIKI_KEY_STYLE) {
-										entity_ptr = new Style<StringT, IteratorT>(it);
+										entity_ptr = new Style<StringT, IteratorT>(it, end);
 										entity_ptr->set_group(STYLE);
 										entity_ptr->set_type(STYLE_ITALIC);					
 									}
@@ -336,7 +337,7 @@ namespace stpl {
 									IteratorT next_it = it + 1;
 									// confirmation
 									if (*next_it == WikiEntityConstants::WIKI_KEY_STYLE_INDENT) {
-										entity_ptr = new StyleIndent<StringT, IteratorT>(it);
+										entity_ptr = new StyleIndent<StringT, IteratorT>(it, end);
 										entity_ptr = new Style<StringT, IteratorT>(it);
 										entity_ptr->set_group(STYLE);
 										entity_ptr->set_type(STYLE_INDENT);											
@@ -367,9 +368,15 @@ namespace stpl {
 								break;
 							case WikiEntityConstants::WIKI_KEY_LIST:
 								if (parent_ptr && parent_ptr->get_type() == LAYOUT_UL) {
-									parent_ptr->end(it);
-									parent_ptr->set_open(false);
-									return parent_ptr;
+									if (parent_ptr && parent_ptr->get_group() == LAYOUT_ITEM && parent_ptr->isopen()) {
+										parent_ptr->end(it);
+										parent_ptr->set_open(false);
+									}
+									entity_ptr = new ListItemUnordered<StringT, IteratorT>(it, end);
+									// entity_ptr->set_group(LAYOUT);
+									// entity_ptr->set_type(LAYOUT_UL);
+									// parent_ptr->set_open(false);
+									// return parent_ptr;
 								}
 								else {
 									Scanner<EntityT>::state_ = LAYOUT;
@@ -382,15 +389,28 @@ namespace stpl {
 								{
 									// could be redirect node
 									if (*(it + 1) == 'R' && *(it + 2) == 'E' && *(it + 3) == 'D' && *(it + 4) == 'I' && *(it + 5) == 'R' && *(it + 6) == 'E' && *(it + 7) == 'C' && *(it + 8) == 'T') {
-											entity_ptr = new Redirect<StringT, IteratorT>(it, end);
+										entity_ptr = new Redirect<StringT, IteratorT>(it, end);
+									}
+									else if (*(it + 1) == 'D' && *(it + 2) == 'E' && *(it + 3) == 'B' && *(it + 4) == 'U' && *(it + 5) == 'G') {
+										entity_ptr = new DebugNode<StringT, IteratorT>(it, end);
 									}
 									else {
 										IteratorT next = it + 1;
 										if (*next == ' '/* parent_ptr && parent_ptr->get_group() != PROPERTY */) {
-											Scanner<EntityT>::state_ = LAYOUT;
-											entity_ptr = new WikiEntityOrdered<StringT, IteratorT>(it, end);
-											entity_ptr->set_group(LAYOUT);
-											entity_ptr->set_type(LAYOUT_LI);
+											if (parent_ptr && parent_ptr->get_type() == LAYOUT_LI) {
+									if (parent_ptr && parent_ptr->get_group() == LAYOUT_ITEM && parent_ptr->isopen()) {
+										parent_ptr->end(it);
+										parent_ptr->set_open(false);
+									}
+																					
+												entity_ptr = new ListItemOrdered<StringT, IteratorT>(it, end);
+											}
+											else {
+												Scanner<EntityT>::state_ = LAYOUT;
+												entity_ptr = new WikiEntityOrdered<StringT, IteratorT>(it, end);
+												entity_ptr->set_group(LAYOUT);
+												entity_ptr->set_type(LAYOUT_LI);
+											}
 										}
 									}
 								}
@@ -451,6 +471,13 @@ namespace stpl {
 						// as we couldn't find a new entity based on current character, 
 						// forward one character, otherwise we will be stuck here
 						++it;						
+					}
+
+					// Anything that we cannot parse it is a text node
+					if (it >= end && !entity_ptr && it > begin) {
+						entity_ptr = new Text<StringT, IteratorT>(begin, end);
+						entity_ptr->set_open(false);
+						entity_ptr->set_group(TEXT);						
 					}
 					return entity_ptr;
 				}

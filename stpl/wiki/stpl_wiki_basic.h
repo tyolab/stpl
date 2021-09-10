@@ -25,6 +25,7 @@
 #include "../stpl_property.h"
 
 #include <map>
+#include <iostream>
 
 namespace stpl {
 	namespace WIKI {
@@ -32,7 +33,7 @@ namespace stpl {
 		// TEMPLATE node includes wiki declarations, text declarations,
 		// If not any of others, then just TEXT
 		enum WikiNodeGroup {
-			LAYOUT,
+			LAYOUT, LAYOUT_ITEM,
 			TAG,
 			LINK,
 			TBASE,
@@ -183,7 +184,9 @@ namespace stpl {
 					parent_ptr_ = NULL;
 
 					Atom::set_id(Atom::counter++);
-									// for debuging
+					// for debuging
+					if (*(this->begin()) == 'N')
+						cerr << Atom::counter << std::endl;
 					if (Atom::get_id() == 210)
 						parent_ptr_ = NULL;
 				}
@@ -286,7 +289,10 @@ namespace stpl {
 			protected:
 
 				virtual bool is_pause(IteratorT& it) {
-					return *it == '[' || *it == '{'  || *it == '-' || *it == '\'' || *it == '#' || *it == '*' || *it == ':';
+					// ok we are not gonna pause when the character with the following
+					if (it > this->begin())
+						return *it == '[' || *it == '{'  || *it == '-' || *it == '\'' || *it == '#' || *it == '*' || *it == ':';
+					return false;
 				}			
 
 				virtual bool is_separated(IteratorT& it) {
@@ -374,7 +380,49 @@ namespace stpl {
 				 * For the text node, most likely it will encounter a link or template which will mark
 				 * the end of it
 				 */
-		};			
+		};
+
+		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
+		class DebugNode: public BasicWikiEntity<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT	string_type;
+				typedef IteratorT	iterator;
+
+			private:
+				void init() { this->group_ = TEXT; }
+
+			public:
+				DebugNode() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() { init(); }
+				DebugNode(IteratorT it)
+					 : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(it) { init(); }
+				DebugNode(IteratorT begin, IteratorT end)
+					 : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(begin, end) { init(); }
+				DebugNode(StringT content) :
+					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() {
+					init();
+					this->create(content);
+				}
+				virtual ~DebugNode() {}	
+
+				virtual std::string to_html() {
+					return "";
+				}						
+
+			protected:
+				virtual bool is_start(IteratorT& it) {
+					return true;
+				}
+
+				virtual bool is_end(IteratorT& it) {
+					return (it - this->begin()) > 6;
+				}
+
+				/**
+				 * For the text node, most likely it will encounter a link or template which will mark
+				 * the end of it
+				 */
+		};				
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 		class WikiEntity : public BasicWikiEntity<StringT, IteratorT>, public Entity<BasicWikiEntity<StringT, IteratorT> >

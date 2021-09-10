@@ -519,11 +519,15 @@ namespace stpl {
 
 			protected:
 				virtual bool is_end(IteratorT& it) {
-					return *it == '\n';
+					if (*it == '\n')
+						return true;
+					return false;
 				}
 
 			private:
-				void init() { }			
+				void init() { 
+					this->set_group(LAYOUT_ITEM);					
+				}			
 		};
 
 		template <typename StringT = std::string,
@@ -551,11 +555,17 @@ namespace stpl {
 				virtual ~ListItemUnordered() {};
 
 				virtual bool is_start(IteratorT& it) {
-					return *it = WikiEntityConstants::WIKI_KEY_LIST;
+					if (*it == WikiEntityConstants::WIKI_KEY_LIST) {
+						// ++it;
+						return true;
+					}
+					return false;
 				}
 
 			private:
-				void init() { }			
+				void init() { 
+					this->set_type(LAYOUT_UL);					
+				}			
 		};	
 
 		template <typename StringT = std::string,
@@ -583,11 +593,17 @@ namespace stpl {
 				virtual ~ListItemOrdered() {};
 
 				virtual bool is_start(IteratorT& it) {
-					return *it = WikiEntityConstants::WIKI_KEY_LIST_ORDERED;
+					if (*it == WikiEntityConstants::WIKI_KEY_LIST_ORDERED) {
+						// ++it;
+						return true;
+					}
+					return false;
 				}
 
 			private:
-				void init() { }			
+				void init() {
+					this->set_type(LAYOUT_LI);
+				 }			
 		};				
 
 		/**
@@ -1788,6 +1804,10 @@ namespace stpl {
 				}
 				virtual ~WikiEntityLeveled() {}
 
+				int get_level() const {
+					return level_;
+				}
+
 			protected:
 				virtual bool is_start(IteratorT& it) {
 					while (*it == this->wiki_key_char_start_) {
@@ -1914,6 +1934,23 @@ namespace stpl {
 				virtual void set_wiki_key_char() override {
 					this->wiki_key_char_start_ = '\'';
 					this->wiki_key_char_end_ = '\'';
+				}
+
+				virtual bool is_end(IteratorT& it) {
+					if (WikiEntityLeveled<StringT, IteratorT>::is_end(it)) {
+						if (this->level_ != 2 && this->level_ != 3 && this->level_ != 5) {
+							this->begin(it);
+							this->end(it);
+						}
+						else {
+							if (this->level_ == 3)
+								this->set_type(STYLE_BOLD);
+							else if (this->level_ == 5)
+								this->set_type(STYLE_BOTH);
+						}
+						return true;
+					}
+					return false;
 				}
 
 			private:
