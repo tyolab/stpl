@@ -562,6 +562,10 @@ namespace stpl {
 					return false;
 				}
 
+				// virtual bool is_end(IteratorT& it) {
+				// 	return *it == '*' || ListItem<StringT, IteratorT>::is_end(it);
+				// }				
+
 			private:
 				void init() { 
 					this->set_type(LAYOUT_UL);					

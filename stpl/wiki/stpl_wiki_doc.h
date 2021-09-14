@@ -183,6 +183,10 @@ namespace stpl {
 							break;
 						case '\n':
 							{
+								if (parent_ptr && parent_ptr->isopen()) {
+									// some nodes need new line to end
+									return parent_ptr;
+								}
 								start_from_newline = true;
 								// it has been handled
 								// some entities need newline to end
