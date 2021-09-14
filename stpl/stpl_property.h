@@ -225,7 +225,7 @@ namespace stpl {
 				end_chars_ = end_chars;
 			}
 
-			void force_end_quote(bool b) { force_end_quote = b; }
+			void force_end_quote(bool b) { force_end_quote_ = b; }
 
 			bool has_delimiter() {
 				return has_delimiter_;
