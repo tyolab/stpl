@@ -227,8 +227,17 @@ namespace stpl {
 							break;
 						case WikiEntityConstants::WIKI_KEY_STYLE_INDENT:
 							{
-								if (*it == WikiEntityConstants::WIKI_KEY_STYLE_INDENT) 
-									new_entity_check_passed = 1;
+								if (parent_ptr && parent_ptr->get_group() == LINK) {
+									// there shouldn't be indent for a link type
+									entity_ptr = parent_ptr;
+								}
+								else {
+									pre_it = it > begin ? it - 1 : it;
+									if (start_from_newline || *pre_it == '\n')
+										new_entity_check_passed = 1;
+									else
+										entity_ptr = parent_ptr;
+								}
 							}
 							break;													
 						case WikiEntityConstants::WIKI_KEY_OPEN_TAG:
@@ -272,6 +281,7 @@ namespace stpl {
 								if (*next == WikiEntityConstants::WIKI_KEY_CLOSE_LINK) {
 									parent_ptr->end(++next);
 									parent_ptr->set_open(false);
+									begin = next;
 									return parent_ptr;
 								}
 							}
@@ -284,6 +294,7 @@ namespace stpl {
 								if (*next == WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE) {
 									parent_ptr->end(++next);
 									parent_ptr->set_open(false);
+									begin = next;
 									return parent_ptr;
 								}
 							}

@@ -412,6 +412,7 @@ namespace stpl {
 
 			protected:
 				virtual bool is_start(IteratorT& it) {
+					++it;
 					return true;
 				}
 
