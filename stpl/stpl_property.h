@@ -78,17 +78,12 @@ namespace stpl {
 				name_.begin(it);
 				name_.end(it);
 
-				while (!this->is_pause(it) && !this->is_delimiter(it))
-					++it;
+				// start only be resposible for start
+				// don't do it like that
+				// while (!this->is_pause(it) && !this->is_delimiter(it))
+				// 	++it;
 
-				if (this->is_delimiter(it)) {
-					name_.end(it);
-
-					value_.begin(it + 1);
-					value_.end(it + 1);
-				}
-
-				return name_.length() > 0; 
+				return true; 
 			}
 
 			virtual bool is_end(IteratorT& it) {
@@ -96,6 +91,15 @@ namespace stpl {
 				//	ret = (has_equal_ && (value_.begin() != value_.end()));
 
 				if (!ret) {
+
+					if (this->is_delimiter(it)) {
+						has_delimiter_ = true;
+						name_.end(it);
+
+						value_.begin(it + 1);
+						value_.end(it + 1);
+					}
+
 					// if have the break character like "=, space" or something specified as the break char
 					// which mean the beginning of VALUE
 					if (has_delimiter_) {

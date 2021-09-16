@@ -41,7 +41,7 @@ namespace stpl {
 			TEXT,
 			PROPERTY,
 			STYLE,
-			LANG,
+			LANG,  DEBUG
 		};
 
 		// NONE for un-initialized node, or just TEXT
@@ -185,9 +185,9 @@ namespace stpl {
 
 					Atom::set_id(Atom::counter++);
 					// for debuging
-					if (*(this->begin()) == 'N')
-						cerr << Atom::counter << std::endl;
-					if (Atom::get_id() == 210)
+					// if (*(this->begin()) == 'N')
+					// 	cerr << Atom::counter << std::endl;
+					if (Atom::get_id() == 707)
 						parent_ptr_ = NULL;
 				}
 				
@@ -290,9 +290,10 @@ namespace stpl {
 
 				virtual bool is_pause(IteratorT& it) {
 					// ok we are not gonna pause when the character with the following
-					if (it > this->begin())
+					// that is not a good idea either that simply skip the first character simply because 
+					//if (it > this->begin())
 						return *it == '[' || *it == '{'  || *it == '-' || *it == '\'' || *it == '#' || *it == '*' || *it == ':';
-					return false;
+					//return false;
 				}			
 
 				virtual bool is_separated(IteratorT& it) {
@@ -390,7 +391,7 @@ namespace stpl {
 				typedef IteratorT	iterator;
 
 			private:
-				void init() { this->group_ = TEXT; }
+				void init() { this->group_ = DEBUG; }
 
 			public:
 				DebugNode() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() { init(); }
@@ -415,7 +416,10 @@ namespace stpl {
 				}
 
 				virtual bool is_end(IteratorT& it) {
-					return (it - this->begin()) > 6;
+					if ((it - this->begin()) > 5) {
+						return true;
+					}
+					return false;
 				}
 
 				/**

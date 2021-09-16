@@ -150,14 +150,15 @@ namespace stpl {
 						if (*begin == ' ')
 							++begin;
 						else if (*begin == '\n') {
-							++begin;
+							// ++begin; no we are not skipping new line as entity may need newline for boundary
 							start_from_newline = true;
+							break;
 						}	   
 						else
 							break;
 					}
 
-					IteratorT it = begin;
+					IteratorT it = begin, next;
 
 					EntityT* entity_ptr = NULL;
 					int previous_state = Scanner<EntityT>::state_;
@@ -202,19 +203,25 @@ namespace stpl {
 							break;
 						case '-':
 							{
-								IteratorT next_it = it + 1;
+								next = it + 1;
 								// confirmation
-								if (*next_it == '{') {
+								if (*next == '{') {
 									new_entity_check_passed = 1;
 								}
 							}
 							break;								
 						case WikiEntityConstants::WIKI_KEY_STYLE:
 							{
-								IteratorT next_it = it + 1;
-								// confirmation
-								if (*next_it == WikiEntityConstants::WIKI_KEY_STYLE) {
-									new_entity_check_passed = 1;
+								if (parent_ptr && parent_ptr->get_group() == STYLE && parent_ptr->isopen()) {
+									// the style node needs to be closed now
+									return parent_ptr;
+								}
+								else {
+									next = it + 1;
+									// confirmation
+									if (*next == WikiEntityConstants::WIKI_KEY_STYLE) {
+										new_entity_check_passed = 1;
+									}
 								}
 							}
 							break;
@@ -256,29 +263,14 @@ namespace stpl {
 						case WikiEntityConstants::WIKI_KEY_PROPERTY_DELIMITER:
 							new_entity_check_passed = 1;
 							start_from_newline = false;
-							if (parent_ptr) {
-								if (parent_ptr->get_group() == PROPERTY) {
-									// a property can't not be the paranet of another property
-									parent_ptr->set_open(false);
-									parent_ptr->end(it);
-									// entity_ptr = new WikiProperty<StringT, IteratorT>(++it, end);
-									// entity_ptr->set_parent(parent_ptr->get_parent());
-									// previous_state = PROPERTY;
-									entity_ptr = parent_ptr;
-								}
-								else if (parent_ptr->get_group() == TBASE) {
-									entity_ptr = new WikiProperty<StringT, IteratorT>(++it, end);
-									previous_state = PROPERTY;
-								}
-							}
 							break;							
 						case WikiEntityConstants::WIKI_KEY_CLOSE_LINK:
 							new_entity_check_passed = 1;
 							start_from_newline = false;
 							if (parent_ptr && parent_ptr->get_group() == LINK) {
-								++it;
-								if (*it == WikiEntityConstants::WIKI_KEY_CLOSE_LINK) {
-									parent_ptr->end(++it);
+								next = it + 1;
+								if (*next == WikiEntityConstants::WIKI_KEY_CLOSE_LINK) {
+									parent_ptr->end(++next);
 									parent_ptr->set_open(false);
 									return parent_ptr;
 								}
@@ -288,9 +280,9 @@ namespace stpl {
 							new_entity_check_passed = 1;
 							start_from_newline = false;
 							if (parent_ptr && parent_ptr->get_group() == TBASE) {
-								++it;
-								if (*it == WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE) {
-									parent_ptr->end(++it);
+								next = it + 1;
+								if (*next == WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE) {
+									parent_ptr->end(++next);
 									parent_ptr->set_open(false);
 									return parent_ptr;
 								}
@@ -316,9 +308,9 @@ namespace stpl {
 							{
 							case '-':
 								{
-									IteratorT next_it = it + 1;
+									next = it + 1;
 									// confirmation
-									if (*next_it == '{') {
+									if (*next == '{') {
 										entity_ptr = new LangVariant<StringT, IteratorT>(it, end);
 										entity_ptr->set_group(LANG);
 										entity_ptr->set_type(LANG_VARIANT);					
@@ -327,9 +319,9 @@ namespace stpl {
 								break;								
 							case WikiEntityConstants::WIKI_KEY_STYLE:
 								{
-									IteratorT next_it = it + 1;
+									next = it + 1;
 									// confirmation
-									if (*next_it == WikiEntityConstants::WIKI_KEY_STYLE) {
+									if (*next == WikiEntityConstants::WIKI_KEY_STYLE) {
 										entity_ptr = new Style<StringT, IteratorT>(it, end);
 										entity_ptr->set_group(STYLE);
 										entity_ptr->set_type(STYLE_ITALIC);					
@@ -338,9 +330,9 @@ namespace stpl {
 								break;
 							case WikiEntityConstants::WIKI_KEY_STYLE_INDENT:
 								{
-									IteratorT next_it = it + 1;
+									next = it + 1;
 									// confirmation
-									if (*next_it == WikiEntityConstants::WIKI_KEY_STYLE_INDENT) {
+									if (*next == WikiEntityConstants::WIKI_KEY_STYLE_INDENT) {
 										entity_ptr = new StyleIndent<StringT, IteratorT>(it, end);
 										entity_ptr = new Style<StringT, IteratorT>(it);
 										entity_ptr->set_group(STYLE);
@@ -354,17 +346,17 @@ namespace stpl {
 		//						entity_ptr = new ElemTag<StringT, IteratorT>(it, end);
 								break;
 							case WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE:
-								++it;
-								if (*it == '{') {
+								next = it + 1;
+								if (*next == '{') {
 									Scanner<EntityT>::state_ = TBASE;
-									entity_ptr = new Template<StringT, IteratorT>(it - 1, end);
+									entity_ptr = new Template<StringT, IteratorT>(it, end);
 
 									entity_ptr->set_group(TBASE);
 									entity_ptr->set_type(TEMPLATE);
 								}
-								else if (*it == '|') {
+								else if (*next == '|') {
 									Scanner<EntityT>::state_ = TBASE;
-									entity_ptr = new Table<StringT, IteratorT>(it - 1, end);
+									entity_ptr = new Table<StringT, IteratorT>(it, end);
 
 									entity_ptr->set_group(TBASE);
 									entity_ptr->set_type(TABLE);
@@ -374,6 +366,7 @@ namespace stpl {
 								if (parent_ptr && parent_ptr->get_group() == LAYOUT_ITEM && parent_ptr->isopen()) {
 									parent_ptr->end(it);
 									parent_ptr->set_open(false);
+									entity_ptr = parent_ptr;
 								}							
 								else if (parent_ptr && parent_ptr->get_type() == LAYOUT_UL) {
 									entity_ptr = new ListItemUnordered<StringT, IteratorT>(it, end);
@@ -404,6 +397,7 @@ namespace stpl {
 											if (parent_ptr && parent_ptr->get_group() == LAYOUT_ITEM && parent_ptr->isopen()) {
 												parent_ptr->end(it);
 												parent_ptr->set_open(false);
+												entity_ptr = parent_ptr;
 											}
 											else if (parent_ptr && parent_ptr->get_type() == LAYOUT_LI) {
 												entity_ptr = new ListItemOrdered<StringT, IteratorT>(it, end);
@@ -448,6 +442,25 @@ namespace stpl {
 									}
 								}
 								break;
+							case WikiEntityConstants::WIKI_KEY_PROPERTY_DELIMITER:
+								if (parent_ptr) {
+									if (parent_ptr->get_group() == PROPERTY) {
+										// a property can't not be the paranet of another property
+										parent_ptr->set_open(false);
+										parent_ptr->end(it);
+										// entity_ptr = new WikiProperty<StringT, IteratorT>(++it, end);
+										// entity_ptr->set_parent(parent_ptr->get_parent());
+										// previous_state = PROPERTY;
+										entity_ptr = parent_ptr;
+									}
+									else if (parent_ptr->get_group() == TBASE) {
+										// because | is for separator it can't be part of next entity
+										begin = ++it;
+										entity_ptr = new WikiProperty<StringT, IteratorT>(begin, end);
+										previous_state = PROPERTY;
+									}
+								}
+								break;								
 							default:
 								break;
 							}

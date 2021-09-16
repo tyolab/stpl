@@ -519,15 +519,13 @@ namespace stpl {
 
 			protected:
 				virtual bool is_end(IteratorT& it) {
-					if (*it == '\n')
-						return true;
-					return false;
+					return *it == '\n';
 				}
 
 			private:
 				void init() { 
 					this->set_group(LAYOUT_ITEM);					
-				}			
+				}	
 		};
 
 		template <typename StringT = std::string,
@@ -556,19 +554,15 @@ namespace stpl {
 
 				virtual bool is_start(IteratorT& it) {
 					if (*it == WikiEntityConstants::WIKI_KEY_LIST) {
-						// ++it;
+						++it;
 						return true;
 					}
 					return false;
 				}
 
-				// virtual bool is_end(IteratorT& it) {
-				// 	return *it == '*' || ListItem<StringT, IteratorT>::is_end(it);
-				// }				
-
 			private:
 				void init() { 
-					this->set_type(LAYOUT_UL);					
+					this->set_type(LAYOUT_UL);		
 				}			
 		};	
 
@@ -598,7 +592,7 @@ namespace stpl {
 
 				virtual bool is_start(IteratorT& it) {
 					if (*it == WikiEntityConstants::WIKI_KEY_LIST_ORDERED) {
-						// ++it;
+						++it;
 						return true;
 					}
 					return false;
@@ -1959,6 +1953,7 @@ namespace stpl {
 
 			private:
 				void init() {
+
 					this->set_wiki_key_char();
 					this->end_in_same_line_ = true;
 					this->strict_ = true;
