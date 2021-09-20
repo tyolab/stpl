@@ -292,8 +292,8 @@ namespace stpl {
 				 *                         2) ended by parent end
 				 *                         3) ended by end of input
 				 */
-				virtual bool is_end(IteratorT& it) {
-					return this->is_separated(it) || (this->parent_ptr_ && this->parent_ptr_->is_end(it)) || StringBound<StringT, IteratorT>::is_end(it);
+				virtual bool is_end(IteratorT& it, bool advance=true) {
+					return this->is_separated(it) || (this->parent_ptr_ && this->parent_ptr_->is_end(it, false)) || StringBound<StringT, IteratorT>::is_end(it);
 				}			
 
 				virtual bool is_pause(IteratorT& it) {
@@ -344,7 +344,7 @@ namespace stpl {
 				 * 
 				 * But generally we won't end until a new enity is found which can't be just link and template
 				 */
-				// virtual bool is_end(IteratorT& it) {
+				// virtual bool is_end(IteratorT& it, bool advance=true) {
 				// 	if (*it == '[' || *it == '{' || *it == '\n')
 				// 		return true;
 				// 	return ;
@@ -426,7 +426,7 @@ namespace stpl {
 					return true;
 				}
 
-				virtual bool is_end(IteratorT& it) {
+				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if ((it - this->begin()) > 5) {
 						return true;
 					}
@@ -601,7 +601,7 @@ namespace stpl {
 					return ret;
 				}
 				
-				virtual bool is_end(IteratorT& it) {
+				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (this->eow(it))
 						return true;		
 						

@@ -67,35 +67,38 @@ namespace stpl {
 				 * the appearing order
 				 */
 				virtual std::string to_html() {
-					if (this->has_delimiter()) {
+					stringstream ss;
+					//if (this->has_delimiter()) {
+						ss << "<property name=\"";
 						std::string name = std::string(this->name_.begin(), this->name_.end());
+						ss << name << "\">";
 						if (this->children_.size() > 0) {
-							stringstream ss;
-							ss << name << "=";
-							if (this->has_quote())
-								ss << "\"";
+
+							// ss << name << "=";
+							// if (this->has_quote())
+							// 	ss << "\"";
 							auto it = this->children_.begin();
 							while (it != this->children_.end()) {
-								ss << (*it)->to_html();
+								ss << (*it++)->to_html();
 							}
 
-							if (this->has_quote())
-								ss << "\"";
-							return ss.str();
+							// if (this->has_quote())
+							// 	ss << "\"";
 						}
-						
-						std::string value;
-						if (this->has_delimiter()) {
+						else {
+							std::string value;
+							//if (this->has_delimiter()) {
 							value = this->value_.to_std_string();
 							value = std::regex_replace(value, std::regex("'"), "&apos;");
 							value = std::regex_replace(value, std::regex("\""), "&quot;");
-
-							return name + "=\"" + value + "\"";
+							ss << value;
+								//return name + "=\"" + value + "\"";
+							//}
 						}
-
-						return name;
-					}
-					return Property<StringT, IteratorT>::to_std_string();
+					//}
+					//return Property<StringT, IteratorT>::to_std_string();
+					ss << "</property>";
+					return ss.str();
 				}
 
 			protected:
@@ -121,8 +124,8 @@ namespace stpl {
 				/**
 				 * A property can be inside a template or a link
 				 */
-				virtual bool is_end(IteratorT& it) {
-					return Property<StringT, IteratorT>::is_end(it) || WikiEntity<StringT, IteratorT>::is_end(it);
+				virtual bool is_end(IteratorT& it, bool advance=true) {
+					return WikiEntity<StringT, IteratorT>::is_end(it) || Property<StringT, IteratorT>::is_end(it);
 				}
 
 				virtual bool is_pause(IteratorT& it) {
@@ -195,7 +198,7 @@ namespace stpl {
 					return true;
 				}
 
-				virtual bool is_end(IteratorT& it) {
+				virtual bool is_end(IteratorT& it, bool advance=true) {
 					return this->eow(it) || text_stop(it);
 				}
 
@@ -458,7 +461,7 @@ namespace stpl {
 					return false;
 				}
 
-				virtual bool is_end(IteratorT& it) {
+				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (!Tag<StringT, IteratorT>::is_end(it)) {
 						IteratorT begin = it;
 						IteratorT end = this->end();
@@ -469,11 +472,6 @@ namespace stpl {
 								return true;
 							}
 						}
-						//if (!ret)
-						//	; //it = ++end; /// since the end char(">") is not included in attribute, when coming to end of parsing attributes
-										/// that means we need step one char ahead
-						//else
-						//	it = --end; // if the end is the end char already, but it will be skipped by the parent function
 						return false;
 					}
 
@@ -529,7 +527,7 @@ namespace stpl {
 				virtual ~ListItem() {};
 
 			protected:
-				virtual bool is_end(IteratorT& it) {
+				virtual bool is_end(IteratorT& it, bool advance=true) {
 					return *it == '\n';
 				}
 
@@ -761,7 +759,7 @@ namespace stpl {
 					return BasicWikiEntity<StringT, IteratorT>::is_pause(it);
 				}
 
-				virtual bool is_end(IteratorT& it) {
+				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (*it == '\n') {
 						IteratorT next = it + 1;
 						this->skip_whitespace(next);
@@ -1002,7 +1000,7 @@ namespace stpl {
 					return ret;
 				}
 
-				virtual bool is_end(IteratorT& it) {
+				virtual bool is_end(IteratorT& it, bool advance=true) {
 					bool ret = false;
 					if (start_k_) {
 						if (start_k_->is_ended_wiki_keyword())
@@ -1565,15 +1563,19 @@ namespace stpl {
 					return false;
 				}
 
-				virtual bool is_end(IteratorT& it) {
+				/**
+				 * It has clear end boundary, it end only when a boundary is seen
+				 */
+				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (*it == '|') {
 						IteratorT next = it + 1;
 						if (*next == '}') {
-							it = next + 1;
+							if (advance)
+								it = next + 1;
 							return true;
 						}
 					}
-					return TBase<StringT, IteratorT>::is_end(it);
+					return false;
 				}
 
 			private:
@@ -1620,15 +1622,19 @@ namespace stpl {
 					return *it == ';';
 				}
 
-				virtual bool is_end(IteratorT& it) {
+				/**
+				 * It has clear end boundary, it end only when a boundary is seen
+				 */
+				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (*it == '}') {
 						IteratorT next = it + 1;
 						if (*next == '-') {
-							it = next + 1;
+							if (advance)
+								it = next + 1;
 							return true;
 						}
 					}
-					return TBase<StringT, IteratorT>::is_end(it);
+					return false;
 				}
 
 			private:
@@ -1694,21 +1700,20 @@ namespace stpl {
 						else if (this->children_.size() == 2) {
 							ss << "<span type=\"template\"";
 							ss << " " << name <<  "=\"" << (*it++)->to_html() << "\"";
-							ss << ">" << (*it)->to_html() << "</spane>";
+							ss << ">" << (*it)->to_html() << "</span>";
 						}
 						else {
 							ss << "<template ";
-							ss << " name=\"" << name << "\"";
+							ss << " name=\"" << name << "\">";
 							while (it != this->children_.end()) {
-								if (count == 0) 
-									ss  << (*it)->to_html();
-								else if (count == 1)
-									break;
+								// if (count >= 0) 
+								// 	ss << " ";
+								ss  << (*it)->to_html();
 
 								++count;
 								++it;
 							}
-							ss << "></template>";
+							ss << "</template>";
 						}
 						
 					}
@@ -1727,15 +1732,19 @@ namespace stpl {
 					return (*it == '|');
 				}
 
-				virtual bool is_end(IteratorT& it) {
+				/**
+				 * It has clear end boundary, it end only when a boundary is seen
+				 */
+				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (*it == '}') {
-						++it;
-						if (*it == '}') {
-							++it;
+						IteratorT next = it + 1;
+						if (*next == '}') {
+							if (advance)
+								it = next + 1;
 							return true;
 						}
 					}
-					return TBase<StringT, IteratorT>::is_end(it);
+					return false;
 				}
 
 			private:
@@ -1763,7 +1772,7 @@ namespace stpl {
 				virtual ~WikiEntityOrdered() {}
 
 			protected:
-				virtual bool is_end(IteratorT& it) {
+				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (*it == '\n') {
 						IteratorT next = it + 1;
 						this->skip_whitespace(next);
@@ -1829,7 +1838,7 @@ namespace stpl {
 					return true;
 				}
 
-				virtual bool is_end(IteratorT& it) {
+				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (this->end_in_same_line_ && *it == '\n') {
 						if (this->matched_levels_ != 0) {
 							// OK, this is not a valid entity
@@ -1903,7 +1912,7 @@ namespace stpl {
 					this->wiki_key_char_end_ = WikiEntityConstants::WIKI_KEY_HEADING;
 				}
 
-				virtual bool is_end(IteratorT& it) {
+				virtual bool is_end(IteratorT& it, bool advance=true) {
 					// when the line ends it ends
 					if (*it == '\n') {
 						return true;
@@ -1945,7 +1954,7 @@ namespace stpl {
 					this->wiki_key_char_end_ = '\'';
 				}
 
-				virtual bool is_end(IteratorT& it) {
+				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (WikiEntityLeveled<StringT, IteratorT>::is_end(it)) {
 						if (this->level_ != 2 && this->level_ != 3 && this->level_ != 5) {
 							this->begin(it);
@@ -2053,7 +2062,7 @@ namespace stpl {
 					return ret;
 				}
 
-				virtual bool is_end(IteratorT& it) {
+				virtual bool is_end(IteratorT& it, bool advance=true) {
 					// when the line ends it ends
 					if (url_.end() == url_.begin() && (external_ && *it == ' ') || *it == '|') {
 						url_.end(it++);

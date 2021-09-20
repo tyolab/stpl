@@ -343,7 +343,7 @@ namespace stpl {
 				return ret;
 			}
 
-			virtual bool is_end(IteratorT& it) {
+			virtual bool is_end(IteratorT& it, bool advance=true) {
 				return eow(it);
 			}
 

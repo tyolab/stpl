@@ -102,7 +102,7 @@ namespace stpl {
 				return true; 
 			}
 
-			virtual bool is_end(IteratorT& it) {
+			virtual bool is_end(IteratorT& it, bool advance=true) {
 				bool ret = false;
 
 					if (this->is_delimiter(it)) {
@@ -116,7 +116,6 @@ namespace stpl {
 						++it;
 
 						this->skip_whitespace(it);
-						//if (!this->eow(it)) {
 							if (*it == '\"' || *it == '\'') {
 								is_single_quote_ = (*it == '\'');
 								has_quote_ = true;
@@ -124,41 +123,8 @@ namespace stpl {
 							}
 							value_.begin(it);
 							value_.end(it);
-						//}
 					}
 
-					// if have the break character like "=, space" or something specified as the break char
-					// which mean the beginning of VALUE
-					// if (has_delimiter_) {
-					// 	bool check_end_char = false;
-					// 	if (has_quote_) {
-					// 		IteratorT pre = it;
-					// 		pre--;
-					// 		bool ret1 = false;
-					// 		bool ret2 = false;
-					// 		if (( (ret1 = (*pre == '\"'))
-					// 				|| (ret2 = (*pre == '\''))
-					// 			  )
-					// 			 && *(--pre) != '\\') {
-					// 			if (is_single_quote_)
-					// 				ret = ret2;
-					// 			else
-					// 				ret = ret1;
-
-					// 		}
-					// 		if (!ret && !force_end_quote_)
-					// 			check_end_char = true;
-					// 	} else {
-					// 		check_end_char = true;
-					// 	}
-					// 	if (check_end_char)
-					// 		ret = is_end_char(it);
-					// }
-					// else { // looking for the NAME part
-
-					// 	ret = is_end_char(it);
-
-					// }
 					if (ret = is_end_char(it))
 						value_.end(it);
 				return ret;
