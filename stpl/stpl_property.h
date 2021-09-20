@@ -62,11 +62,27 @@ namespace stpl {
 					if (pos != std::string::npos)
 						return true;
 				}
-				else {
-					if (has_delimiter_ && !has_quote_)
+
+				if (this->has_delimiter_) {
+					if (!has_quote_)
 						return isspace(*it);
+					else {
+						if (*it == '\'' || *it == '\"') {
+							// it has quote
+							IteratorT pre = it - 1;
+							if (*pre != '\\') {
+								if (is_single_quote_) {
+									return *it == '\'';
+								}
+								return *it == '\"';
+							}
+						}
+					}
 				}
-				return false;
+
+				// if it doesn't have a delimiter
+				// by default we won't where to end until we see a new line
+				return (*it == '\n');
 			}
 
 			virtual bool is_delimiter(IteratorT& it) {
@@ -87,82 +103,64 @@ namespace stpl {
 			}
 
 			virtual bool is_end(IteratorT& it) {
-				bool ret = this->eow(it);
-				//	ret = (has_equal_ && (value_.begin() != value_.end()));
-
-				if (!ret) {
+				bool ret = false;
 
 					if (this->is_delimiter(it)) {
 						has_delimiter_ = true;
-						name_.end(it);
+						// backward for removing space
+						// deside where is the end of name
+						IteratorT pre = it;
+						this->skip_whitespace_backward(--pre);
+						name_.end(++pre);
 
-						value_.begin(it + 1);
-						value_.end(it + 1);
+						++it;
+
+						this->skip_whitespace(it);
+						//if (!this->eow(it)) {
+							if (*it == '\"' || *it == '\'') {
+								is_single_quote_ = (*it == '\'');
+								has_quote_ = true;
+								++it;
+							}
+							value_.begin(it);
+							value_.end(it);
+						//}
 					}
 
 					// if have the break character like "=, space" or something specified as the break char
 					// which mean the beginning of VALUE
-					if (has_delimiter_) {
-						bool check_end_char = false;
-						if (has_quote_) {
-							IteratorT pre = it;
-							pre--;
-							bool ret1 = false;
-							bool ret2 = false;
-							if (( (ret1 = (*pre == '\"'))
-									|| (ret2 = (*pre == '\''))
-								  )
-								 && *(--pre) != '\\') {
-								if (is_single_quote_)
-									ret = ret2;
-								else
-									ret = ret1;
+					// if (has_delimiter_) {
+					// 	bool check_end_char = false;
+					// 	if (has_quote_) {
+					// 		IteratorT pre = it;
+					// 		pre--;
+					// 		bool ret1 = false;
+					// 		bool ret2 = false;
+					// 		if (( (ret1 = (*pre == '\"'))
+					// 				|| (ret2 = (*pre == '\''))
+					// 			  )
+					// 			 && *(--pre) != '\\') {
+					// 			if (is_single_quote_)
+					// 				ret = ret2;
+					// 			else
+					// 				ret = ret1;
 
-//								if (ret)
-//									++it;
-							}
-							if (!ret && !force_end_quote_)
-								check_end_char = true;
-						} else {
-							check_end_char = true;
-						}
-						if (check_end_char)
-							ret = is_end_char(it);
-					}
-					else { // looking for the NAME part
-						if (!(ret = is_end_char(it))) {
+					// 		}
+					// 		if (!ret && !force_end_quote_)
+					// 			check_end_char = true;
+					// 	} else {
+					// 		check_end_char = true;
+					// 	}
+					// 	if (check_end_char)
+					// 		ret = is_end_char(it);
+					// }
+					// else { // looking for the NAME part
 
-							name_.end(it);
-							bool has_space = isspace(*it);
+					// 	ret = is_end_char(it);
 
-							if (has_space)
-								this->skip_whitespace(it);
-
-							if (*it == '=') {
-								has_delimiter_ = true;
-
-								// deside where is the end of name
-								IteratorT pre = it;
-								this->skip_whitespace_backward(--pre);
-								name_.end(++pre);
-
-								++it;
-								this->skip_whitespace(it);
-								if (*it == '\"' || *it == '\'') {
-									is_single_quote_ = (*it == '\'');
-									has_quote_ = true;
-									++it;
-								}
-								value_.begin(it);
-								value_.end(it);
-								//--it;
-							}
-
-							if (has_space && !has_delimiter_)
-								ret = true;
-						}
-					}
-				} // (1) if (!ret)
+					// }
+					if (ret = is_end_char(it))
+						value_.end(it);
 				return ret;
 			}
 
@@ -232,8 +230,10 @@ namespace stpl {
 			void force_end_quote(bool b) { force_end_quote_ = b; }
 
 			bool has_delimiter() {
-				return has_delimiter_;
+				return this->has_delimiter_;
 			}
+
+
 
 			virtual void create() {
 				create(name(), value());
@@ -257,6 +257,10 @@ namespace stpl {
 
 			const StringB& get_value() const {
 				return value_;
+			}
+
+			bool has_quote() const {
+				return has_quote_;
 			}
 };
 }

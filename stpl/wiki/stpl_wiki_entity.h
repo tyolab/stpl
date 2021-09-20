@@ -67,17 +67,35 @@ namespace stpl {
 				 * the appearing order
 				 */
 				virtual std::string to_html() {
-					std::string name = std::string(this->name_.begin(), this->name_.end());
-					std::string value;
 					if (this->has_delimiter()) {
-						value = this->value_.to_std_string();
-						value = std::regex_replace(value, std::regex("'"), "&apos;");
-						value = std::regex_replace(value, std::regex("\""), "&quot;");
+						std::string name = std::string(this->name_.begin(), this->name_.end());
+						if (this->children_.size() > 0) {
+							stringstream ss;
+							ss << name << "=";
+							if (this->has_quote())
+								ss << "\"";
+							auto it = this->children_.begin();
+							while (it != this->children_.end()) {
+								ss << (*it)->to_html();
+							}
 
-						return name + "=\"" + value + "\"";
+							if (this->has_quote())
+								ss << "\"";
+							return ss.str();
+						}
+						
+						std::string value;
+						if (this->has_delimiter()) {
+							value = this->value_.to_std_string();
+							value = std::regex_replace(value, std::regex("'"), "&apos;");
+							value = std::regex_replace(value, std::regex("\""), "&quot;");
+
+							return name + "=\"" + value + "\"";
+						}
+
+						return name;
 					}
-
-					return name;
+					return Property<StringT, IteratorT>::to_std_string();
 				}
 
 			protected:
@@ -97,21 +115,14 @@ namespace stpl {
 							this->value_.end(it);
 						return true;
 					}
-					else if (*it == this->delimiter_) {
-						this->name_.end(it);
-						Property<StringT, IteratorT>::skip_invalid_chars (++it);
-						this->value_.begin(it);
-						this->value_.end(it);
-						return true;
-					}
-					return false;
+					return Property<StringT, IteratorT>::is_delimiter(it);
 				}
 
+				/**
+				 * A property can be inside a template or a link
+				 */
 				virtual bool is_end(IteratorT& it) {
-					if (*it == '|' || *it == '}') {
-						return true;
-					}	
-					return false;
+					return Property<StringT, IteratorT>::is_end(it) || WikiEntity<StringT, IteratorT>::is_end(it);
 				}
 
 				virtual bool is_pause(IteratorT& it) {
@@ -756,7 +767,7 @@ namespace stpl {
 						this->skip_whitespace(next);
 						return *next != '*';
 					}
-					return false;
+					return WikiEntity<StringT, IteratorT>::is_end(it);
 				}
 
 			private:
@@ -1562,7 +1573,7 @@ namespace stpl {
 							return true;
 						}
 					}
-					return false;
+					return TBase<StringT, IteratorT>::is_end(it);
 				}
 
 			private:
@@ -1617,7 +1628,7 @@ namespace stpl {
 							return true;
 						}
 					}
-					return false;
+					return TBase<StringT, IteratorT>::is_end(it);
 				}
 
 			private:
@@ -1724,7 +1735,7 @@ namespace stpl {
 							return true;
 						}
 					}
-					return false;
+					return TBase<StringT, IteratorT>::is_end(it);
 				}
 
 			private:
@@ -1758,7 +1769,7 @@ namespace stpl {
 						this->skip_whitespace(next);
 						return *next != '#';
 					}
-					return false;
+					return WikiEntityContainer<StringT, IteratorT>::is_end(it);
 				}
 
 			private:
@@ -1849,7 +1860,7 @@ namespace stpl {
 						
 						return true;
 					}
-					return false; // this->eow(it) || text_stop(it);
+					return WikiEntityOrdered<StringT, IteratorT>::is_end(it); // this->eow(it) || text_stop(it);
 				}
 
 				virtual void add_content(StringT& text) {
@@ -1948,7 +1959,7 @@ namespace stpl {
 						}
 						return true;
 					}
-					return false;
+					return WikiEntityLeveled<StringT, IteratorT>::is_end(it);
 				}
 
 			private:
@@ -2054,7 +2065,6 @@ namespace stpl {
 					if (ret) {
 						anchor_.end(it - this->level_);
 						// anchor and url are the same if there is only one property
-						//if (anchor_.begin() > url_.end()) anchor_.end(it);
 					}
 					return ret;
 				}

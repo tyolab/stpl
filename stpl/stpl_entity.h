@@ -41,6 +41,7 @@ namespace stpl {
 	class Atom {
 		public:
 			static int                                      counter;
+			static int                                      line_counter;
 
 		protected:
 			int												id_;	
@@ -142,7 +143,7 @@ namespace stpl {
 			}
 
 			IteratorT skip_whitespace(IteratorT& next) {
-				while (!this->eow(next)) {
+				do {
 					if (*next == '\n') {
 						++line_id_;
 						++next;
@@ -152,13 +153,13 @@ namespace stpl {
 					}
 					else
 						break;
-				}
+				} while (!this->eow(next));
 					
 				return next;
 			}
 
 			IteratorT skip_whitespace_backward(IteratorT& pre) {
-				while (!this->bow(pre)) {
+				do {
 					if (*pre == '\n') {
 						--pre;
 						--line_id_;
@@ -168,7 +169,7 @@ namespace stpl {
 					}
 					else
 						break;
-				}
+				} while (!this->bow(pre));
 				return pre;
 			}
 

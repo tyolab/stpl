@@ -287,6 +287,14 @@ namespace stpl {
 				}
 
 			protected:
+				/**
+				 * An entity is ended when 1) ended by the parent separator
+				 *                         2) ended by parent end
+				 *                         3) ended by end of input
+				 */
+				virtual bool is_end(IteratorT& it) {
+					return this->is_separated(it) || (this->parent_ptr_ && this->parent_ptr_->is_end(it)) || StringBound<StringT, IteratorT>::is_end(it);
+				}			
 
 				virtual bool is_pause(IteratorT& it) {
 					// ok we are not gonna pause when the character with the following
@@ -333,12 +341,14 @@ namespace stpl {
 				/**
 				 * For the text node, most likely it will encounter a link or template which will mark
 				 * the end of it
+				 * 
+				 * But generally we won't end until a new enity is found which can't be just link and template
 				 */
-				virtual bool is_end(IteratorT& it) {
-					if (*it == '[' || *it == '{' || *it == '\n')
-						return true;
-					return false;
-				}
+				// virtual bool is_end(IteratorT& it) {
+				// 	if (*it == '[' || *it == '{' || *it == '\n')
+				// 		return true;
+				// 	return ;
+				// }
 		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
@@ -472,12 +482,7 @@ namespace stpl {
 
 				virtual void add_child(BasicWikiEntity<StringT, IteratorT>* child) {
 					this->add(child);
-				}
-
-			protected:
-				virtual bool is_end(IteratorT& it) {
-					return this->is_separated(it) || BasicWikiEntity<StringT, IteratorT>::is_end(it);
-				}
+				}				
 
 			private:
 				void init() {
