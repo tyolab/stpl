@@ -165,6 +165,13 @@ namespace stpl {
 				static const char WIKI_KEY_SLASH = '/';
 		};
 
+		class WikiEntityVariables {
+			public:
+				static std::string protocol;
+				static std::string path;
+				static std::string host;
+		};
+
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 		class BasicWikiEntity : public StringBound<StringT, IteratorT> 
 		{

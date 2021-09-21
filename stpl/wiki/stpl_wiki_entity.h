@@ -62,6 +62,18 @@ namespace stpl {
 					}
 				}
 
+				virtual std::string to_std_string() {
+					if (this->children_.size() > 0) {
+						stringstream ss;
+						auto it = this->children_.begin();
+						while (it != this->children_.end()) {
+							ss << (*it++)->to_html();
+						}
+						return ss.str();
+					}
+					return BasicWikiEntity<StringT, IteratorT>::to_std_string();
+				}
+
 				/**
 				 * For all properties, it could be a property name or property value, which is decided by 
 				 * the appearing order
@@ -150,6 +162,8 @@ namespace stpl {
 						++it;
 						return true;
 					}
+					else if (*it == '|')
+						return true;
 					return false;
 				}
 
@@ -1673,7 +1687,7 @@ namespace stpl {
 						auto it = this->children_.begin();
 						while (it != this->children_.end()) {
 							if (count == 0) 
-								ss << "\"" << (*it)->to_html() << "\"";
+								ss << "\"" << (*it)->to_std_string() << "\"";
 							else if (count == 1)
 								break;
 
@@ -1682,7 +1696,7 @@ namespace stpl {
 						}
 						ss << ">";
 						if (it != this->children_.end())
-							ss << (*it)->to_html();
+							ss << (*it)->to_std_string();
 						ss << "</span>";
 
 					}
@@ -2073,6 +2087,8 @@ namespace stpl {
 					bool ret = WikiEntityLeveled<StringT, IteratorT>::is_end(it);
 					if (ret) {
 						anchor_.end(it - this->level_);
+						if (url_.begin() == anchor_.begin())
+							url_.end(anchor_.end());
 						// anchor and url are the same if there is only one property
 					}
 					return ret;
@@ -2093,9 +2109,24 @@ namespace stpl {
 				void set_url(const StringB &url) {
 					url_ = url;
 				}
-
+				
+				/**
+				 * For the link things might get a bit interesting
+				 * 
+				 */
 				virtual std::string to_html() {
-					return this->anchor_.to_std_string();
+					stringstream ss;
+					ss << "<a href=\"";
+					if (this->external_) {
+						ss << url_.to_string();
+					}
+					else {
+						ss << WikiEntityVariables::protocol << "://" + WikiEntityVariables::host << WikiEntityVariables::path << url_.to_string();
+					}
+					ss << "\">";
+					ss << this->anchor_.to_std_string();
+					ss << "</a>";
+					return ss.str();
 				}
 
 			protected:
