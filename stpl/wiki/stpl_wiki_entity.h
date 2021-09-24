@@ -55,6 +55,14 @@ namespace stpl {
 				}
 				virtual ~WikiProperty() {}
 
+				virtual void end(IteratorT it) { 
+					// need to close things up
+					if (this->value_.begin() > this->name_.end()) {
+						this->value_.end(it);
+					}
+					WikiEntity<StringT, IteratorT>::end(it); 
+				}
+
 				virtual void create_text_child(IteratorT it) {
 					if (it > this->value_.begin()) {
 						this->last_child_ = new Text<StringT, IteratorT>(this->value_.begin(), it);
@@ -139,7 +147,14 @@ namespace stpl {
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					// Shouldn't use property's end for WikiProperty, as an normal property, e.g. a property inside a html/xml tag, 
 					// space is used for an end
-					return WikiEntity<StringT, IteratorT>::is_end(it)/*  || Property<StringT, IteratorT>::is_end(it) */;
+					if (WikiEntity<StringT, IteratorT>::is_end(it)) {/*  || Property<StringT, IteratorT>::is_end(it) */
+						// need to close things up
+						// if (this->value_.begin() > this->name_.end()) {
+						// 	this->value_.end(it);
+						// }
+						return true;
+					}
+					return false;
 				}
 
 				virtual bool is_pause(IteratorT& it) {
@@ -547,6 +562,10 @@ namespace stpl {
 				}
 				virtual ~ListItem() {};
 
+				virtual std::string to_html() {
+					return "<li>" + WikiEntity<StringT, IteratorT>::to_html() + "</li>";
+				}				
+
 			protected:
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					return *it == '\n';
@@ -766,6 +785,10 @@ namespace stpl {
 					 { init(); }
 
 				virtual ~WikiEntityContainer() {
+				}
+
+				virtual std::string to_html() {
+					return "<ul>" + WikiEntity<StringT, IteratorT>::to_html() + "</ul>";
 				}
 
 			protected:
@@ -1567,6 +1590,10 @@ namespace stpl {
 				}
 				virtual ~Table() {}
 
+				virtual std::string to_html() {
+					return "<div>" + WikiEntity<StringT, IteratorT>::to_html() + "</div>";
+				}
+
 			protected:
 				virtual bool is_start(IteratorT& it) {
 					if (*it == '{' && (*++it) == '|') {
@@ -1792,6 +1819,10 @@ namespace stpl {
 				}
 				virtual ~WikiEntityOrdered() {}
 
+				virtual std::string to_html() {
+					return "<ol>" + WikiEntity<StringT, IteratorT>::to_html() + "</ol>";
+				}
+
 			protected:
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (*it == '\n') {
@@ -1927,6 +1958,10 @@ namespace stpl {
 				}
 				virtual ~LayoutLeveled() {}
 
+				virtual std::string to_html() {
+					return "<section>" + WikiEntity<StringT, IteratorT>::to_html() + "</section>";
+				}
+
 			protected:
 				virtual void set_wiki_key_char() override {
 					this->wiki_key_char_start_ = WikiEntityConstants::WIKI_KEY_HEADING;
@@ -1968,6 +2003,18 @@ namespace stpl {
 					this->create(content);
 				}
 				virtual ~Style() {}
+
+				virtual std::string to_html() {
+					if (this->level_ == 2)
+						// return "<span style=\"font-style: italic;\">" + WikiEntityLeveled<StringT, IteratorT>::to_html() + "</span>";
+						return "<i>" + WikiEntityLeveled<StringT, IteratorT>::to_html() + "</i>";
+					else if (this->level_ == 3)
+						return "<b>" + WikiEntityLeveled<StringT, IteratorT>::to_html() + "</b>";
+					else if (this->level_ == 5)
+						return "<b><i>" + WikiEntityLeveled<StringT, IteratorT>::to_html() + "</i></b>";
+					else
+						return WikiEntityLeveled<StringT, IteratorT>::to_html();
+				}
 
 			protected:
 				virtual void set_wiki_key_char() override {

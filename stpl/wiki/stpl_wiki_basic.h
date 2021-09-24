@@ -489,7 +489,20 @@ namespace stpl {
 
 				virtual void add_child(BasicWikiEntity<StringT, IteratorT>* child) {
 					this->add(child);
-				}				
+				}
+
+				virtual std::string to_html() {
+					if (this->children_.size() > 0) {
+						std::stringstream ss;
+						
+						auto it = this->children_.begin();
+						for (; it != this->children_.end(); ++it)
+							ss << (*it)->to_html();
+						
+						return ss.str();
+					}
+					return this->to_std_string();
+				}							
 
 			private:
 				void init() {

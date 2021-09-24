@@ -104,9 +104,9 @@ namespace stpl {
 				return *this;
 			}
 
-			void begin(IteratorT it) { begin_ = it; }
+			virtual void begin(IteratorT it) { begin_ = it; }
 			const IteratorT begin() const { return begin_; }
-			void end(IteratorT it) { end_ = it; }
+			virtual void end(IteratorT it) { end_ = it; }
 			const IteratorT end() const { return end_; }
 
 			virtual void bound(IteratorT begin, IteratorT end) {
