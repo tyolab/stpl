@@ -137,7 +137,9 @@ namespace stpl {
 				 * A property can be inside a template or a link
 				 */
 				virtual bool is_end(IteratorT& it, bool advance=true) {
-					return WikiEntity<StringT, IteratorT>::is_end(it) || Property<StringT, IteratorT>::is_end(it);
+					// Shouldn't use property's end for WikiProperty, as an normal property, e.g. a property inside a html/xml tag, 
+					// space is used for an end
+					return WikiEntity<StringT, IteratorT>::is_end(it)/*  || Property<StringT, IteratorT>::is_end(it) */;
 				}
 
 				virtual bool is_pause(IteratorT& it) {
@@ -147,11 +149,16 @@ namespace stpl {
 						return true;
 					}
 					else if (*it == '=') {
-						this->has_delimiter_ = true;
+						this->has_delimiter_ = true; // WikiProperty doesn't use quote for value boundary
+						// backward for removing space
+						// deside where is the end of name
+						IteratorT pre = it;
+						WikiEntity<StringT, IteratorT>::skip_whitespace_backward(--pre);
+						this->name_.end(++pre);
 
 						++it;
 
-						WikiEntity<StringT, IteratorT>::skip_invalid_chars(it);
+						WikiEntity<StringT, IteratorT>::skip_whitespace(it);
 
 						this->value_.begin(it);
 						this->value_.end(it);

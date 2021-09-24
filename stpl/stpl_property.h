@@ -116,13 +116,13 @@ namespace stpl {
 						++it;
 
 						this->skip_whitespace(it);
-							if (*it == '\"' || *it == '\'') {
-								is_single_quote_ = (*it == '\'');
-								has_quote_ = true;
-								++it;
-							}
-							value_.begin(it);
-							value_.end(it);
+						if (*it == '\"' || *it == '\'') {
+							is_single_quote_ = (*it == '\'');
+							has_quote_ = true;
+							++it;
+						}
+						value_.begin(it);
+						value_.end(it);
 					}
 
 					if (ret = is_end_char(it))
