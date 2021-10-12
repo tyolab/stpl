@@ -473,10 +473,10 @@ namespace stpl {
 				virtual ~WikiEntity() {}
 
 				virtual void create_text_child(IteratorT it) {
-					if (it > this->begin()) {
+					//if (it > this->begin()) {
 						last_child_ = new Text<StringT, IteratorT>(this->begin(), it);
 						this->add(last_child_);
-					}
+					//}
 				}
 
 				const BasicWikiEntity<StringT, IteratorT> *get_last_child() const {
@@ -488,6 +488,14 @@ namespace stpl {
 				}
 
 				virtual void add_child(BasicWikiEntity<StringT, IteratorT>* child) {
+					if (this->children_.size() == 0 && child->begin() > this->begin()) {
+						// IteratorT begin = this->begin();
+						// IteratorT end = child->begin();
+						// this->add(new Text<StringT, IteratorT>(begin, end));
+						create_text_child(child->begin());
+					}
+
+					this->last_child_ = child;
 					this->add(child);
 				}
 
@@ -502,7 +510,33 @@ namespace stpl {
 						return ss.str();
 					}
 					return this->to_std_string();
-				}							
+				}
+
+			protected:
+
+				virtual bool is_end(IteratorT& it, bool advance=true) {
+					if (BasicWikiEntity<StringT, IteratorT>::is_end(it)) {
+						if (last_child_ && it > last_child_->end()) {
+							// we need to record the last text node
+							IteratorT begin = last_child_->end();
+							add_child(new Text<StringT, IteratorT>(begin, it));
+						}
+						return true;
+					}	
+					return false;	
+				}
+
+				virtual bool is_pause(IteratorT& it) {
+					/**
+					 * For any entity when it comes to a pause
+					 * we move the end char to it
+					 */
+					if (BasicWikiEntity<StringT, IteratorT>::is_pause(it)) {
+						this->end(it);
+						return true;
+					}	
+					return false;
+				}								
 
 			private:
 				void init() {
