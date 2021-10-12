@@ -289,9 +289,15 @@ namespace stpl {
 						case WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE:
 							new_entity_check_passed = 1;
 							start_from_newline = false;
-							if (parent_ptr && parent_ptr->get_group() == TBASE) {
-								next = it + 1;
-								if (*next == WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE) {
+							next = it + 1;
+							if (*next == WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE) {
+								if (parent_ptr && parent_ptr->get_group() == PROPERTY) {
+									parent_ptr->end(it);
+									parent_ptr->set_open(false);
+									begin = it;
+									return parent_ptr;
+								}
+								else if (parent_ptr && parent_ptr->get_group() == TBASE) {
 									parent_ptr->end(++next);
 									parent_ptr->set_open(false);
 									begin = next;

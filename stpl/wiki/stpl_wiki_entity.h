@@ -63,7 +63,7 @@ namespace stpl {
 					WikiEntity<StringT, IteratorT>::end(it); 
 				}
 
-				virtual void create_text_child(IteratorT it) {
+				virtual void create_text_child_pre(IteratorT it) {
 					if (it > this->value_.begin()) {
 						this->last_child_ = new Text<StringT, IteratorT>(this->value_.begin(), it);
 						this->add(this->last_child_);
@@ -147,7 +147,11 @@ namespace stpl {
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					// Shouldn't use property's end for WikiProperty, as an normal property, e.g. a property inside a html/xml tag, 
 					// space is used for an end
-					if (WikiEntity<StringT, IteratorT>::is_end(it)) {/*  || Property<StringT, IteratorT>::is_end(it) */
+					if (*it == '}') {
+						IteratorT next = it + 1;
+						return (*next == '}');
+					}
+					else if (WikiEntity<StringT, IteratorT>::is_end(it)) {/*  || Property<StringT, IteratorT>::is_end(it) */
 						// need to close things up
 						// if (this->value_.begin() > this->name_.end()) {
 						// 	this->value_.end(it);
@@ -564,9 +568,21 @@ namespace stpl {
 
 				virtual std::string to_html() {
 					return "<li>" + WikiEntity<StringT, IteratorT>::to_html() + "</li>";
-				}				
+				}		
+
+				virtual void create_text_child_pre(IteratorT it) {
+					this->last_child_ = new Text<StringT, IteratorT>(this->begin(), it);
+					this->add(this->last_child_);
+				}
+
+				virtual void create_text_child_after(IteratorT it) {
+					// so we do nothing here
+					IteratorT begin = this->last_child_->end();
+					this->add_child(new Text<StringT, IteratorT>(begin, it));
+				}								
 
 			protected:
+
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					return *it == '\n';
 				}

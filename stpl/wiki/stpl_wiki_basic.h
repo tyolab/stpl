@@ -194,7 +194,7 @@ namespace stpl {
 					// for debuging
 					// if (*(this->begin()) == 'N')
 					// 	cerr << Atom::counter << std::endl;
-					if (Atom::get_id() == 707)
+					if (Atom::get_id() == 15)
 						parent_ptr_ = NULL;
 				}
 				
@@ -472,11 +472,19 @@ namespace stpl {
 				}
 				virtual ~WikiEntity() {}
 
-				virtual void create_text_child(IteratorT it) {
-					//if (it > this->begin()) {
-						last_child_ = new Text<StringT, IteratorT>(this->begin(), it);
-						this->add(last_child_);
-					//}
+				/**
+				 * Not many kinds of entities will have direct text node as child(ren)
+				 */
+				virtual void create_text_child_pre(IteratorT it) {
+					// so we do nothing here
+					// last_child_ = new Text<StringT, IteratorT>(begin, it);
+					// this->add(last_child_);
+				}
+
+				virtual void create_text_child_after(IteratorT it) {
+					// so we do nothing here
+					// IteratorT begin = last_child_->end();
+					// add_child(new Text<StringT, IteratorT>(begin, it));
 				}
 
 				const BasicWikiEntity<StringT, IteratorT> *get_last_child() const {
@@ -492,7 +500,7 @@ namespace stpl {
 						// IteratorT begin = this->begin();
 						// IteratorT end = child->begin();
 						// this->add(new Text<StringT, IteratorT>(begin, end));
-						create_text_child(child->begin());
+						create_text_child_pre(child->begin());
 					}
 
 					this->last_child_ = child;
@@ -518,8 +526,7 @@ namespace stpl {
 					if (BasicWikiEntity<StringT, IteratorT>::is_end(it)) {
 						if (last_child_ && it > last_child_->end()) {
 							// we need to record the last text node
-							IteratorT begin = last_child_->end();
-							add_child(new Text<StringT, IteratorT>(begin, it));
+							this->create_text_child_after(it);
 						}
 						return true;
 					}	
@@ -543,6 +550,8 @@ namespace stpl {
 					last_child_ = NULL;
 				}
 		};
+
+
 		
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 		class WikiKeyword: public BasicWikiEntity<StringT, IteratorT> 
