@@ -27,6 +27,8 @@
 #include <list>
 #include <regex>
 
+#include "../../utils/strings.h"
+
 #include "stpl_wiki_basic.h"
 
 #include "../stpl_property.h"
@@ -91,6 +93,8 @@ namespace stpl {
 					//if (this->has_delimiter()) {
 						ss << "<property name=\"";
 						std::string name = std::string(this->name_.begin(), this->name_.end());
+						name = utils::escape_quote(name);
+
 						ss << name << "\">";
 						if (this->children_.size() > 0) {
 
@@ -147,11 +151,13 @@ namespace stpl {
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					// Shouldn't use property's end for WikiProperty, as an normal property, e.g. a property inside a html/xml tag, 
 					// space is used for an end
-					if (*it == '}') {
-						IteratorT next = it + 1;
-						return (*next == '}');
-					}
-					else if (WikiEntity<StringT, IteratorT>::is_end(it)) {/*  || Property<StringT, IteratorT>::is_end(it) */
+					// it better not to do it, as WikiProperty could be child of Template or Table
+					// if (*it == '}') {
+					// 	IteratorT next = it + 1;
+					// 	return (*next == '}');
+					// }
+					// else 
+					if (WikiEntity<StringT, IteratorT>::is_end(it)) {/*  || Property<StringT, IteratorT>::is_end(it) */
 						// need to close things up
 						// if (this->value_.begin() > this->name_.end()) {
 						// 	this->value_.end(it);
@@ -584,7 +590,14 @@ namespace stpl {
 			protected:
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
-					return *it == '\n';
+					if (*it == '\n') {
+						if (this->last_child_ && it > this->last_child_->end()) {
+							// we need to record the last text node
+							this->create_text_child_after(it);
+						}
+						return true;
+					}
+					return false;
 				}
 
 			private:
@@ -617,9 +630,12 @@ namespace stpl {
 				}
 				virtual ~ListItemUnordered() {};
 
+			protected:
+
 				virtual bool is_start(IteratorT& it) {
 					if (*it == WikiEntityConstants::WIKI_KEY_LIST) {
 						++it;
+						this->begin(it);
 						return true;
 					}
 					return false;
@@ -655,9 +671,12 @@ namespace stpl {
 				}
 				virtual ~ListItemOrdered() {};
 
+			protected:
+
 				virtual bool is_start(IteratorT& it) {
 					if (*it == WikiEntityConstants::WIKI_KEY_LIST_ORDERED) {
 						++it;
+						this->begin(it);
 						return true;
 					}
 					return false;
@@ -1593,6 +1612,10 @@ namespace stpl {
 				typedef	StringT	string_type;
 				typedef IteratorT	iterator;
 
+			private:
+				StringBound<StringT, IteratorT>           caption_;
+				StringBound<StringT, IteratorT>           style_;
+
 			public:
 				Table() : TBase<StringT, IteratorT>::TBase() { init(); }
 				Table(IteratorT it)
@@ -1612,9 +1635,14 @@ namespace stpl {
 
 			protected:
 				virtual bool is_start(IteratorT& it) {
-					if (*it == '{' && (*++it) == '|') {
-						++it;
-						return true; // TBase<StringT, IteratorT>::is_start(it);
+					if (*it == '{' ) {
+						IteratorT next = it + 1;
+						if (*next == '|') {
+							// | will be used as
+							// ++it;
+							it = next;
+							return true; // TBase<StringT, IteratorT>::is_start(it);
+						}
 					}
 					return false;
 				}
@@ -1758,13 +1786,13 @@ namespace stpl {
 						if (this->children_.size() == 1) {
 							ss << "<template ";
 							ss << " name=\"" << name << "\"";
-							ss << " value=\"" << (*it)->to_html() << "\"";
+							ss << " value=\"" << (*it)->to_string() << "\"";
 							ss << "></template>";
 						}
 						else if (this->children_.size() == 2) {
 							ss << "<span type=\"template\"";
-							ss << " " << name <<  "=\"" << (*it++)->to_html() << "\"";
-							ss << ">" << (*it)->to_html() << "</span>";
+							ss << " " << name <<  "=\"" << (*it++)->to_string() << "\"";
+							ss << ">" << (*it)->to_string() << "</span>";
 						}
 						else {
 							ss << "<template ";
@@ -1894,6 +1922,22 @@ namespace stpl {
 					return level_;
 				}
 
+				virtual StringT to_string() {
+					if (this->begin() == this->end())
+						return StringT("");
+					return StringT(this->begin() + this->level_, this->end() - this->level_);
+				}
+
+				/**
+				 * As if the StringT is char*, it won't work
+				 * so we have to make it std::string
+				 */
+				virtual std::string to_std_string() {
+					if (this->begin() == this->end())
+						return std::string("");
+					return std::string(this->begin() + this->level_, this->end() - this->level_);
+				}				
+
 			protected:
 				virtual bool is_start(IteratorT& it) {
 					while (*it == this->wiki_key_char_start_) {
@@ -1975,7 +2019,7 @@ namespace stpl {
 				virtual ~LayoutLeveled() {}
 
 				virtual std::string to_html() {
-					return "<section>" + WikiEntity<StringT, IteratorT>::to_html() + "</section>";
+					return "<section>" + this->to_std_string() + "</section>";
 				}
 
 			protected:

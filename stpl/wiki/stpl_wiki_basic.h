@@ -300,7 +300,7 @@ namespace stpl {
 				 *                         3) ended by end of input
 				 */
 				virtual bool is_end(IteratorT& it, bool advance=true) {
-					return this->is_separated(it) || (this->parent_ptr_ && this->parent_ptr_->is_end(it, false)) || StringBound<StringT, IteratorT>::is_end(it);
+					return this->is_separated(it) || (this->parent_ptr_ && this->parent_ptr_->is_end(it, false))/*  || StringBound<StringT, IteratorT>::is_end(it) */;
 				}			
 
 				virtual bool is_pause(IteratorT& it) {
@@ -537,9 +537,13 @@ namespace stpl {
 					/**
 					 * For any entity when it comes to a pause
 					 * we move the end char to it
+					 * ===
+					 * Why the above needs to do that
+					 * Don't do it
 					 */
 					if (BasicWikiEntity<StringT, IteratorT>::is_pause(it)) {
-						this->end(it);
+						// no we can't end it here;
+						// this->end(it);
 						return true;
 					}	
 					return false;

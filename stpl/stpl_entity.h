@@ -279,6 +279,10 @@ namespace stpl {
 						}
 					}
 				}
+				// begin might change when start get tested
+				// do it individully, not every entity has the same start
+				// due to possibily endless loop, iterator must keep forward
+				// this->begin(begin);
 
 				return begin;
 			}

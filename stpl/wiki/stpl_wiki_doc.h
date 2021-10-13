@@ -69,10 +69,16 @@ namespace stpl {
 				std::string to_html() {
 					std::stringstream ss;
 					ss << "<html>" << std::endl;
+					ss << "<head>" << std::endl;
+					ss << "<!-- Created By wiki2json (TYO Lab, https://tyo.com.au) -->" << std::endl;
+					ss << "<link href=\"style.css\" rel=\"stylesheet\" type=\"text/css\"/>" << std::endl;
+					ss << "</head>" << std::endl;
 					ss << "<body>" << std::endl;
 					auto nodes = this->children();
 					for (auto it = nodes.begin(); it != nodes.end(); ++it) {
+#ifdef DEBUG
 						ss << '(' << (*it)->get_id() << ") ";
+#endif // DEBUG						
 						ss << (*it)->to_html();
 						ss << std::endl;
 					}
@@ -248,8 +254,20 @@ namespace stpl {
 							// This is most rediculous statement ever
 							// 1) there could be text from the last section
 							// 2) there could be text before the first section
-							// new_entity_check_passed = true;
-							// break;
+							{
+								IteratorT pre = it - 1;
+								while (pre > this->begin_ && *pre == ' ')
+								{
+									/* code */
+									--pre;
+								}
+								if (*pre == '\n') {
+									start_from_newline = true;
+									new_entity_check_passed = true;
+								}
+							}
+							
+							break;
 							// {	
 							// 	if (it > begin) {
 							// 		entity_ptr = new Text<StringT, IteratorT>(begin, it);
@@ -472,8 +490,14 @@ namespace stpl {
 									}
 									else if (parent_ptr->get_group() == TBASE) {
 										// because | is for separator it can't be part of next entity
-										begin = ++it;
-										entity_ptr = new WikiProperty<StringT, IteratorT>(begin, end);
+										next = it + 1;
+										if (*next == '}') {
+											begin = it;
+											return parent_ptr;
+										}
+
+										begin = next;
+										entity_ptr = new WikiProperty<StringT, IteratorT>(next, end);
 										previous_state = PROPERTY;
 									}
 								}
