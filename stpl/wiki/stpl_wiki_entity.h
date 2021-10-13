@@ -44,6 +44,9 @@ namespace stpl {
 				typedef std::map<StringT, WikiProperty*>	        attributes_type;
 				typedef StringBound<StringT, IteratorT>             StringB;
 
+			private:
+				int													property_id_;
+
 			public:
 				WikiProperty() :
 					WikiEntity<StringT, IteratorT>::WikiEntity() { init(); }
@@ -56,6 +59,15 @@ namespace stpl {
 					init();
 				}
 				virtual ~WikiProperty() {}
+
+
+				int get_property_id() const {
+					return property_id_;
+				}
+
+				void set_property_id(int propertyId) {
+					property_id_ = propertyId;
+				}
 
 				virtual void end(IteratorT it) { 
 					// need to close things up
@@ -1616,6 +1628,11 @@ namespace stpl {
 				StringBound<StringT, IteratorT>           caption_;
 				StringBound<StringT, IteratorT>           style_;
 
+				int                                       row_id_;
+				int                                       rows_;           // including headers
+				bool                                      has_row_header_;
+				bool                                      has_header_
+
 			public:
 				Table() : TBase<StringT, IteratorT>::TBase() { init(); }
 				Table(IteratorT it)
@@ -1629,6 +1646,12 @@ namespace stpl {
 				}
 				virtual ~Table() {}
 
+				virtual void add_child(BasicWikiEntity<StringT, IteratorT>* child) {
+					WikiProperty<StringT, IteratorT>* property_ptr = dynamic_cast<WikiProperty<StringT, IteratorT> *>(child);
+
+					WikiEntity<StringT, IteratorT>::add_child(property_ptr);
+				}				
+
 				virtual std::string to_html() {
 					return "<div>" + WikiEntity<StringT, IteratorT>::to_html() + "</div>";
 				}
@@ -1641,6 +1664,14 @@ namespace stpl {
 							// | will be used as
 							// ++it;
 							it = next;
+							while (*it == ' ')
+								++it;
+							this->style_.begin(it);
+
+							while (*it != '\n')
+								++it;
+							this->style_.end(it);
+
 							return true; // TBase<StringT, IteratorT>::is_start(it);
 						}
 					}
@@ -1650,7 +1681,47 @@ namespace stpl {
 				virtual bool is_pause(IteratorT& it) {
 					if (*it == '|') {
 						IteratorT next = it + 1;
+						switch (*next) {
+							case '+':
+								{
+									++next;
+									caption_.begin(next);
+									while (*next != '\n')
+										++next;
+									
+									caption_.end(next);
+								}
+								return true;;
+							case '-': 
+								{
+									++rows_;
+									row_id_ = rows_;
+
+									while (*it != '\n')
+										++it;									
+								}
+								return true;;
+							case '|':
+								// don't need to do anything
+								// just create a new WikiProperty
+								++it;
+								return true;
+							case '!':
+								{
+									row_id_ = 0;
+								}
+								break;							
+						}
 						return *next != '}';
+					}
+					else if (*it == '!') {
+						row_id_ = 0;
+						has_header_ = true;
+						IteratorT next = it + 1;
+						if (*next == '!')
+							it = next;
+						
+						return true;
 					}
 					return false;
 				}
@@ -1671,7 +1742,9 @@ namespace stpl {
 				}
 
 			private:
-				void init() { }
+				void init() { 
+					current_row_ = 0;
+				}
 		};
 
 		template <

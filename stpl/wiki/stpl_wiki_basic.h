@@ -289,7 +289,7 @@ namespace stpl {
 					return "";
 				}				
 
-				virtual void add_child(BasicWikiEntity* child) {
+				virtual void add_child(BasicWikiEntity<StringT, IteratorT>* child) {
 					// if it doesn't get implemented, it has no children 
 				}
 
