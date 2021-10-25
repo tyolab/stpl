@@ -102,7 +102,7 @@ namespace stpl {
 				 */
 				virtual std::string to_html() {
 					stringstream ss;
-					//if (this->has_delimiter()) {
+					// if (this->get_type() == P_PROPERTY) {
 						ss << "<property name=\"";
 						std::string name = std::string(this->name_.begin(), this->name_.end());
 						name = utils::escape_quote(name);
@@ -113,10 +113,7 @@ namespace stpl {
 							// ss << name << "=";
 							// if (this->has_quote())
 							// 	ss << "\"";
-							auto it = this->children_.begin();
-							while (it != this->children_.end()) {
-								ss << (*it++)->to_html();
-							}
+							ss << this->children_to_html();
 
 							// if (this->has_quote())
 							// 	ss << "\"";
@@ -131,9 +128,10 @@ namespace stpl {
 								//return name + "=\"" + value + "\"";
 							//}
 						}
-					//}
+						ss << "</property>";
+					// }
+	
 					//return Property<StringT, IteratorT>::to_std_string();
-					ss << "</property>";
 					return ss.str();
 				}
 
@@ -203,7 +201,9 @@ namespace stpl {
 						return true;
 					}
 					else if (*it == '\n') {
-						++it;
+						// do we need to advance here?
+						// please check and find out, and put some reasons here
+						// ++it;
 						return true;
 					}
 					else if (*it == '|')
@@ -219,337 +219,73 @@ namespace stpl {
 				void init() {
 					this->has_delimiter_ = false;
 					this->group_ = PROPERTY;
+					this->set_type(P_PROPERTY);
 				}
 		};
-
-
-		template <
-			typename StringT = std::string, 
-			typename IteratorT = typename StringT::iterator
-			>
-		class Tag: public WikiKeyword<StringT, IteratorT>
-		{
-			public:
-				typedef	StringT	string_type;
-				typedef IteratorT	iterator;
-
-			private:
-				void init() { this->type_ = TEXT; }
-
-			public:
-				Tag() : WikiKeyword<StringT, IteratorT>::WikiKeyword() { init(); }
-				Tag(IteratorT it)
-					 : WikiKeyword<StringT, IteratorT>::WikiKeyword(it) { init(); }
-				Tag(IteratorT begin, IteratorT end)
-					 : WikiKeyword<StringT, IteratorT>::WikiKeyword(begin, end) { init(); }
-				Tag(StringT content) :
-					WikiKeyword<StringT, IteratorT>::WikiKeyword() {
-					init();
-					this->create(content);
-				}
-				virtual ~Tag() {}
-
-			protected:
-				virtual bool is_start(IteratorT& it) {
-					this->skip_whitespace(it);
-					this->begin(it);
-					return true;
-				}
-
-				virtual bool is_end(IteratorT& it, bool advance=true) {
-					return this->eow(it) || text_stop(it);
-				}
-
-				virtual bool text_stop(IteratorT next) {
-					return WikiKeyword<StringT, IteratorT>::is_start_symbol(next);
-				}
-
-				virtual void add_content(StringT& text) {
-					this->ref().append(text);
-				}
-		};		
 
 		template <typename StringT = std::string,
-			 typename IteratorT = typename StringT::iterator,
-			 typename AttributeT = WikiProperty<StringT, IteratorT> >
-		class ElemTag: public Tag<StringT, IteratorT>
+							typename IteratorT = typename StringT::iterator
+						  >
+		class TableCell : public WikiEntity<StringT, IteratorT>
 		{
 			public:
-				typedef	StringT										string_type;
-				typedef IteratorT									iterator;
-				typedef AttributeT 									attribute_type;
-				typedef typename attribute_type::attributes_type	attributes_type;
+				typedef	StringT                                      string_type;
+				typedef IteratorT	                                 iterator;
+				typedef StringBound<StringT, IteratorT>              StringB;
 
 			protected:
-				attributes_type attributes_;
-
-			private:
-				StringBound<StringT, IteratorT> name_;
+				bool                                                 ordered_;
+				char                                                 start_with_;
 
 			public:
-				ElemTag() : Tag<StringT, IteratorT>::Tag() {}
-				ElemTag(IteratorT it) : Tag<StringT, IteratorT>::Tag(it), name_(it, it)  {
+				TableCell() : WikiEntity<StringT, IteratorT>::WikiEntity() {}
+				TableCell(IteratorT it) :
+					WikiEntity<StringT, IteratorT>::WikiEntity(it) {
 					init();
 				}
-				ElemTag(IteratorT begin, IteratorT end) :
-					 Tag<StringT, IteratorT>::Tag(begin, end), name_(begin, begin) { init(); }
-
-				ElemTag(StringT content) :
-					Tag<StringT, IteratorT>::Tag(content) {
+				TableCell(IteratorT begin, IteratorT end) :
+					WikiEntity<StringT, IteratorT>::WikiEntity(begin, end) { init(); }
+				TableCell(StringT content) :
+					WikiEntity<StringT, IteratorT>::WikiEntity(content) {
 					init();
 				}
-				virtual ~ElemTag() {
-					clear();
-				};
+				virtual ~TableCell() {};
 
-				ElemTag& operator= (ElemTag& elem_k) {
-					this->clone(reinterpret_cast<Tag<StringT, IteratorT>*>(&elem_k));
-					return *this;
-				}
-
-				ElemTag& operator= (const ElemTag* elem_k_ptr) {
-					this->clone(reinterpret_cast<Tag<StringT, IteratorT>*>(elem_k_ptr));
-					return *this;
-				}
-
-				ElemTag& operator= (Tag<StringT, IteratorT>* elem_k_ptr) {
-					this->clone(elem_k_ptr);
-					return *this;
-				}
-
-				bool has_attribute(const StringT attr) const {
-					return this->attributes_.find(attr) != this->attributes_.end();
-				}
-
-				StringT get_attribute(const StringT attr) const {
-					typename attributes_type::const_iterator it = this->attributes_.find(attr);
-					if (it != this->attributes_.end()) {
-						return it->second->value();
+				virtual std::string to_html() {
+					stringstream ss;
+					if (this->get_type() == P_HEADER) {
+						ss << "<th>" << this->children_to_html() <<  "</th>";
 					}
-					return "";
-				}
-
-				std::pair<bool, StringT> attribute(const StringT attr) const
-				{
-					//if (this->attributes_.size() > 0) {
-						//typename std::map<StringT, StringT>::const_iterator i = this->attributes_.find(attr);
-						/*
-						typename attributes_type::const_iterator i = this->attributes_.find(attr);
-						if (i != this->attributes_.end()) {
-							return make_pair(true, i->second->value());
-						}
-						*/
-					//}
-						/* sorry, I just cannot find the thing I want using map.find()*/
-						typename attributes_type::const_iterator	it = attributes_.begin();
-						for (; it!= attributes_.end(); it++) {
-							if (it->first == attr)
-								return make_pair(true, it->second->value());
-						}
-
-					return make_pair(false, StringT());
-				}
-
-				/*
-				 *  defines valid characters for tag name
-				 *  initially, all readable chars are valid except whitespace
-				 */
-				bool is_valid_name_char(IteratorT it) {
-					if (isspace(*it) || iscntrl(*it)
-							|| (WikiEntityConstants::WIKI_KEY_CLOSE_TAG == *it)
-							|| (WikiEntityConstants::WIKI_KEY_OPEN_TAG == *it)
-							)
-						return false;
-					else if (WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE == *it) {
-						this->is_ended_wiki_keyword_ = true;
-						return false;
+					else if (this->get_type() == P_ROW_HEADER || this->get_type() == P_CELL) {
+						ss << "<td" << (this->get_type() == P_ROW_HEADER ? " class=\"row-header\"" : "") << ">" << this->children_to_html() <<  "</td>";
 					}
+					else
+						throw new runtime_error("Invalid table cell type");
+					return ss.str();
+				}		
+								
+			protected:
 
-					return true;
-				}
-
-				StringBound<StringT, IteratorT>& name() {
-					if (name_.length() == 0) {
-						// TODO assert it is the end of the ElemTag already
-						IteratorT it = this->body_.begin();
-						name_.begin(it);
-
-						while(isalnum(*it) && it != this->end())
-							it++;
-						name_.end(it);
+				virtual bool is_pause(IteratorT& it) {
+					// when it come to '=', it may be the start of a new entity
+					// so we pause and see
+				    if (*it == '\n') {
+						// do we need to advance here?
+						// please check and find out, and put some reasons here
+						// ++it;
+						return true;
 					}
-					//return StringT(name_.begin(), name_.end());
-					return name_;
-				}
+					else if (*it == '|')
+						return true;
 
-				virtual IteratorT match(IteratorT begin, IteratorT end) {
-					if (Tag<StringT, IteratorT>::match(begin, end)) {
-						if (this->type_ == TEXT)
-							return true;
-					}
-					return false;
-				}
-
-				virtual void print(std::ostream &out = cout, int level = 0) {
-					name().print(out, level);
-					print_attributes(out, level);
-					out << endl;
-				}
-
-				void print_attributes(std::ostream &out, int level) {
-					if (attributes_.size() > 0) {
-						out << "(";
-						typename attributes_type::iterator	it = attributes_.begin();
-						for (; it!= attributes_.end(); it++) {
-							out << it->second->name()
-									<<	":"
-									<<  it->second->value()
-							        << " ";
-						}
-						out << ")" << std::endl;
-					}
-				}
-
-				void parse_attributes() {
-					IteratorT begin = name_.end;
-					IteratorT end = this->end();
-					while (parse_attribute(begin, end)) {
-						begin = end;
-						end = this->end();
-					}
-				}
-
-				virtual bool required_end_tag() {
-					return true;
-				}
-
-				virtual bool make_following_element_as_child(ElemTag* next_tag_ptr) {
-					return false;
-				}
-
-				virtual bool force_close(ElemTag* next_tag_ptr) {
-					return false;
-				}
-
-				void new_attribute(StringT name, StringT value) {
-					AttributeT* attr_ptr = new AttributeT();
-					attr_ptr->create(name, value);
-					attributes_.insert(make_pair(name, attr_ptr));
-				}
-
-				virtual void flush(int level=0) {
-					StringT indent(level*2, ' ');
-
-					this->ref().erase();
-					this->ref().insert(0, indent);
-
-					this->ref().push_back(WikiEntityConstants::WIKI_KEY_OPEN_TAG);
-
-					if (this->is_end_wiki_keyword()) {
-						this->ref().push_back(WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE);
-						this->ref().append(name_.to_string());
-					}
-					else {
-						this->ref().append(name_.to_string());
-						if (attributes_.size() > 0) {
-							typename attributes_type::const_iterator	it = attributes_.begin();
-							StringT temp("");
-							for (; it!= attributes_.end(); it++) {
-								temp.append(" ");
-
-//								std::string::size_type pos = this->ref().rfind(WikiEntityConstants::WIKI_KEY_CLOSE_TAG);
-//								if (pos == std::string::npos)
-//									pos = this->ref().length();
-
-								it->second->create();
-								temp.append(it->second->ref());
-
-//								this->ref().insert(pos, temp);
-							}
-
-							this->ref().append(temp);
-						}
-
-						if (this->is_ended_wiki_keyword())
-							this->ref().push_back(WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE);
-					}
-
-					this->ref().push_back(WikiEntityConstants::WIKI_KEY_CLOSE_TAG);
+					return WikiEntity<StringT, IteratorT>::is_pause(it);
 				}
 
 			private:
-				void init() { this->type_ = TEXT; }
-
-				void clear() {
-					if (attributes_.size() > 0) {
-						typename attributes_type::const_iterator it = attributes_.begin();
-						for (; it!= attributes_.end(); it++) {
-							delete it->second;
-						}
-						attributes_.clear();
-					}
-				}
-
-				bool parse_attribute(IteratorT& begin, IteratorT& end) {
-					this->skip_invalid_chars(begin);
-					AttributeT* attr_ptr = new AttributeT(begin, end);
-					bool ret = false;
-					if ((ret = attr_ptr->match(begin, end))) {
-						attributes_.insert(make_pair(attr_ptr->name(), attr_ptr));
-						end = attr_ptr->end();
-					}
-					if (!ret) {
-						delete attr_ptr;
-						return false;
-					}
-					return ret;
-				}
-
-			protected:
-
-				virtual bool is_start(IteratorT& it) {
-					if (Tag<StringT, IteratorT>::is_start(it) && this->type_ == TEXT) {
-						it = this->body_.begin();
-						name_.begin(it);
-						while (!this->eow(it) && is_valid_name_char(it))
-							++it;
-						name_.end(it);
-						return true;
-					}
-					return false;
-				}
-
-				virtual bool is_end(IteratorT& it, bool advance=true) {
-					if (!Tag<StringT, IteratorT>::is_end(it)) {
-						IteratorT begin = it;
-						IteratorT end = this->end();
-						if (parse_attribute(begin, end)) {
-							it = end;
-							if (Tag<StringT, IteratorT>::is_end(it)) {
-								this->body_.end(it);
-								return true;
-							}
-						}
-						return false;
-					}
-
-					return true;
-				}
-
-				virtual void add_content(StringT& text) {
-					add_name(text);
-					//add_attributes(text);
-				}
-
-				void add_name(StringT& name) {
-					// debug
-					///cout << "add name for elemtag " << endl;
-					this->ref().append(name);
-					//IteratorT begin = this->ref().end() - name.length();
-					//name_.set_begin(this->ref().length());
-					//name_.set_end(name.length());
-				}
-		};
+				void init() { 
+					this->set_group(CELL);					
+				}	
+		};		
 
 		/**
 		 * 
@@ -803,7 +539,7 @@ namespace stpl {
 			public:
 				typedef BasicWikiEntity<StringT, IteratorT> 				basic_entity;
 				typedef WikiKeyword<StringT, IteratorT>						keyword_type;
-				typedef ElemTag<StringT, IteratorT> 						tag_type;
+				// typedef ElemTag<StringT, IteratorT> 						tag_type;
 				typedef Text<StringT, IteratorT> 							text_type;
 				// typedef Link<StringT, IteratorT> 							link_type;
 				typedef TBase<StringT, IteratorT> 						    template_type;
@@ -1664,8 +1400,36 @@ namespace stpl {
 
 				virtual std::string to_html() {
 					std::stringstream ss;
-					ss << "<table>"
-					ss "<div>" + WikiEntity<StringT, IteratorT>::to_html() + "</div>";
+					ss << "<table>";
+					int rows = 0;
+					auto it = this->children_.begin();
+					bool first_col = true;
+					while (it != this->children_.end()) {
+						if ((*it)->get_type() == SEPARATOR) {
+							ss << (*it)->to_html() << std::endl;
+							ss << "</tr>" << std::endl;
+							bool first_col = true;
+							++rows;
+							continue;
+						}
+						ss << "<tr>" << std::endl;
+						bool row_header = rows_header_ind_[rows] == '1';
+						if (rows == 0 && row_header) {
+							(*it)->set_type(P_HEADER);
+						}
+						else {
+							if (first_col && row_header) {
+								(*it)->set_type(P_ROW_HEADER);
+								first_col = false;
+							}
+							else
+								(*it)->set_type(P_CELL);
+						}
+						ss << (*it)->to_html();
+					}
+
+					ss << "</tr>" << std::endl;
+					ss << "</table>";
 					return ss.str();
 				}
 
@@ -1711,6 +1475,13 @@ namespace stpl {
 								// new row
 								case '-': 
 									{
+										if (rows_ > 0) {
+											// need to set a row separator
+											auto separator = new Text<StringT, IteratorT>(it, it);
+											separator->set_type(SEPARATOR);
+											this->add(separator);
+										}
+
 										col_id_ = -1;
 										++rows_;
 										row_id_ = rows_;

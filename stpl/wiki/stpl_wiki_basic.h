@@ -40,8 +40,10 @@ namespace stpl {
 			COMMENT,
 			TEXT,
 			PROPERTY,
+			CELL,
 			STYLE,
-			LANG,  DEBUG
+			LANG,  
+			DEBUG
 		};
 
 		// NONE for un-initialized node, or just TEXT
@@ -111,7 +113,16 @@ namespace stpl {
 
 							TAG_NOWIKI,
 							TAG_PRE,
-							TAG_POEM
+							TAG_POEM,
+
+							// Property Types
+							P_PROPERTY,
+							P_CELL,
+							P_HEADER,
+							P_ROW_HEADER,
+							
+							// Separator
+							SEPARATOR
 							}; 
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
@@ -518,6 +529,15 @@ namespace stpl {
 						return ss.str();
 					}
 					return this->to_std_string();
+				}
+
+				std::string children_to_html() {
+					std::stringstream ss;
+					auto it = this->children_.begin();
+					while (it != this->children_.end()) {
+						ss << (*it++)->to_html();
+					}
+					return ss.str();
 				}
 
 			protected:

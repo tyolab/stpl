@@ -497,8 +497,16 @@ namespace stpl {
 										}
 
 										begin = next;
-										entity_ptr = new WikiProperty<StringT, IteratorT>(next, end);
-										previous_state = PROPERTY;
+										if (parent_ptr->get_type() == TEMPLATE) {
+											entity_ptr = new WikiProperty<StringT, IteratorT>(next, end);
+											previous_state = PROPERTY;
+										}
+										else if (parent_ptr->get_type() == TABLE) {
+											entity_ptr = new TableCell<StringT, IteratorT>(next, end);
+											previous_state = CELL;
+										}
+										else
+											throw new runtime_error("Invalid TBASE type");
 									}
 								}
 								break;								
