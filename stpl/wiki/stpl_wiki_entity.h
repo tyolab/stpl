@@ -1628,10 +1628,19 @@ namespace stpl {
 				StringBound<StringT, IteratorT>           caption_;
 				StringBound<StringT, IteratorT>           style_;
 
+				int                                       cell_id_;
+				int                                       col_id_;
 				int                                       row_id_;
 				int                                       rows_;           // including headers
+				int                                       row_prev_;
+				int                                       col_prev_;       // previously added column id
+
 				bool                                      has_row_header_;
-				bool                                      has_header_
+				bool                                      has_header_;
+
+				std::string                               rows_header_ind_;
+
+				WikiProperty<StringT, IteratorT>*         current_parent_;
 
 			public:
 				Table() : TBase<StringT, IteratorT>::TBase() { init(); }
@@ -1649,11 +1658,15 @@ namespace stpl {
 				virtual void add_child(BasicWikiEntity<StringT, IteratorT>* child) {
 					WikiProperty<StringT, IteratorT>* property_ptr = dynamic_cast<WikiProperty<StringT, IteratorT> *>(child);
 
+					property_ptr->set_property_id(this->cell_id_);
 					WikiEntity<StringT, IteratorT>::add_child(property_ptr);
 				}				
 
 				virtual std::string to_html() {
-					return "<div>" + WikiEntity<StringT, IteratorT>::to_html() + "</div>";
+					std::stringstream ss;
+					ss << "<table>"
+					ss "<div>" + WikiEntity<StringT, IteratorT>::to_html() + "</div>";
+					return ss.str();
 				}
 
 			protected:
@@ -1679,50 +1692,108 @@ namespace stpl {
 				}
 
 				virtual bool is_pause(IteratorT& it) {
-					if (*it == '|') {
+					if (*it == '\n') {
 						IteratorT next = it + 1;
-						switch (*next) {
-							case '+':
-								{
-									++next;
-									caption_.begin(next);
-									while (*next != '\n')
+						if (*next == '|') {
+							// IteratorT pre = it - 1;
+							next = it + 1;
+							switch (*next) {
+								case '+':
+									{
 										++next;
-									
-									caption_.end(next);
-								}
-								return true;;
-							case '-': 
-								{
-									++rows_;
-									row_id_ = rows_;
+										caption_.begin(next);
+										while (*next != '\n')
+											++next;
+										
+										caption_.end(next);
+									}
+									return true;;
+								// new row
+								case '-': 
+									{
+										col_id_ = -1;
+										++rows_;
+										row_id_ = rows_;
+										// if (row_prev_ == -1)
+										// 	row_prev_ = 0;
+										// else
+										// 	row_prev_ = row_id_;
 
-									while (*it != '\n')
-										++it;									
-								}
-								return true;;
-							case '|':
-								// don't need to do anything
-								// just create a new WikiProperty
-								++it;
-								return true;
-							case '!':
-								{
-									row_id_ = 0;
-								}
-								break;							
+										rows_header_ind_.push_back('0');
+
+										while (*it != '\n')
+											++it;									
+									}
+									return true;
+								// case '|':
+								// 	this is not a possible case;
+								//  if that happens it means the previous is an empty cell
+								// 	don't need to do anything
+								// 	just create a new WikiProperty
+								// 	++cell_id_;
+								// 	++col_id_;
+								// 	++it;
+								// 	return true;
+								// case '!':
+								// 	{
+								// 		row_id_ = 0;
+								// 	}
+								// 	break;		
+								default:
+									break;					
+							}
+							++cell_id_;
+							++col_id_;
+							// that will be a table cell
+							return true;
 						}
-						return *next != '}';
+						else if (*next == '!') {
+							++cell_id_;
+							++col_id_;
+							// if (row_id_ > 0) {
+							// 	// row header
+							// 	rows_header_ind_[row_id_] = '1';
+							// }
+							// else {
+								// column header
+								has_header_ = true;
+								rows_header_ind_[row_id_] = '1';
+								// IteratorT next = it + 1;
+								// if (*next == '!')
+								// 	it = next;
+							// }
+							
+							return true;
+						}
+					}
+					else if (*it == '|') {
+						// this is in the middle of a cell
+						// last child needs to become a parent of many things
+						IteratorT next = it + 1;
+						if (*next == '|') {
+							++cell_id_;
+							++col_id_;
+							it = next;
+						}
+
+						return true;
+						// auto temp = new Text<StringT, IteratorT>(last_child_->begin(), last_child_->end());
+						// last_child_->add_child(temp);
+
 					}
 					else if (*it == '!') {
-						row_id_ = 0;
-						has_header_ = true;
-						IteratorT next = it + 1;
-						if (*next == '!')
-							it = next;
-						
+						// this is in the middle of a cell of header row
+						if (row_id_ == 0) {
+							IteratorT next = it + 1;
+							if (*next == '!') {
+								++cell_id_;
+								++col_id_;
+								it = next;
+							}
+						}
 						return true;
-					}
+					}							
+									
 					return false;
 				}
 
@@ -1730,11 +1801,11 @@ namespace stpl {
 				 * It has clear end boundary, it end only when a boundary is seen
 				 */
 				virtual bool is_end(IteratorT& it, bool advance=true) {
-					if (*it == '|') {
-						IteratorT next = it + 1;
-						if (*next == '}') {
+					if (*it == '}') {
+						IteratorT prev = it - 1;
+						if (*prev == '|') {
 							if (advance)
-								it = next + 1;
+								++it;
 							return true;
 						}
 					}
@@ -1743,7 +1814,11 @@ namespace stpl {
 
 			private:
 				void init() { 
-					current_row_ = 0;
+					row_prev_ = -1;
+					rows_ = 0;
+					row_id_ -1;
+					rows_header_ind_ = "0";
+					cell_id_ = -1;
 				}
 		};
 
