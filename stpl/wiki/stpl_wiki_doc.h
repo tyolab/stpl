@@ -34,6 +34,11 @@ namespace stpl {
 				typedef typename Document<EntityT>::entity_iterator                 entity_iterator;
 				typedef typename Document<EntityT>::container_type                  container_type;
 
+			private:
+				std::vector<EntityT *> 												templates_;
+				std::vector<EntityT *>                                              sections_;		
+				bool                                                                organized_;		
+
 			public:
 				WikiDoc() : Document<EntityT>::Document() { init(); }
 				WikiDoc(IteratorT it) : Document<EntityT>::Document(it) {
@@ -50,6 +55,12 @@ namespace stpl {
 					 init();
 				}
 				virtual ~WikiDoc() {
+					auto it = sections_.begin();
+					if (it != sections_.end()) {
+						delete *it;
+						++it;
+					}
+					sections_.clear();
 				}
 
 				void write(std::string filename) {
@@ -67,6 +78,8 @@ namespace stpl {
 				}
 
 				std::string to_html() {
+					organize();
+
 					std::stringstream ss;
 					ss << "<html>" << std::endl;
 					ss << "<head>" << std::endl;
@@ -74,11 +87,20 @@ namespace stpl {
 					ss << "<link href=\"style.css\" rel=\"stylesheet\" type=\"text/css\"/>" << std::endl;
 					ss << "</head>" << std::endl;
 					ss << "<body>" << std::endl;
-					auto nodes = this->children();
-					for (auto it = nodes.begin(); it != nodes.end(); ++it) {
-#ifdef DEBUG
-						ss << '(' << (*it)->get_id() << ") ";
-#endif // DEBUG						
+// 					auto nodes = this->children();
+// 					for (auto it = nodes.begin(); it != nodes.end(); ++it) {
+// #ifdef DEBUG
+// 						ss << '(' << (*it)->get_id() << ") ";
+// #endif // DEBUG						
+// 						ss << (*it)->to_html();
+// 						ss << std::endl;
+// 					}
+
+					for (auto it = templates_.begin(); it != templates_.end(); ++it) {
+						ss << (*it)->to_html() << std::endl;
+					}
+
+					for (auto it = sections_.begin(); it != sections_.end(); ++it) {			
 						ss << (*it)->to_html();
 						ss << std::endl;
 					}
@@ -88,17 +110,97 @@ namespace stpl {
 				}
 
 				std::string to_json() {
+					organize();
+
 					std::stringstream ss;
-					auto nodes = this->children();
-					for (auto it = nodes.begin(); it != nodes.end(); ++it) {
-						ss << (*it)->to_html();
+
+					ss << "{" << std::endl;
+					ss << "\"article\": {" << std::endl;
+					ss << "\"sections\": [" << std::endl;
+					int count = 0;
+					for (auto it = sections_.begin(); it != sections_.end(); ++it) {
+						if (count > 0) 
+							ss << "," << std::endl;				
+						ss << (*it)->to_json();
 						ss << std::endl;
+						++count;
 					}
+					ss << "]" << std::endl;
+					ss << "}" << std::endl;
+					ss << "}" << std::endl;
 					return ss.str();
-				}				
+				}
+
+				bool isorganized() const {
+					return organized_;
+				}
+
+				void set_organized(bool organized) {
+					organized_ = organized;
+				}
 
 			private:
+				void clear_sections() {
+					auto it = sections_.begin();
+					if (it != sections_.end()) {
+						delete *it;
+						++it;
+					}
+					sections_.clear();
+				}
+
+				void clear_templates() {
+					auto it = templates_.begin();
+					if (it != templates_.end()) {
+						delete *it;
+						++it;
+					}
+					templates_.clear();
+				}				
+
+				void organize() {
+					if (organized_)
+						return;
+
+					auto nodes = this->children();
+					bool ind = true;
+					WikiSection<StringT, IteratorT> *section = NULL;
+					int count = 0;
+
+					for (auto it = nodes.begin(); it != nodes.end(); ++it) {
+						EntityT *entity_ptr = *it;
+						if (!section && entity_ptr->get_group() == TBASE && entity_ptr->get_type() == TEMPLATE) {
+							templates_.push_back(entity_ptr);
+							continue;
+						}
+
+						if (!section || LAYOUT == entity_ptr->get_group()) {
+							section = new WikiSection<StringT, IteratorT>(this->begin(), this->end());
+							sections_.push_back(section);
+
+							section->set_id(count);
+
+							// the first child if it is not a layout
+							if (LAYOUT != entity_ptr->get_group()) {
+								section->set_level(0);
+								section->add(entity_ptr);
+							}
+							else {
+								LayoutLeveled<StringT, IteratorT> *layout_ptr = reinterpret_cast<LayoutLeveled<StringT, IteratorT> *>(entity_ptr);
+								section->set_level(layout_ptr->get_level());
+								section->set_line(layout_ptr->to_std_string());
+							}
+						}
+						else {
+							section->add(entity_ptr);
+						}
+					}
+
+					organized_ = true;
+				}
+
 				void init() {
+					organized_ = false;
 				}
 		};
 
@@ -140,7 +242,7 @@ namespace stpl {
 				virtual void on_new_child_entity(EntityT* entity_ptr, EntityT* child_entity) {
 					// nothing yet, you may build up the relationship here
 					child_entity->set_parent(entity_ptr);
-					entity_ptr->add_child(child_entity);
+					entity_ptr->process_child(child_entity);
 				}
 
 				virtual void on_child_entity_done(EntityT* entity_ptr, EntityT* child_entity) {
@@ -169,7 +271,7 @@ namespace stpl {
 					EntityT* entity_ptr = NULL;
 					int previous_state = Scanner<EntityT>::state_;
 					IteratorT pre_it;
-					int new_entity_check_passed = -1;
+					int new_entity_check_passed = 0;
 
 					/**
 					 * We only need the openings, and let the entity finish itself
@@ -211,9 +313,9 @@ namespace stpl {
 							{
 								next = it + 1;
 								// confirmation
-								if (*next == '{') {
-									new_entity_check_passed = 1;
-								}
+								//if (*next == '{') {
+								new_entity_check_passed = 1;
+								//}
 							}
 							break;								
 						case WikiEntityConstants::WIKI_KEY_STYLE:
@@ -263,7 +365,7 @@ namespace stpl {
 								}
 								if (*pre == '\n') {
 									start_from_newline = true;
-									new_entity_check_passed = true;
+									new_entity_check_passed = 1;
 								}
 							}
 							
@@ -350,6 +452,8 @@ namespace stpl {
 										entity_ptr->set_group(LANG);
 										entity_ptr->set_type(LANG_VARIANT);					
 									}
+									// else
+									// 	new_entity_check_passed = 0;
 								}
 								break;								
 							case WikiEntityConstants::WIKI_KEY_STYLE:
@@ -471,42 +575,42 @@ namespace stpl {
 									if (start_from_newline && !parent_ptr) {
 										Scanner<EntityT>::state_ = LAYOUT;
 										entity_ptr = new LayoutLeveled<StringT, IteratorT>(it, end);
-										entity_ptr->set_group(LAYOUT);
-										entity_ptr->set_type(LAYOUT_HEADING);
 										start_from_newline = false;
 									}
 								}
 								break;
 							case WikiEntityConstants::WIKI_KEY_PROPERTY_DELIMITER:
-								if (parent_ptr) {
-									if (parent_ptr->get_group() == PROPERTY) {
-										// a property can't not be the paranet of another property
-										parent_ptr->set_open(false);
-										parent_ptr->end(it);
-										// entity_ptr = new WikiProperty<StringT, IteratorT>(++it, end);
-										// entity_ptr->set_parent(parent_ptr->get_parent());
-										// previous_state = PROPERTY;
-										entity_ptr = parent_ptr;
-									}
-									else if (parent_ptr->get_group() == TBASE) {
-										// because | is for separator it can't be part of next entity
-										next = it + 1;
-										if (*next == '}') {
-											begin = it;
-											return parent_ptr;
+								{
+									if (parent_ptr) {
+										if (parent_ptr->get_group() == PROPERTY) {
+											// a property can't not be the paranet of another property
+											parent_ptr->set_open(false);
+											parent_ptr->end(it);
+											// entity_ptr = new WikiProperty<StringT, IteratorT>(++it, end);
+											// entity_ptr->set_parent(parent_ptr->get_parent());
+											// previous_state = PROPERTY;
+											entity_ptr = parent_ptr;
 										}
+										else if (parent_ptr->get_group() == TBASE) {
+											// because | is for separator it can't be part of next entity
+											next = it + 1;
+											if (*next == '}') {
+												begin = it;
+												return parent_ptr;
+											}
 
-										begin = next;
-										if (parent_ptr->get_type() == TEMPLATE) {
-											entity_ptr = new WikiProperty<StringT, IteratorT>(next, end);
-											previous_state = PROPERTY;
+											begin = next;
+											if (parent_ptr->get_type() == TEMPLATE) {
+												entity_ptr = new WikiProperty<StringT, IteratorT>(next, end);
+												previous_state = PROPERTY;
+											}
+											else if (parent_ptr->get_type() == TABLE) {
+												entity_ptr = new TableCell<StringT, IteratorT>(next, end);
+												previous_state = CELL;
+											}
+											else
+												throw new runtime_error("Invalid TBASE type");
 										}
-										else if (parent_ptr->get_type() == TABLE) {
-											entity_ptr = new TableCell<StringT, IteratorT>(next, end);
-											previous_state = CELL;
-										}
-										else
-											throw new runtime_error("Invalid TBASE type");
 									}
 								}
 								break;								
@@ -528,14 +632,16 @@ namespace stpl {
 						// also as we couldn't find a new entity based on current character, and parent entity is not closed yet
 						// so we return it
 						else if (new_entity_check_passed == 0 &&  parent_ptr && parent_ptr->isopen()) {
+							// we are not skip here here we mainly check the state
 							// otherwise, if something bad happened, it will get stuck
 							begin = it;
 							return parent_ptr;
 						}
 						
 						// as we couldn't find a new entity based on current character, 
-						// forward one character, otherwise we will be stuck here
-						++it;						
+						// forward one character, otherwise we will be stuck here						
+						// ++it;
+						return new Text<StringT, IteratorT>(begin, end);
 					}
 
 					// Anything that we cannot parse it is a text node

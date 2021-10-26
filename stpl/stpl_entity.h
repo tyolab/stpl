@@ -292,7 +292,20 @@ namespace stpl {
 			}
 
 			friend bool operator == (const StringBound& left, const StringBound& right) {
-				return left.to_std_string() == right.to_std_string();
+				int len1 = left.end() - left.begin();
+				int len2 = right.end() - right.begin();
+				if (len2 != len1)
+					return false;
+
+				StringBound::iterator lit = left.begin(), rit = right.begin();
+				do {
+					if (*lit != *rit) {
+						return false;
+					}
+					++lit;
+					++rit;
+				} while (lit != left.end());
+				return true;
 			}
 
 			virtual void create(StringT text="") {
@@ -413,10 +426,16 @@ namespace stpl {
 			ContainerT 									children_;
 			iterator									current_pos_;
 
+			bool                                        own_children_;
+
 		public:
-			Entity() { current_pos_ = children_.begin(); }
+			Entity() { 
+				current_pos_ = children_.begin(); 
+				own_children_ = true;
+			}
 			~Entity() {
-				clear();
+				if (own_children_)
+					clear();
 			}
 
 			//void add(EntityT entity) { children_.push_back(entity); }
@@ -483,7 +502,17 @@ namespace stpl {
 			friend bool operator == (const Entity& left, const Entity& right) {
 				return false;
 			}
-	};
+
+		protected:
+
+			bool does_own_children() const {
+				return own_children_;
+			}
+
+			void set_own_children(bool ownChildren) {
+				own_children_ = ownChildren;
+			}
+};
 
 	template <
 		typename EntityT = StringBound<>,  

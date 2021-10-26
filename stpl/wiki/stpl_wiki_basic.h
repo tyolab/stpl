@@ -33,7 +33,8 @@ namespace stpl {
 		// TEMPLATE node includes wiki declarations, text declarations,
 		// If not any of others, then just TEXT
 		enum WikiNodeGroup {
-			LAYOUT, LAYOUT_ITEM,
+			LAYOUT, 
+			LAYOUT_ITEM,
 			TAG,
 			LINK,
 			TBASE,
@@ -42,7 +43,8 @@ namespace stpl {
 			PROPERTY,
 			CELL,
 			STYLE,
-			LANG,  
+			LANG,
+			SECTION,
 			DEBUG
 		};
 
@@ -300,7 +302,7 @@ namespace stpl {
 					return "";
 				}				
 
-				virtual void add_child(BasicWikiEntity<StringT, IteratorT>* child) {
+				virtual void process_child(BasicWikiEntity<StringT, IteratorT>* child) {
 					// if it doesn't get implemented, it has no children 
 				}
 
@@ -495,7 +497,7 @@ namespace stpl {
 				virtual void create_text_child_after(IteratorT it) {
 					// so we do nothing here
 					// IteratorT begin = last_child_->end();
-					// add_child(new Text<StringT, IteratorT>(begin, it));
+					// process_child(new Text<StringT, IteratorT>(begin, it));
 				}
 
 				const BasicWikiEntity<StringT, IteratorT> *get_last_child() const {
@@ -506,7 +508,7 @@ namespace stpl {
 					last_child_ = lastChild;
 				}
 
-				virtual void add_child(BasicWikiEntity<StringT, IteratorT>* child) {
+				virtual void process_child(BasicWikiEntity<StringT, IteratorT>* child) {
 					if (this->children_.size() == 0 && child->begin() > this->begin()) {
 						// IteratorT begin = this->begin();
 						// IteratorT end = child->begin();
