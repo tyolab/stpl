@@ -254,17 +254,20 @@ namespace stpl {
 
 					IteratorT end = this->end();
 
-					while (begin < end) {
-						if (*begin == ' ')
-							++begin;
-						else if (*begin == '\n') {
-							// ++begin; no we are not skipping new line as entity may need newline for boundary
-							start_from_newline = true;
-							break;
-						}	   
-						else
-							break;
-					}
+					/* leave the space as text node
+					   and let the node deal with newline
+					 */
+					// while (begin < end) {
+					// 	if (*begin == ' ')
+					// 		++begin;
+					// 	else if (*begin == '\n') {
+					// 		// ++begin; no we are not skipping new line as entity may need newline for boundary
+					// 		start_from_newline = true;
+					// 		break;
+					// 	}	   
+					// 	else
+					// 		break;
+					// }
 
 					IteratorT it = begin, next;
 
@@ -280,9 +283,12 @@ namespace stpl {
 					 */
 					while (it < end) {
 						// skip white spaces
+						// actually we cannot let the node deal with spaces
+						// space will confuse nodes
 						while (*it == ' ' && it != end) {
 							++it;
 						}
+						begin = it;
 
 						pre_it = it;
 
@@ -313,9 +319,9 @@ namespace stpl {
 							{
 								next = it + 1;
 								// confirmation
-								//if (*next == '{') {
-								new_entity_check_passed = 1;
-								//}
+								if (*next == '{') {
+									new_entity_check_passed = 1;
+								}
 							}
 							break;								
 						case WikiEntityConstants::WIKI_KEY_STYLE:
@@ -433,11 +439,18 @@ namespace stpl {
 						/**
 						 * Before we go any further we need to handle the text node first
 						 */
-						if (!entity_ptr && new_entity_check_passed == 1 && it > begin) {
-							entity_ptr = new Text<StringT, IteratorT>(begin, it);
-							entity_ptr->set_open(false);
-							entity_ptr->set_group(TEXT);
-							begin = it;
+						if (new_entity_check_passed == 1) {
+							if (parent_ptr && !parent_ptr->should_have_children()) {
+								parent_ptr->end(it);
+								parent_ptr->set_open(false);
+								return parent_ptr;
+							}
+							else if (!entity_ptr && it > begin) {
+								entity_ptr = new Text<StringT, IteratorT>(begin, it);
+								entity_ptr->set_open(false);
+								entity_ptr->set_group(TEXT);
+								begin = it;
+							}
 						}
 
 						if (!entity_ptr) {
@@ -473,7 +486,6 @@ namespace stpl {
 									// confirmation
 									if (*next == WikiEntityConstants::WIKI_KEY_STYLE_INDENT) {
 										entity_ptr = new StyleIndent<StringT, IteratorT>(it, end);
-										entity_ptr = new Style<StringT, IteratorT>(it);
 										entity_ptr->set_group(STYLE);
 										entity_ptr->set_type(STYLE_INDENT);											
 									}
@@ -566,6 +578,9 @@ namespace stpl {
 								// but it is not necessary to start with a newline as last section could go until
 								// it sees a new HEADNING
 								{
+									if (parent_ptr && parent_ptr->get_group() == PROPERTY)
+										return parent_ptr;
+																		
 									IteratorT prev_it = this->begin_;
 									if (it > prev_it)
 										prev_it = it - 1;
@@ -582,7 +597,7 @@ namespace stpl {
 							case WikiEntityConstants::WIKI_KEY_PROPERTY_DELIMITER:
 								{
 									if (parent_ptr) {
-										if (parent_ptr->get_group() == PROPERTY) {
+										if (parent_ptr->get_group() == PROPERTY || parent_ptr->get_group() == CELL) {
 											// a property can't not be the paranet of another property
 											parent_ptr->set_open(false);
 											parent_ptr->end(it);
@@ -590,7 +605,7 @@ namespace stpl {
 											// entity_ptr->set_parent(parent_ptr->get_parent());
 											// previous_state = PROPERTY;
 											entity_ptr = parent_ptr;
-										}
+										}										
 										else if (parent_ptr->get_group() == TBASE) {
 											// because | is for separator it can't be part of next entity
 											next = it + 1;
@@ -635,7 +650,19 @@ namespace stpl {
 							// we are not skip here here we mainly check the state
 							// otherwise, if something bad happened, it will get stuck
 							begin = it;
-							return parent_ptr;
+							if (parent_ptr->should_have_children()) {
+								// none of obvious entity is found, so let take it as a text node
+								// there could be a few cases here
+								// 1. parent has started with text but not in text node
+								// this is handled in create text pre function
+								// 2. parent has pushed child(ren) in
+								// this is in the middle of it
+								// 3. if parent has no child(ren) yet
+								// this is the first one, so it would hurt either
+								return new Text<StringT, IteratorT>(begin, end);
+							}
+							else
+								return parent_ptr;
 						}
 						
 						// as we couldn't find a new entity based on current character, 

@@ -144,13 +144,6 @@ namespace stpl {
 				}
 				virtual ~WikiAttribute() {}
 
-			private:
-				void init() {
-					// this->delimiter_ = '=';
-					this->force_end_quote_ = true;
-				}
-
-			protected:
 				virtual bool is_end_char(IteratorT& it) {
 					if (Property<StringT, IteratorT>::is_end_char(it))
 						return true;
@@ -158,7 +151,15 @@ namespace stpl {
 						IteratorT next = it;
 					}
 					return false;
+				}				
+
+			private:
+				void init() {
+					// this->delimiter_ = '=';
+					this->force_end_quote_ = true;
 				}
+
+
 		};
 
 		class WikiEntityConstants {
@@ -234,6 +235,14 @@ namespace stpl {
 					return body_;
 				}
 
+				virtual const int children_count() {
+					return 0;
+				}
+
+				virtual const bool should_have_children() {
+					return false;
+				}
+
 				static bool is_start_symbol(IteratorT it) {
 					if (*it == WikiEntityConstants::WIKI_KEY_OPEN_TAG
 						|| *it == WikiEntityConstants::WIKI_KEY_HEADING
@@ -306,11 +315,12 @@ namespace stpl {
 					// if it doesn't get implemented, it has no children 
 				}
 
-			protected:
 				/**
 				 * An entity is ended when 1) ended by the parent separator
 				 *                         2) ended by parent end
 				 *                         3) ended by end of input
+				 * 
+				 * Let parent close it up, so advance is false here
 				 */
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					return this->is_separated(it) || (this->parent_ptr_ && this->parent_ptr_->is_end(it, false))/*  || StringBound<StringT, IteratorT>::is_end(it) */;
@@ -356,7 +366,20 @@ namespace stpl {
 					return this->to_std_string();
 				}						
 
-			protected:
+				virtual bool is_pause(IteratorT& it) {
+					// we are not gonna pause it straitaway as this is a text node, because if it contains special character(s)
+					// we should leave it to the next one
+					if (it > this->begin() && BasicWikiEntity<StringT, IteratorT>::is_pause(it)) {
+						return true;
+					}
+					else if (*it == '\n') {
+						// do we need to advance here?
+						// please check and find out, and put some reasons here
+						// ++it;
+						return true;
+					}
+					return false;
+				}
 
 				/**
 				 * For the text node, most likely it will encounter a link or template which will mark
@@ -364,11 +387,9 @@ namespace stpl {
 				 * 
 				 * But generally we won't end until a new enity is found which can't be just link and template
 				 */
-				// virtual bool is_end(IteratorT& it, bool advance=true) {
-				// 	if (*it == '[' || *it == '{' || *it == '\n')
-				// 		return true;
-				// 	return ;
-				// }
+				 virtual bool is_end(IteratorT& it, bool advance=true) {
+				 	return this->parent_ptr_ && this->parent_ptr_->is_end(it, false);
+				 }
 		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
@@ -440,7 +461,6 @@ namespace stpl {
 					return "";
 				}						
 
-			protected:
 				virtual bool is_start(IteratorT& it) {
 					++it;
 					return true;
@@ -485,20 +505,38 @@ namespace stpl {
 				}
 				virtual ~WikiEntity() {}
 
+				virtual const int children_count() {
+					return Entity<BasicWikiEntity<StringT, IteratorT> >::size();
+				}
+
+				virtual const bool should_have_children() {
+					return true;
+				}
+
 				/**
 				 * Not many kinds of entities will have direct text node as child(ren)
+				 * WikiProperty
+				 * TableCell
+				 * ListItem
 				 */
+				// virtual void create_text_child_pre(IteratorT it) {
+				// 	// so we do nothing here
+				// }
+
+				// virtual void create_text_child_after(IteratorT it) {
+				// 	// so we do nothing here
+				// }
+
 				virtual void create_text_child_pre(IteratorT it) {
-					// so we do nothing here
-					// last_child_ = new Text<StringT, IteratorT>(begin, it);
-					// this->add(last_child_);
+					this->last_child_ = new Text<StringT, IteratorT>(this->begin(), it);
+					this->add(this->last_child_);
 				}
 
 				virtual void create_text_child_after(IteratorT it) {
 					// so we do nothing here
-					// IteratorT begin = last_child_->end();
-					// process_child(new Text<StringT, IteratorT>(begin, it));
-				}
+					IteratorT begin = this->last_child_->end();
+					this->process_child(new Text<StringT, IteratorT>(begin, it));
+				}					
 
 				const BasicWikiEntity<StringT, IteratorT> *get_last_child() const {
 					return last_child_;
@@ -509,12 +547,12 @@ namespace stpl {
 				}
 
 				virtual void process_child(BasicWikiEntity<StringT, IteratorT>* child) {
-					if (this->children_.size() == 0 && child->begin() > this->begin()) {
-						// IteratorT begin = this->begin();
-						// IteratorT end = child->begin();
-						// this->add(new Text<StringT, IteratorT>(begin, end));
-						create_text_child_pre(child->begin());
-					}
+					// if (this->children_.size() == 0 && child->begin() > this->begin()) {
+					// 	// IteratorT begin = this->begin();
+					// 	// IteratorT end = child->begin();
+					// 	// this->add(new Text<StringT, IteratorT>(begin, end));
+					// 	create_text_child_pre(child->begin());
+					// }
 
 					this->last_child_ = child;
 					this->add(child);
@@ -541,8 +579,6 @@ namespace stpl {
 					}
 					return ss.str();
 				}
-
-			protected:
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (BasicWikiEntity<StringT, IteratorT>::is_end(it)) {

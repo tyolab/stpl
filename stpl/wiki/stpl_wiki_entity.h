@@ -135,8 +135,6 @@ namespace stpl {
 					return ss.str();
 				}
 
-			protected:
-
 				virtual bool is_start(IteratorT& it) {
 					this->name_.begin(it);
 					this->name_.end(it);
@@ -167,6 +165,10 @@ namespace stpl {
 					// 	return (*next == '}');
 					// }
 					// else 
+					if (*it == '|') {
+						return true;
+					}
+					else 					
 					if (WikiEntity<StringT, IteratorT>::is_end(it)) {/*  || Property<StringT, IteratorT>::is_end(it) */
 						// need to close things up
 						// if (this->value_.begin() > this->name_.end()) {
@@ -177,13 +179,15 @@ namespace stpl {
 					return false;
 				}
 
+				// we collect text node and others
 				virtual bool is_pause(IteratorT& it) {
 					// when it come to '=', it may be the start of a new entity
 					// so we pause and see
-					if (WikiEntity<StringT, IteratorT>::is_pause(it)) {
-						return true;
-					}
-					else if (*it == '=') {
+					// if (WikiEntity<StringT, IteratorT>::is_pause(it)) {
+					// 	return true;
+					// }
+					// else 
+					if (*it == '=') {
 						this->has_delimiter_ = true; // WikiProperty doesn't use quote for value boundary
 						// backward for removing space
 						// deside where is the end of name
@@ -197,18 +201,16 @@ namespace stpl {
 
 						this->value_.begin(it);
 						this->value_.end(it);
-
-						return true;
 					}
-					else if (*it == '\n') {
-						// do we need to advance here?
-						// please check and find out, and put some reasons here
-						// ++it;
-						return true;
-					}
-					else if (*it == '|')
-						return true;
-					return false;
+					// else if (*it == '\n') {
+					// 	// do we need to advance here?
+					// 	// please check and find out, and put some reasons here
+					// 	// ++it;
+					// 	return true;
+					// }
+					// else if (*it == '|')
+					// 	return true;
+					return true;
 				}
 
 				virtual bool is_separated(IteratorT& it) {
@@ -341,16 +343,17 @@ namespace stpl {
 				virtual ~TableCell() {};
 
 				virtual std::string to_html() {
-					stringstream ss;
-					if (this->get_type() == P_HEADER) {
-						ss << "<th>" << this->children_to_html() <<  "</th>";
-					}
-					else if (this->get_type() == P_ROW_HEADER || this->get_type() == P_CELL) {
-						ss << "<td" << (this->get_type() == P_ROW_HEADER ? " class=\"row-header\"" : "") << ">" << this->children_to_html() <<  "</td>";
-					}
-					else
-						throw new runtime_error("Invalid table cell type");
-					return ss.str();
+					// stringstream ss;
+					// if (this->get_type() == P_HEADER) {
+					// 	ss << "<th>" << this->children_to_html() <<  "</th>";
+					// }
+					// else if (this->get_type() == P_ROW_HEADER || this->get_type() == P_CELL) {
+					// 	ss << "<td" << (this->get_type() == P_ROW_HEADER ? " class=\"row-header\"" : "") << ">" << this->children_to_html() <<  "</td>";
+					// }
+					// else
+					// 	throw new runtime_error("Invalid table cell type");
+					// return ss.str();
+					return this->children_to_html();
 				}		
 
 				int get_cell_id() const {
@@ -360,8 +363,6 @@ namespace stpl {
 				void set_cell_id(int cellId) {
 					cell_id_ = cellId;
 				}
-
-			protected:
 
 //				virtual bool is_pause(IteratorT& it) {
 //					// when it come to '=', it may be the start of a new entity
@@ -390,6 +391,11 @@ namespace stpl {
 
 					return WikiEntity<StringT, IteratorT>::is_end(it);
 				}
+
+				// we collect text node and others
+				virtual bool is_pause(IteratorT& it) {
+					return true;
+				}					
 
 			private:
 				void init() { 
@@ -432,20 +438,7 @@ namespace stpl {
 
 				virtual std::string to_html() {
 					return "<li>" + WikiEntity<StringT, IteratorT>::to_html() + "</li>";
-				}		
-
-				virtual void create_text_child_pre(IteratorT it) {
-					this->last_child_ = new Text<StringT, IteratorT>(this->begin(), it);
-					this->add(this->last_child_);
-				}
-
-				virtual void create_text_child_after(IteratorT it) {
-					// so we do nothing here
-					IteratorT begin = this->last_child_->end();
-					this->process_child(new Text<StringT, IteratorT>(begin, it));
-				}								
-
-			protected:
+				}									
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (*it == '\n') {
@@ -498,6 +491,11 @@ namespace stpl {
 					}
 					return false;
 				}
+
+				// we collect text node and others
+				virtual bool is_pause(IteratorT& it) {
+					return true;
+				}				
 
 			private:
 				void init() { 
@@ -689,7 +687,6 @@ namespace stpl {
 					return "<ul>" + WikiEntity<StringT, IteratorT>::to_html() + "</ul>";
 				}
 
-			protected:
 				virtual bool is_start(IteratorT& it) {
 					return *it == WikiEntityConstants::WIKI_KEY_LIST;
 				}
@@ -846,7 +843,6 @@ namespace stpl {
 					return elem;
 				}
 
-			protected:
 				virtual bool is_last_tag_end_tag() {
 					if (last_tag_ptr_/*&& last_tag_ptr_->length() > 0*/) {
 						if (last_tag_ptr_->is_end_wiki_keyword()) {
@@ -1515,57 +1511,167 @@ namespace stpl {
 
 				virtual std::string to_html() {
 					std::stringstream ss;
-					ss << "<table>";
+					ss << "<table";
+					if (style_.length() > 0) {
+						ss << " " << style_.to_std_string();
+					}
+					ss << ">" << std::endl;;
 					int rows = 0;
+					int cols = 0;
 					auto it = this->children_.begin();
 					bool first_col = true;
-					int last_cell = -1;
+					int last_cell_id = 0;
+					TableCell<StringT, IteratorT> *last_format = NULL, *last_cell_ptr = NULL, *cell_ptr;
+					std::vector<TableCell<StringT, IteratorT>* > last_cells;
+					bool row_header = false;
 					while (it != this->children_.end()) {
-						if ((*it)->get_type() == SEPARATOR) {
-							ss << (*it)->to_html() << std::endl;
-							ss << "</tr>" << std::endl;
+						if ((*it)->get_type() == SEPARATOR || (rows == 0 && cols == 0)) {
+							// ss << (*it)->to_html() << std::endl;
+							if ((*it)->get_type() == SEPARATOR) {
+								if (last_format && last_cells.size() > 0) 
+									ss << " " << last_format->to_std_string();
+								ss << ">";
+
+								if (last_cells.size() > 0) {
+									for (int i = 0; i < last_cells.size(); ++i) {
+										auto cell = last_cells[i];
+										if (i == 0) 
+											ss << cell->to_html();
+										else {
+											ss << "|";
+											ss << cell->to_html();
+										}
+									}
+								}
+								else
+									ss << last_format->to_html();		
+
+								if (rows == 0 && row_header) {
+									ss << "</th>" << std::endl;
+								}
+								else {
+									ss << "</td>" << std::endl;
+								}														
+							}
+
+							if (rows > 0) {
+								ss << "</tr>" << std::endl;
+							}
+							ss << "<tr>" << std::endl;
 							bool first_col = true;
+							cols = 0;
 							++rows;
-							continue;
+							last_cells.clear();
+							last_format = NULL;
+
+							if ((*it)->get_type() == SEPARATOR) {
+								++it;
+								continue;
+							}
 						}
 
-						TableCell<StringT, IteratorT>* cell_ptr = reinterpret_cast<TableCell<StringT, IteratorT> *>(*it);
+						cell_ptr = reinterpret_cast<TableCell<StringT, IteratorT> *>(*it);
+						row_header = rows_header_ind_[rows] == '1';
+						int skip_cells = cell_ptr->get_cell_id() - last_cell_id;
+						if (skip_cells > 1) {
+							for (int i = 1; i < skip_cells; ++i) {
+								if (rows == 0 && row_header) {
+									ss << "<th ></th>" << std::endl;
+								}
+								else 
+									ss << "<td ></td>" << std::endl;
+							}
+						}
+						if (last_format && skip_cells > 0) {
+							// time to output
 
-						bool skip_cells = last_cell > -1 && (cell_ptr->get_cell_id() - last_cell) > 1;
-						ss << "<tr>" << std::endl;
-						bool row_header = rows_header_ind_[rows] == '1';
-						if (rows == 0 && row_header) {
-							cell_ptr->set_type(P_HEADER);
+							if (skip_cells == 0) {
+								// actually this for the last cell
+								if (rows == 0 && row_header) {
+
+									if (cols > 0) {
+										ss << "</th>" << std::endl;
+
+									}
+									ss << "<th";
+								}
+								else {
+			
+									if (cols > 0)
+										ss << "</td>" << std::endl;
+									ss << "<td";
+									
+									if (first_col && row_header) {
+										ss << " " << "row-header=\"true\" ";
+										first_col = false;							
+									}
+								}	
+
+								if (last_format && last_cells.size() > 0) 
+									ss << " " << last_format->to_std_string();
+								ss << ">";
+
+								if (last_cells.size() > 0) {
+									for (int i = 0; i < last_cells.size(); ++i) {
+										auto cell = last_cells[i];
+										if (i == 0) 
+											ss << cell->to_html();
+										else {
+											ss << "|";
+											ss << cell->to_html();
+										}
+									}
+								}
+								else
+									ss << last_format->to_html();
+							}
+
+							cols += skip_cells + 1;
+							last_format = NULL;
+							last_cells.clear();
 						}
 						else {
-							if (first_col && row_header) {
-								cell_ptr->set_type(P_ROW_HEADER);
-								first_col = false;
+							if (last_format) {
+								last_cells.push_back(cell_ptr);
 							}
 							else
-								cell_ptr->set_type(P_CELL);
+								last_format = cell_ptr;
 						}
 
-						last_cell = cell_ptr->get_cell_id();
-						for (int i = 0; i < skip_cells; ++i) {
-							if (rows == 0 && row_header) {
-								ss << "<th ></th>" << std::endl;
-							}
-							else 
-								ss << "<td ></td>" << std::endl;
-						}
-
-						ss << cell_ptr->to_html();
+						last_cell_ptr = cell_ptr;
 
 						++it;
 					}
+
+					if (last_format && last_cells.size() > 0) 
+						ss << " " << last_format->to_std_string();
+					ss << ">";
+
+					if (last_cells.size() > 0) {
+						for (int i = 0; i < last_cells.size(); ++i) {
+							auto cell = last_cells[i];
+							if (i == 0) 
+								ss << cell->to_html();
+							else {
+								ss << "|";
+								ss << cell->to_html();
+							}
+						}
+					}
+					else
+						ss << last_format->to_html();
+
+					if (rows == 0 && row_header) {
+						ss << "</th>" << std::endl;
+					}
+					else
+						ss << "</td>" << std::endl;
 
 					ss << "</tr>" << std::endl;
 					ss << "</table>";
 					return ss.str();
 				}
 
-			protected:
 				virtual bool is_start(IteratorT& it) {
 					if (*it == '{' ) {
 						IteratorT next = it + 1;
@@ -1592,7 +1698,7 @@ namespace stpl {
 						IteratorT next = it + 1;
 						if (*next == '|') {
 							// IteratorT pre = it - 1;
-							next = it + 1;
+							++next;
 							switch (*next) {
 								case '+':
 									{
@@ -1609,12 +1715,12 @@ namespace stpl {
 								// new row
 								case '-': 
 									{
-										if (rows_ > 0) {
+										//if (rows_ > 0) {
 											// need to set a row separator
 											auto separator = new Text<StringT, IteratorT>(it, it);
 											separator->set_type(SEPARATOR);
 											this->add(separator);
-										}
+										//}
 
 										col_id_ = -1;
 										++rows_;
@@ -1626,8 +1732,10 @@ namespace stpl {
 
 										rows_header_ind_.push_back('0');
 
-										while (*it != '\n')
-											++it;									
+										while (*next != '\n')
+											++next;			
+
+										it = next;						
 									}
 									return true;
 								// case '|':
@@ -1649,7 +1757,7 @@ namespace stpl {
 							}
 							++cell_id_;
 							++col_id_;
-							it = next;
+							++it;
 							// that will be a table cell
 							return true;
 						}
@@ -1707,7 +1815,15 @@ namespace stpl {
 				 * It has clear end boundary, it end only when a boundary is seen
 				 */
 				virtual bool is_end(IteratorT& it, bool advance=true) {
-					if (*it == '}') {
+					if (*it == '|') {
+						IteratorT next = it + 1;
+						if (*next == '}') {
+							if (advance)
+								it = next + 1;
+							return true;
+						}
+					}
+					else if (*it == '}') {
 						IteratorT prev = it - 1;
 						if (*prev == '|') {
 							if (advance)
@@ -1755,7 +1871,6 @@ namespace stpl {
 					return "";
 				}
 
-			protected:
 				virtual bool is_start(IteratorT& it) {
 					if (*it == '-' && (*++it) == '{') {
 						++it;
@@ -1866,8 +1981,6 @@ namespace stpl {
 					return ss.str();
 				}
 
-			protected:
-
 				virtual bool is_start(IteratorT& it) {
 					if (*it == '{' && (*++it) == '{')
 						return TBase<StringT, IteratorT>::is_start(++it);
@@ -1921,7 +2034,6 @@ namespace stpl {
 					return "<ol>" + WikiEntity<StringT, IteratorT>::to_html() + "</ol>";
 				}
 
-			protected:
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (*it == '\n') {
 						IteratorT next = it + 1;
@@ -1994,13 +2106,12 @@ namespace stpl {
 					return std::string(begin, end);
 				}				
 
-			protected:
 				virtual bool is_start(IteratorT& it) {
 					while (*it == this->wiki_key_char_start_) {
 						++level_;
-						this->matched_levels_ = -level_;
 						++it;
 					}
+					this->matched_levels_ = -level_;
 					// this->skip_whitespace(it);
 					// this->begin(it);
 					return true;
@@ -2019,14 +2130,17 @@ namespace stpl {
 					else if (this->eow(it))
 						return true;
 					else if (*it == this->wiki_key_char_end_) {
-						while (*it == this->wiki_key_char_end_ && !this->eow(it)) {
+						IteratorT next = it + 1;
+						++this->matched_levels_;
+						while (*next == this->wiki_key_char_end_ && !this->eow(it)) {
 							++this->matched_levels_;
-							++it;
+							++next;
 							if (this->matched_levels_ > 0)
 								break;
 							else if (this->end_in_same_line_ && *it == '\n')
 								break;
 						}
+						
 						level_ += this->matched_levels_;
 
 						if (strict_ && this->matched_levels_ != 0) {
@@ -2035,6 +2149,12 @@ namespace stpl {
 						}
 						// now there is a delimma, should we go strict or auto correct?
 						
+						if (advance)
+							it = next;
+#ifdef DEBUG
+						else
+							int a = 1;
+#endif // DEBUG							s
 						return true;
 					}
 					return WikiEntityOrdered<StringT, IteratorT>::is_end(it); // this->eow(it) || text_stop(it);
@@ -2078,7 +2198,6 @@ namespace stpl {
 				// 	return "<section>" + this->to_std_string() + "</section>";
 				// }
 
-			protected:
 				virtual void set_wiki_key_char() override {
 					this->wiki_key_char_start_ = WikiEntityConstants::WIKI_KEY_HEADING;
 					this->wiki_key_char_end_ = WikiEntityConstants::WIKI_KEY_HEADING;
@@ -2134,14 +2253,13 @@ namespace stpl {
 						return WikiEntityLeveled<StringT, IteratorT>::to_html();
 				}
 
-			protected:
 				virtual void set_wiki_key_char() override {
 					this->wiki_key_char_start_ = '\'';
 					this->wiki_key_char_end_ = '\'';
 				}
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
-					if (WikiEntityLeveled<StringT, IteratorT>::is_end(it)) {
+					if (WikiEntityLeveled<StringT, IteratorT>::is_end(it, advance)) {
 						if (this->level_ != 2 && this->level_ != 3 && this->level_ != 5) {
 							this->begin(it);
 							this->end(it);
@@ -2156,6 +2274,12 @@ namespace stpl {
 					}
 					return WikiEntityLeveled<StringT, IteratorT>::is_end(it);
 				}
+
+
+				// we collect text node and others
+				virtual bool is_pause(IteratorT& it) {
+					return true;
+				}				
 
 			private:
 				void init() {
