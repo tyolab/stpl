@@ -113,7 +113,7 @@ namespace stpl {
 							it = tmp_entity->match();
 							previous_pos = tmp_entity->begin();
 
-							}
+						}
 						else
 							it = tmp_entity->end();
 

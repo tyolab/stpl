@@ -100,10 +100,46 @@ namespace stpl {
 						ss << (*it)->to_html() << std::endl;
 					}
 
-					for (auto it = sections_.begin(); it != sections_.end(); ++it) {			
-						ss << (*it)->to_html();
+					int count = 0;
+					WikiSection<string_type, iterator> *last_section = NULL;
+					auto it = sections_.begin();
+					if (it != sections_.end()) 
+					do {
+						WikiSection<string_type, iterator> *section = (WikiSection<string_type, iterator> *)(*it);
+						// WikiSection<string_type, iterator> *next_section = NULL;
+						
+						// auto next = it + 1;
+						// if (next != sections_.end()) {
+						// 	next_section = (WikiSection<string_type, iterator> *)(*next);
+						// }
+
+						if (count > 0 && section->get_level() <= 2)
+							ss << "</section>" << std::endl;
+
+						if (section->get_level() <= 2) {
+							ss << "<section id=\"" << count << "\">" << std::endl;
+							if (section->get_level() >= 2)
+								ss << "<div class=\"row\"><h2 class=\"section-title\">" << section->get_line() << "</h2></div>" << std::endl;
+							if (section->size() > 0) {
+								ss << "<div class=\"row\">" << std::endl;
+								ss << section->to_html() << std::endl;
+								ss << "</div>" << std::endl;
+							}
+							++count;
+						}
+						else {	
+							int level = section->get_level();
+							ss << "<div class=\"row\"><h" << level << ">" << section->get_line() << "</h" << level << ">" << std::endl;
+							ss << section->to_html() << std::endl;
+							ss << "</div>" << std::endl;
+						}
 						ss << std::endl;
-					}
+						last_section = section;
+						++it;
+					} while (it != sections_.end());
+
+					if (count > 0)
+						ss << "</section>" << std::endl;	
 					ss << "</body>" << std::endl;
 					ss << "</html>";
 					return ss.str();
@@ -174,14 +210,14 @@ namespace stpl {
 							continue;
 						}
 
-						if (!section || LAYOUT == entity_ptr->get_group()) {
+						if (!section || (LAYOUT == entity_ptr->get_group() && LAYOUT_HEADING == entity_ptr->get_type())) {
 							section = new WikiSection<StringT, IteratorT>(this->begin(), this->end());
 							sections_.push_back(section);
 
-							section->set_id(count);
+							section->set_id(count++);
 
 							// the first child if it is not a layout
-							if (LAYOUT != entity_ptr->get_group()) {
+							if (LAYOUT != entity_ptr->get_group() && LAYOUT_HEADING != entity_ptr->get_type()) {
 								section->set_level(0);
 								section->add(entity_ptr);
 							}
@@ -400,15 +436,26 @@ namespace stpl {
 							start_from_newline = false;
 							break;							
 						case WikiEntityConstants::WIKI_KEY_CLOSE_LINK:
-							new_entity_check_passed = 1;
-							start_from_newline = false;
-							if (parent_ptr && parent_ptr->get_group() == LINK) {
-								next = it + 1;
-								if (*next == WikiEntityConstants::WIKI_KEY_CLOSE_LINK) {
-									parent_ptr->end(++next);
-									parent_ptr->set_open(false);
-									begin = next;
-									return parent_ptr;
+							{
+								new_entity_check_passed = 1;
+								start_from_newline = false;
+								if (parent_ptr) {
+									if (parent_ptr->get_type() == P_LINK) {
+										parent_ptr->end(it);
+										parent_ptr->set_open(false);
+										begin = it;
+										return parent_ptr;
+									}
+									else if (parent_ptr->get_group() == LINK) {
+										// next = it + 1;
+										// if (*next == WikiEntityConstants::WIKI_KEY_CLOSE_LINK) {
+										// 	parent_ptr->end(++next);
+										// 	parent_ptr->set_open(false);
+										// 	begin = next;
+										// 	return parent_ptr;
+										// }
+										return parent_ptr;
+									}
 								}
 							}
 							break;
@@ -528,7 +575,7 @@ namespace stpl {
 								}
 								else {
 									Scanner<EntityT>::state_ = LAYOUT;
-									entity_ptr = new WikiEntityContainer<StringT, IteratorT>(it, end);
+									entity_ptr = new LayoutUnorderedList<StringT, IteratorT>(it, end);
 									entity_ptr->set_group(LAYOUT);
 									entity_ptr->set_type(LAYOUT_UL);
 								}
@@ -555,7 +602,7 @@ namespace stpl {
 											}
 											else {
 												Scanner<EntityT>::state_ = LAYOUT;
-												entity_ptr = new WikiEntityOrdered<StringT, IteratorT>(it, end);
+												entity_ptr = new LayoutOrderedList<StringT, IteratorT>(it, end);
 												entity_ptr->set_group(LAYOUT);
 												entity_ptr->set_type(LAYOUT_LI);
 											}
@@ -597,7 +644,13 @@ namespace stpl {
 							case WikiEntityConstants::WIKI_KEY_PROPERTY_DELIMITER:
 								{
 									if (parent_ptr) {
-										if (parent_ptr->get_group() == PROPERTY || parent_ptr->get_group() == CELL) {
+										if (parent_ptr->get_group() == LINK) {
+											begin = it + 1;
+											entity_ptr = new CommonChildEntity<StringT, IteratorT>(it + 1, end);
+											entity_ptr->set_group(PROPERTY);
+											entity_ptr->set_type(P_LINK);
+										}
+										else if (parent_ptr->get_group() == PROPERTY || parent_ptr->get_group() == CELL) {
 											// a property can't not be the paranet of another property
 											parent_ptr->set_open(false);
 											parent_ptr->end(it);
@@ -659,7 +712,9 @@ namespace stpl {
 								// this is in the middle of it
 								// 3. if parent has no child(ren) yet
 								// this is the first one, so it would hurt either
-								return new Text<StringT, IteratorT>(begin, end);
+								EntityT *text_ptr = new Text<StringT, IteratorT>(begin, end);
+								text_ptr->set_parent(parent_ptr);							
+								return text_ptr;
 							}
 							else
 								return parent_ptr;
@@ -668,14 +723,21 @@ namespace stpl {
 						// as we couldn't find a new entity based on current character, 
 						// forward one character, otherwise we will be stuck here						
 						// ++it;
-						return new Text<StringT, IteratorT>(begin, end);
+						EntityT *text_ptr = new Text<StringT, IteratorT>(begin, end);
+						if (parent_ptr && parent_ptr->should_have_children()) {
+							text_ptr->set_parent(parent_ptr);
+						}						
+						return text_ptr;
 					}
 
 					// Anything that we cannot parse it is a text node
 					if (it >= end && !entity_ptr && it > begin) {
 						entity_ptr = new Text<StringT, IteratorT>(begin, end);
 						entity_ptr->set_open(false);
-						entity_ptr->set_group(TEXT);						
+						entity_ptr->set_group(TEXT);
+						if (parent_ptr && parent_ptr->should_have_children()) {
+							entity_ptr->set_parent(parent_ptr);
+						}
 					}
 					return entity_ptr;
 				}

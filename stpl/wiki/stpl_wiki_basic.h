@@ -72,12 +72,12 @@ namespace stpl {
 							LAYOUT_DESC,
 
 							// Sub node types of LINK
-							LINK_FREE,
+							LINK_EXTERNAL,
+							LINK_P,
 							LINK_REDIRECT,
 							LINK_LANG,
 							LINK_INTERWIKI,
 							LINK_CATEGORY,
-							LINK_EXTERNAL,
 							LINK_T_ASOF,
 							LINK_MEDIA,
 							LINK_IMAGE,
@@ -118,6 +118,7 @@ namespace stpl {
 							TAG_POEM,
 
 							// Property Types
+							P_LINK,
 							P_PROPERTY,
 							P_CELL,
 							P_HEADER,
@@ -329,9 +330,7 @@ namespace stpl {
 				virtual bool is_pause(IteratorT& it) {
 					// ok we are not gonna pause when the character with the following
 					// that is not a good idea either that simply skip the first character simply because 
-					//if (it > this->begin())
-						return *it == '[' || *it == '{'  || *it == '-' || *it == '\'' || *it == '#' || *it == '*' || *it == ':';
-					//return false;
+					return *it == '[' || *it == '{'  || *it == '-' || *it == '\'' || *it == '#' || *it == '*' || *it == ':';
 				}			
 
 				virtual bool is_separated(IteratorT& it) {
@@ -388,7 +387,21 @@ namespace stpl {
 				 * But generally we won't end until a new enity is found which can't be just link and template
 				 */
 				 virtual bool is_end(IteratorT& it, bool advance=true) {
-				 	return this->parent_ptr_ && this->parent_ptr_->is_end(it, false);
+					// special treatment for text node inside a WikiProperty node when it sees a '=' character
+					if (this->parent_ptr_) {
+						if (this->parent_ptr_->get_type() == P_PROPERTY && *it == '=')
+							return true;
+						else if (this->parent_ptr_->get_type() == P_LINK && *it == '|')
+							return true;
+						else if (this->parent_ptr_->get_type() == LINK_EXTERNAL && *it == ' ')
+							return true;
+						else if (this->parent_ptr_->get_type() == LINK_P && *it == '|')
+							return true;
+						return this->parent_ptr_->is_end(it, false);
+					}					 
+					// for a text node, it finishes when it sees a special character
+					// because it is a text node it have to move forward a char first
+				 	return it > this->begin() && BasicWikiEntity<StringT, IteratorT>::is_pause(it);
 				 }
 		};
 
@@ -485,7 +498,7 @@ namespace stpl {
 			public:
 
 			protected:
-				std::map<StringT, WikiEntity>	         			properties_;
+				// std::map<StringT, WikiEntity>	         			properties_;
 				int                                      			level_marks_;
 
 				BasicWikiEntity<StringT, IteratorT>                 *last_child_;
@@ -612,203 +625,7 @@ namespace stpl {
 					last_child_ = NULL;
 				}
 		};
-
-
-		
-		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
-		class WikiKeyword: public BasicWikiEntity<StringT, IteratorT> 
-		{
-			public:
-				typedef	StringT	string_type;
-				typedef IteratorT	iterator;			
-				
-			protected:
-				bool					is_end_wiki_keyword_;      // </tag>
-				bool					is_ended_wiki_keyword_;  // <tag/>
-				bool					contain_intsubset_;
-				
-			public:
-				WikiKeyword() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() {
-					init();
-				}
-				WikiKeyword(IteratorT it) : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(it) {
-					init();
-				}
-				WikiKeyword(IteratorT begin, IteratorT end) : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(begin, end) {
-					init();
-				}
-				WikiKeyword(StringT content) :
-					BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity(content) {
-					init();
-				}
-				virtual ~WikiKeyword() {}
-
-				void set_end_wiki_keyword(bool b) {
-					is_end_wiki_keyword_ = b;
-				}
-
-				void set_ended_wiki_keyword(bool b) {
-					is_ended_wiki_keyword_ = b;
-				}
-
-				bool is_end_wiki_keyword() {
-					return is_end_wiki_keyword_;
-				}
-
-				bool is_ended_wiki_keyword() {
-					return is_ended_wiki_keyword_;
-				}
-
-				virtual void print(std::ostream &out = cout, int level = 0) {
-					this->body_.print(out, level);
-				}
-
-				void clone(WikiKeyword* elem_k_ptr) {
-					if (this != elem_k_ptr) {
-						this->is_end_wiki_keyword_ = elem_k_ptr->is_end_wiki_keyword();
-						this->is_ended_wiki_keyword_ = elem_k_ptr->is_ended_wiki_keyword();
-						this->begin(elem_k_ptr->begin());
-						this->end(elem_k_ptr->end());
-						this->body_.begin(elem_k_ptr->content().begin());
-						this->body_.end(elem_k_ptr->content().end());
-					}
-				}
-				
-			protected:					
-				
-				virtual bool is_start(IteratorT& it) {						
-					bool ret = false;
-					if (this->is_start_symbol(it)) {
-						// decide what kind of node is
-						IteratorT next = it;
-						if (!this->eow(++next)) {
-							if (*next == '!') {							 	
-								if (!this->eow(++next) ) {
-									if ( *(next) == '-' ) {
-										if (!this->eow(++next)  && *(next) == '-' )									
-											this->type_ = COMMENT;		
-									} else if (*(next) == '[' ) {
-										IteratorT begin = next;
-										std::string keyword("[TAG[");
-										this->skip_n_chars(next, keyword.length());
-											
-										if (std::string(begin, next) == keyword)
-											this->type_ = TAG;
-									} else {
-										IteratorT begin = next;
-										std::string keyword("DOCTYPE");
-										this->skip_n_chars(next, keyword.length());
-											
-										if (std::string(begin, next) == keyword)
-											this->type_ = COMMENT;										
-									}				
-								} 						 		
-
-							} else if (*next == '?') {	
-								this->type_ = TBASE;
-								++next;
-							} else if (*next == '/') {
-								this->type_ = TEXT;
-								this->is_end_wiki_keyword_ = true;
-								++next;
-							} else if (isalnum(*next) /*TODO put the UTF code here*/
-								) {
-								this->type_ = TEXT;
-								//--next;
-							} 
-						}
-						//body_.begin(++it);	
-						this->begin(it);
-						this->body_.begin(next++);
-						it = next;
-						ret = true;
-					}
-					return ret;
-				}
-				
-				virtual bool is_end(IteratorT& it, bool advance=true) {
-					if (this->eow(it))
-						return true;		
-						
-					if (this->type_ == COMMENT) {
-						if (!contain_intsubset_ && *it == '[')
-							contain_intsubset_ = true;
-						else if (contain_intsubset_ && (*it == ']'))
-							contain_intsubset_ = false;
-					}
-					
-					if (!contain_intsubset_ && this->is_end_symbol(it)) {
-						IteratorT pre_char = it;
-						--pre_char;		
-								
-						bool ret = false;		
-						if( this->type_ == COMMENT) {
-							if (*pre_char == '-' && *(--pre_char) == '-') 			
-								ret = true;												 							
-						} else if (this->type_ == TAG) {								
-							if (*pre_char == ']' && *(--pre_char) == ']')
-								ret = true;							
-						} else if (this->type_ == COMMENT) {	
-							this->skip_whitespace_backward(pre_char);
-							//if (*pre_char == ']')
-								ret = true;							
-						} else if (this->type() == TEXT) {
-							if (*pre_char == '/') {
-								//this->body_.end(pre_char);
-								if (this->is_end_wiki_keyword_) {
-									//TODO print some errors here, because we cann't have two close wiki keyword
-									this->is_end_wiki_keyword_ = false;
-								}									
-								this->is_ended_wiki_keyword_ = true;
-							} 		
-							ret = true;				
-							//body_.end(it);		
-						} else {
-							ret = true;
-						}
-						
-						//TODO error messages here, the node is not ended correctly if ret value is not true
-						if (!ret)
-							pre_char = it;
-					
-						if (ret) {
-							this->body_.end(pre_char);
-							++it;
-						}
-						return ret;
-					}
-					return false;
-				}	
-						
-				virtual IteratorT skip_invalid_chars(IteratorT& it) {
-					return this->skip_whitespace(it);
-				}			
-				
-				virtual void add_start(StringT& text) {
-					//TODO body_.set_begin()
-					this->ref().push_back(WikiEntityConstants::WIKI_KEY_OPEN_TAG);
-					if (this->is_end_wiki_keyword_)
-						this->ref().push_back(WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE);					
-				}
-				
-				virtual void add_content(StringT& text) {	
-					this->ref().append(text);						
-				}
-				
-				virtual void add_end(StringT& text) {
-					//TODO body_.set_end()
-					if (this->is_ended_wiki_keyword_ && !this->is_end_wiki_keyword_)
-						this->ref().push_back(WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE);
-					this->ref().push_back(WikiEntityConstants::WIKI_KEY_CLOSE_TAG);					
-				}		
-
-			private:
-				void init() {
-					is_ended_wiki_keyword_ = false;  // <../>
-					is_end_wiki_keyword_ = false;	// </..>
-					contain_intsubset_ = false;
-				}				
-		};		
 	}
+
 }
 #endif /*STPL_WIKI_BASIC_H_*/

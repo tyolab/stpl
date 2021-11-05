@@ -102,18 +102,24 @@ namespace stpl {
 				 */
 				virtual std::string to_html() {
 					stringstream ss;
-					// if (this->get_type() == P_PROPERTY) {
-						ss << "<property name=\"";
+					auto it = this->children_.begin();
+
+					ss << "<property";
+					if (this->has_delimiter_) {
+						ss << " name=\"";
 						std::string name = std::string(this->name_.begin(), this->name_.end());
 						name = utils::escape_quote(name);
 
 						ss << name << "\">";
 						if (this->children_.size() > 0) {
-
+							// name is a child too
+							++it;
 							// ss << name << "=";
 							// if (this->has_quote())
 							// 	ss << "\"";
-							ss << this->children_to_html();
+							while (it != this->children_.end()) {
+								ss << (*it++)->to_html();
+							}
 
 							// if (this->has_quote())
 							// 	ss << "\"";
@@ -128,8 +134,10 @@ namespace stpl {
 								//return name + "=\"" + value + "\"";
 							//}
 						}
-						ss << "</property>";
-					// }
+					}
+					else
+						ss << this->children_to_html();
+					ss << "</property>";
 	
 					//return Property<StringT, IteratorT>::to_std_string();
 					return ss.str();
@@ -197,10 +205,10 @@ namespace stpl {
 
 						++it;
 
-						WikiEntity<StringT, IteratorT>::skip_whitespace(it);
+						//WikiEntity<StringT, IteratorT>::skip_whitespace(it);
 
-						this->value_.begin(it);
-						this->value_.end(it);
+						// this->value_.begin(it);
+						// this->value_.end(it);
 					}
 					// else if (*it == '\n') {
 					// 	// do we need to advance here?
@@ -225,9 +233,47 @@ namespace stpl {
 				}
 		};
 
-				template <typename StringT = std::string,
-							typename IteratorT = typename StringT::iterator
-						  >
+		template <typename StringT = std::string
+					, typename IteratorT = typename StringT::iterator
+				  >
+		class CommonChildEntity: public WikiEntity<StringT, IteratorT>
+		{
+			public:
+				typedef StringT													string_type;
+				typedef IteratorT												iterator;
+
+			public:
+				CommonChildEntity() : WikiEntity<StringT, IteratorT>::WikiEntity()
+							 { init(); }
+				CommonChildEntity(IteratorT it) :
+					WikiEntity<StringT, IteratorT>::WikiEntity(it)/*, start_k_(it, it)*/
+					 { init(); }
+				CommonChildEntity(IteratorT begin, IteratorT end) :
+					WikiEntity<StringT, IteratorT>::WikiEntity(begin, end)/*, start_k_(begin, begin)*/
+					 { init(); }
+
+				virtual ~CommonChildEntity() {
+				}
+
+				// virtual bool is_start(IteratorT& it) {
+				// 	return true;
+				// }
+
+				virtual bool is_pause(IteratorT& it) {
+					return true;
+				}
+
+				virtual bool is_end(IteratorT& it, bool advance=true) {
+					return this->parent_ptr_ && this->parent_ptr_->is_end(it, false);
+				}
+
+			private:
+				void init() {}
+		};
+
+		template <typename StringT = std::string,
+					typename IteratorT = typename StringT::iterator
+				  >
 		class WikiSection : public WikiEntity<StringT, IteratorT>
 		{
 			public:
@@ -255,12 +301,13 @@ namespace stpl {
 				virtual ~WikiSection() {};
 
 				virtual std::string to_html() {
-					stringstream ss;
-					ss << "<section>" << std::endl;
-					ss <<  this->children_to_html();
-					ss <<  "</section>" << std::endl;
+					// stringstream ss;
+					// ss << "<section>" << std::endl;
+					// ss <<  this->children_to_html();
+					// ss <<  "</section>" << std::endl;
 
-					return ss.str();
+					// return ss.str();
+					return this->children_to_html();
 				}
 
 				virtual std::string to_json() {
@@ -364,35 +411,29 @@ namespace stpl {
 					cell_id_ = cellId;
 				}
 
-//				virtual bool is_pause(IteratorT& it) {
-//					// when it come to '=', it may be the start of a new entity
-//					// so we pause and see
-//				    if (*it == '\n') {
-//						// do we need to advance here?
-//						// please check and find out, and put some reasons here
-//						// ++it;
-//						return true;
-//					}
-//					else if (*it == '|')
-//						return true;
-//
-//					return WikiEntity<StringT, IteratorT>::is_pause(it);
-//				}
-
 				virtual bool is_end(IteratorT& it, bool advance=true) {
+					// no, newline is not end yet
 				    if (*it == '\n') {
 						// do we need to advance here?
 						// please check and find out, and put some reasons here
-						// ++it;
-						return true;
+						IteratorT next = it + 1;
+						if (*next == '|') {
+							// we are not gonna advance, because table need new line for other properties
+							// if (advance)
+							// 	it = next + 1;
+							return true;
+						}
+						return false;
 					}
-				    else if (*it == '|')
+				    else 
+					if (*it == '|')
 						return true;
 
 					return WikiEntity<StringT, IteratorT>::is_end(it);
 				}
 
 				// we collect text node and others
+				// anything is a pause including new line
 				virtual bool is_pause(IteratorT& it) {
 					return true;
 				}					
@@ -603,84 +644,26 @@ namespace stpl {
 				void init() { }			
 		};
 
-		template <typename StringT = std::string,
-							typename IteratorT = typename StringT::iterator
-						  >
-		class Comment : public WikiKeyword<StringT, IteratorT>
-		{
-			public:
-				typedef	StringT	string_type;
-				typedef IteratorT	iterator;
-
-			private:
-				void init() { this->type_ = COMMENT; }
-
-			public:
-				Comment()  :
-					WikiKeyword<StringT, IteratorT>::WikiKeyword(){}
-				Comment(IteratorT it) :
-					WikiKeyword<StringT, IteratorT>::WikiKeyword(it)  {
-					init();
-				}
-				Comment(IteratorT begin, IteratorT end) :
-					WikiKeyword<StringT, IteratorT>::WikiKeyword(begin, end) { init(); }
-				Comment(StringT content) :
-					WikiKeyword<StringT, IteratorT>::WikiKeyword(content) {
-					init();
-				}
-				virtual ~Comment() {};
-
-
-				Comment& operator= (WikiKeyword<StringT, IteratorT>* elem_k_ptr) {
-					this->clone(elem_k_ptr);
-					return *this;
-				}
-
-				virtual IteratorT match(IteratorT begin, IteratorT end) {
-					if (WikiKeyword<StringT, IteratorT>::match(begin, end)) {
-						if (this->type_ == COMMENT)
-							return true;
-					}
-					return false;
-				}
-		};
-
-
-		template <typename StringT = std::string
-			, typename IteratorT = typename StringT::iterator>
-		class WikiNodeTypes {
-			public:
-				typedef BasicWikiEntity<StringT, IteratorT> 				basic_entity;
-				typedef WikiKeyword<StringT, IteratorT>						keyword_type;
-				// typedef ElemTag<StringT, IteratorT> 						tag_type;
-				typedef Text<StringT, IteratorT> 							text_type;
-				// typedef Link<StringT, IteratorT> 							link_type;
-				typedef TBase<StringT, IteratorT> 						    template_type;
-				typedef Entity<basic_entity>								container_type;
-				typedef typename container_type::container_entity_type		container_entity_type;
-		};
-
 		template <typename StringT = std::string
 							, typename IteratorT = typename StringT::iterator
-							, typename NodeTypesT = WikiNodeTypes<StringT, IteratorT>
 						  >
-		class WikiEntityContainer: public WikiEntity<StringT, IteratorT>
+		class LayoutUnorderedList: public WikiEntity<StringT, IteratorT>
 		{
 			public:
 				typedef StringT													string_type;
 				typedef IteratorT												iterator;
 
 			public:
-				WikiEntityContainer() : WikiEntity<StringT, IteratorT>::WikiEntity()
+				LayoutUnorderedList() : WikiEntity<StringT, IteratorT>::WikiEntity()
 							 { init(); }
-				WikiEntityContainer(IteratorT it) :
+				LayoutUnorderedList(IteratorT it) :
 					WikiEntity<StringT, IteratorT>::WikiEntity(it)/*, start_k_(it, it)*/
 					 { init(); }
-				WikiEntityContainer(IteratorT begin, IteratorT end) :
+				LayoutUnorderedList(IteratorT begin, IteratorT end) :
 					WikiEntity<StringT, IteratorT>::WikiEntity(begin, end)/*, start_k_(begin, begin)*/
 					 { init(); }
 
-				virtual ~WikiEntityContainer() {
+				virtual ~LayoutUnorderedList() {
 				}
 
 				virtual std::string to_html() {
@@ -709,755 +692,6 @@ namespace stpl {
 
 			private:
 				void init() {}
-		};
-
-		template <typename StringT = std::string,
-				typename IteratorT = typename StringT::iterator,
-				typename NodeTypesT = WikiNodeTypes<StringT, IteratorT>
-				>
-		class WikiTag: public  WikiEntityContainer<StringT, IteratorT>
-		{
-			public:
-				typedef	StringT	                                             string_type;
-				typedef IteratorT	                                         iterator;
-
-				typedef Comment<StringT, IteratorT>							 comment_type;
-				typedef typename NodeTypesT::basic_entity 					 basic_entity;
-				typedef typename NodeTypesT::container_type					 container_type;
-				typedef typename NodeTypesT::tag_type::attribute_type		 attribute_type;
-				typedef typename container_type::entity_iterator			 entity_iterator;
-
-				typedef typename std::map<StringT, bool>					 ie_map; /// include or exclude map
-
-				typedef typename container_type::container_entity_type		 container_entity_type;
-				typedef list<
-					typename container_type::container_entity_type
-							>												 tree_type;
-
-			protected:
-				typedef typename NodeTypesT::text_type 						 TextT;
-				typedef typename NodeTypesT::tag_type						 ElemTagT;
-				typedef typename NodeTypesT::keyword_type					 WikiKeywordT;
-				typedef StringBound<StringT, IteratorT> 					 StringB;
-
-			private:
-				ElemTagT* 													 start_k_;
-				ElemTagT*													 end_k_;
-				ElemTagT* 													 last_tag_ptr_;
-
-				//Layout* parent_;
-				StringT														 xpath_;
-
-			public:
-				WikiTag() : WikiEntityContainer<StringT, IteratorT>::Layout() {
-					init();
-				}
-				WikiTag(IteratorT it) :
-					WikiEntityContainer<StringT, IteratorT>::Layout(it){
-					init();
-				}
-				WikiTag(IteratorT begin, IteratorT end) :
-					WikiEntityContainer<StringT, IteratorT>::Layout(begin, end){
-					init();
-				}
-				WikiTag(StringT name) :
-					WikiEntityContainer<StringT, IteratorT>::Layout(name) {
-					init();
-					create(name);
-				}
-				virtual ~WikiTag() {
-					cleanup();
-				}
-
-				void set_start_keyword(ElemTagT* start_k) {
-					start_k_ = start_k;
-				}
-
-				void set_last_tag(ElemTagT* last_tag_ptr) {
-					last_tag_ptr_ = last_tag_ptr;
-				}
-
-				std::pair<bool, StringT> attribute(const StringT attr) const {
-					if (start_k_)
-						return start_k_->attribute(attr);
-					return make_pair(false, StringT());
-				}
-
-				bool has_attribute(const StringT attr) {
-					if (start_k_)
-						return start_k_->has_attribute(attr);
-					return false;
-				}
-
-				StringT get_attribute(const StringT attr) {
-					if (start_k_)
-						return start_k_->get_attribute(attr);
-					return "";
-				}
-
-				WikiTag *get_descendent_node_by_xpath(const char *xpath, StringT& attr_name, StringT& attr_value) {
-					const char *pos = xpath;
-					StringT first_tag;
-					while (*pos != '\0' && *pos != '/' && *pos != '[' && *pos != ':')
-						first_tag.push_back(*pos++);
-
-					int index = -1;
-					if (*pos == '[') {
-						index = atoi(++pos);
-						while (isdigit(*pos))
-							++pos;
-						if (*pos == ']')
-							++pos; // ]
-					}
-
-					int count = 0;
-					WikiTag *elem = NULL;
-					// allow non-stard wiki file with no single document root
-					entity_iterator	it;
-					for (it = this->iter_begin(); it != this->iter_end(); ++it) {
-						basic_entity *node = static_cast<basic_entity*>((*it));
-
-						if (node->is_element()) {
-							++count;
-							elem = static_cast<WikiTag *>(node);
-							StringT name = elem->name();
-							if (name == first_tag && (index == -1 || (count - 1) == index)) {
-								if (*pos == '/') {
-									WikiTag *d_elem = elem->get_descendent_node_by_xpath(++pos, attr_name, attr_value);
-									elem = d_elem;
-								}
-								else if (attr_value.length() > 0) {
-									StringT value2 = elem->get_attribute(attr_name);
-									if (attr_value != value2) {
-										elem = NULL;
-										continue;
-									}
-								}
-								break;
-							}
-							else
-								elem = NULL;
-
-						}
-					}
-					return elem;
-				}
-
-				virtual bool is_last_tag_end_tag() {
-					if (last_tag_ptr_/*&& last_tag_ptr_->length() > 0*/) {
-						if (last_tag_ptr_->is_end_wiki_keyword()) {
-							if (start_k_) {
-								StringT	last_tag_name(last_tag_ptr_->name().begin(), last_tag_ptr_->name().end());
-								StringT start_k_name(start_k_->name().begin(), start_k_->name().end());
-								if (last_tag_name == start_k_name) {
-									// TODO assert elem_k is closed elem
-									end_k_ = last_tag_ptr_;
-									last_tag_ptr_ = NULL;
-									IteratorT end = end_k_->begin();
-									this->children.end(end);
-
-									this->end(end_k_->end());
-								} else {
-									// TODO error message here for wiki
-									// but could be alright for html
-									if (this->parent() && this->parent()->is_element()) {
-										reinterpret_cast<WikiTag*>(this->parent())->set_last_tag(last_tag_ptr_);
-										IteratorT end = last_tag_ptr_->begin();
-										this->children.end(end);
-										this->end(end);
-										last_tag_ptr_ = NULL;
-									}
-									else {
-									// there may be error here,since the Layout is not opened
-									// but the parser should be error-tolorant with HTML
-										return false;
-									}
-								}
-							} else {
-								// TODO error message for not opening the tag yet
-								end_k_ = last_tag_ptr_;
-								last_tag_ptr_ = NULL;
-								IteratorT begin = end_k_->begin();
-								this->children.begin(begin);
-								this->children.end(begin);
-								this->end(end_k_->end());
-							}
-							return true;
-
-						} else { // if last_tag is not a end tag
-							bool ret = false;
-							if (this->start_k_) {
-								// if the end tag is optional or fibidden
-								// then it is the end
-								if (!this->start_k_->required_end_tag())
-									ret = true;
-
-								if (ret && this->start_k_->make_following_element_as_child(last_tag_ptr_))
-									ret = false;
-
-								if (!ret && this->start_k_->force_close(last_tag_ptr_))
-									ret = true;
-							} //else {
-								//ret = true;
-							//}
-
-							if (ret) {
-								IteratorT end = last_tag_ptr_->begin();
-								if (this->parent() && this->parent()->is_element()) {
-									reinterpret_cast<WikiTag*>(this->parent())->set_last_tag(last_tag_ptr_);
-									last_tag_ptr_ = NULL;
-								}
-								this->children.end(end);
-								this->end(end);
-							}
-							return ret;
-						}
-						return false;
-					}
-					return true;
-				}
-
-				virtual bool is_start(IteratorT& it) {
-					bool ret = false;
-					if (start_k_ && start_k_->length() > 0) {
-						ret = true;
-					}
-					else {
-						IteratorT begin = this->begin();
-						IteratorT end = this->end();
-
-						ret = assign_start_tag(begin, end);
-					}
-
-					if (ret) {
-						this->type_ = TAG;
-						assert(start_k_);
-						this->begin(start_k_->begin());
-						this->children.begin(start_k_->end());
-					}
-					return ret;
-				}
-
-				virtual bool is_end(IteratorT& it, bool advance=true) {
-					bool ret = false;
-					if (start_k_) {
-						if (start_k_->is_ended_wiki_keyword())
-							ret = true;
-
-						if (start_k_->is_end_wiki_keyword()) {
-							// may print error message here
-							// since the Layout is closed without opening it
-							ret = true;
-						}
-
-						if (ret) {
-							this->children.end(start_k_->end());
-							return ret;
-						}
-					}
-
-					if (!last_tag_ptr_) {
-						match_text(it);
-						//IteratorT end = this->end();
-
-						// if it is the end of character stream
-						if (this->eow(it)) {
-							//TODO error message here for wiki
-							// but could be valid for html
-							this->children.end(it);
-							this->end(it);
-							return true;
-						}
-
-						// cleanup_last_tag();
-						// skip non valid char or get next tag
-						skip_invalid_chars(it);
-					}
-
-					if (!last_tag_ptr_ || is_last_tag_end_tag()) {
- 						it = this->end();
- 						return true;
- 					}
-
- 					assert(last_tag_ptr_);
-
-					IteratorT end = this->end();
-					IteratorT begin = last_tag_ptr_->begin();
-					IteratorT new_begin = last_tag_ptr_->end();
- 					WikiTag* child = new WikiTag(begin, end);
-					child->set_parent(reinterpret_cast<basic_entity* >(this));
-					child->set_start_keyword(last_tag_ptr_);
-					child->content().begin(last_tag_ptr_->end());
-					last_tag_ptr_ = NULL;
-
-					if (child->resume_match(new_begin, end) && child->length() > 0) {
-						this->add(child);
-
-						//if (last_tag_ptr_ && is_last_tag_end_tag()) {
-						//	it = this->end();
-						//	return true;
-						//}
-						// process the text after the child
-						// match_text(it = end);
-						if (last_tag_ptr_)
-							it = last_tag_ptr_->end();
-						else
-							it = child->end();
-						// because it will return false, that means it will move ahead one character
-						// in the parent "match" function, and we don't want to miss the current possition
-						// that is why --it
-						--it;
-						return false;
-					}
-					// TODO someting must go wrong here, output error message
-					it = begin; // where the error happens
-					this->children.end(it);
-					delete child;
-					return true;
-
-					//--it;
-					//return false;
-					// TODO something wrong happens here
-					//return true;
-				}
-
-				bool assign_start_tag(IteratorT begin, IteratorT end) {
-					bool ret = false;
-					if (!last_tag_ptr_) {
-						if (!start_k_)
-							start_k_ = new ElemTagT(begin, end);
-						ret = start_k_->match(begin, end);
-					}
-					else {
-						ret = true;
-						start_k_ = last_tag_ptr_;
-						last_tag_ptr_ = NULL;
-					}
-					return ret;
-				}
-
-				virtual IteratorT skip_invalid_chars(IteratorT& it) {
-					this->skip_whitespace(it);
-
-					if (!last_tag_ptr_) {
-						last_tag_ptr_ = new ElemTagT(it, it);
-
-						bool ret = false;
-						while (!this->eow(it) && last_tag_ptr_->length() <= 0 )
-							if (!(ret = this->skip_comment_unknown_node(last_tag_ptr_, it))) {
-								cleanup_last_tag();
-								break;
-							}
-					}
-					return it;
-				}
-
-				// comments could be in any place, like before, after or anywhere in the middle of a Layout
-				bool skip_comment_unknown_node(ElemTagT* tag_ptr, IteratorT& begin) {
-					bool ret = true;
-
-					IteratorT orig_begin = begin;
-					IteratorT end = this->end();
-					WikiKeywordT* keyword_ptr = new WikiKeywordT(begin, end);
-
-					if (keyword_ptr->detect(begin)) {
-						//begin = keyword_ptr->end();
-						IteratorT new_begin = keyword_ptr->content().begin();
-						if (keyword_ptr->type() == COMMENT) {
-							comment_type* node_ptr = new comment_type(orig_begin, end);
-							node_ptr->set_parent(reinterpret_cast<basic_entity* >(this));
-							node_ptr->clone(keyword_ptr);
-							//node_ptr->detected(true);
-							if ((ret = node_ptr->resume_match(new_begin, end))) {
-								begin = node_ptr->end();
-								this->add(reinterpret_cast<basic_entity* >(node_ptr));
-							}
-
-							delete keyword_ptr;
-							keyword_ptr = NULL;
-						}
-						else if (keyword_ptr->type() == TEXT) {
-							tag_ptr->clone(keyword_ptr);
-							//tag_ptr->detected(true);
-							if ((ret = tag_ptr->match(orig_begin, end)))
-								begin = tag_ptr->end();
-
-							delete keyword_ptr;
-							keyword_ptr = NULL;
-						}
-						else {
-							keyword_ptr->set_parent(reinterpret_cast<basic_entity* >(this));
-							//keyword_ptr>detected(true);
-							if ((ret = keyword_ptr->resume_match(new_begin, end))) {
-								begin = keyword_ptr->end();
-								this->add(reinterpret_cast<basic_entity* >(keyword_ptr));
-							}
-						}
-					} else {
-						delete keyword_ptr;
-						ret = false;
-					}
-
-					return ret;
-				}
-
-				virtual void match_text(IteratorT& next) {
-					IteratorT end = this->end();
-					TextT* text = new TextT(next, end);
-					text->set_parent(reinterpret_cast<basic_entity* >(this));
-					if (text->match(next, end))	{
-						this->add(reinterpret_cast<basic_entity*>(text));
-						next = text->end();
-					}
-					else
-						delete text;
-				}
-
-				virtual void add_start(StringT& text) {
-					this->add_start_tag(text);
-				}
-
-				virtual void add_content(StringT& text) {
-					//process_children(text);
-				}
-
-				virtual void add_end(StringT& text) {
-					this->add_end_tag(text);
-				}
-
-				void add_start_tag(StringT& text) {
-					if (start_k_)
-						delete start_k_;
-
-					start_k_ = new ElemTagT();
-					//assert(start_k_->ref() == this->ref());
-					start_k_->create(text);
-
-				}
-
-				void add_end_tag(StringT& text) {
-					if (end_k_)
-						delete end_k_;
-
-					end_k_ = new ElemTagT();
-					//start_k_->ref(this->ref());
-					end_k_->set_end_wiki_keyword(true);
-					end_k_->create(text);
-				}
-
-			public:
-				virtual StringT name() {
-					if (start_k_)
-						return StringT(start_k_->name().begin(), start_k_->name().end());
-					return StringT("");
-				}
-
-				virtual void print(std::ostream &out = cout, int level = 0) {
-					print_tag(out, level);
-					//print_text(level);
-					out << std::endl;
-					if (this->size() > 0) {
-						print_childrent(out, level + 1);
-						out << std::endl;
-					}
-				}
-
-				void print_attributes(std::ostream &out = cout, int level = 0) {
-					if (start_k_)
-						start_k_->print_attributes(out, level);
-				}
-
-				void text(StringT& text) {
-					ie_map nm;
-					this->text(text, false, nm, true);
-				}
-
-				void all_text(StringT& text) {
-					ie_map nm;
-					this->text(text, true, nm, true);
-				}
-
-				void all_text(StringT& text
-						, ie_map& nm
-						, bool sub_text = false
-						, bool force = false) {
-					this->text(text, true, nm, sub_text, force);
-				}
-
-				StringT text() {
-					StringT text;
-					this->text(text);
-					return text;
-				}
-
-				StringT all_text() {
-					StringT text;
-					this->all_text(text);
-					return text;
-				}
-
-				void traverse(tree_type& tree) {
-					entity_iterator it;
-					for (it = this->iter_begin(); it != this->iter_end(); ++it) {
-					//this->reset();
-					//while (this->more()) {
-					//	entity_iterator it = this->next();
-						tree.push_back(*it);
-						if ((*it)->is_element()) {
-							reinterpret_cast<WikiTag*>(*it)->traverse(tree);
-						}
-					}
-				}
-
-				void find_children(tree_type& tree) {
-					find_children("", tree, true);
-				}
-
-				void find_children(StringT name, tree_type& tree) {
-					find_children(name, tree, false);
-				}
-
-				void find(StringT name, tree_type& tree) {
-					if (this->name() == name) {
-						tree.push_back(this);
-					}
-					else {
-						find_children(name, tree, false);
-					}
-					return;
-				}
-
-				WikiTag* find_child(StringT child_name, int index = -1) {
-					entity_iterator it;
-					int count = -1;
-					WikiTag* child = NULL;
-					for (it = this->iter_begin(); it != this->iter_end(); ++it) {
-						++count;
-						if ((*it)->is_element()) {
-							child = reinterpret_cast<WikiTag *>(*it);
-							StringT name = child->name();
-							// debug
-							// cout << "comparing with " << name << endl;
-							if (name == child_name) {
-								if (index == -1 || (index > -1 && count == index))
-									break;
-								child = NULL;
-							}
-							else
-								child = child->find_child(child_name, index);
-						}
-					}
-					return child;
-				}
-
-				virtual StringB& content() {
-					return this->children;
-				}
-
-				void name(StringT name) {
-					if (start_k_) {
-						delete start_k_;
-					}
-				}
-
-				void new_text(StringT text) {
-					TextT* text_ptr = new TextT(text);
-					this->add(reinterpret_cast<basic_entity*>(text_ptr));
-				}
-
-				void new_child(WikiTag* child_ptr) {
-					this->add(reinterpret_cast<basic_entity*>(child_ptr));
-				}
-
-				void new_attribute(StringT name, StringT value) {
-					if (start_k_)
-						start_k_->new_attribute(name, value);
-				}
-
-				virtual void flush(int level=0) {
-					StringT indent(level*2, ' ');
-					bool n_flag = false;
-
-					this->ref().erase();
-
-					//if (level > 0)
-					//	this->ref().append(indent);
-
-					if (start_k_) {
-						start_k_->flush(level);
-						this->ref().append(start_k_->ref());
-					}
-
-					entity_iterator it;
-					for (it = this->iter_begin(); it != this->iter_end(); ++it) {
-						this->ref().append("\n");
-
-						(*it)->flush(level+1);
-						this->ref().append((*it)->ref());
-
-						this->ref().append("\n");
-
-						n_flag = true;
-					}
-
-					if (end_k_ && !start_k_->is_ended_wiki_keyword()) {
-						end_k_->flush(level);
-						this->ref().append(end_k_->ref());
-					}
-					else { // fix the missing tag here
-						if (!start_k_->is_ended_wiki_keyword()) {
-							start_k_->set_end_wiki_keyword(true);
-							start_k_->flush(level);
-							this->ref().append(start_k_->ref());
-							start_k_->set_end_wiki_keyword(false);
-						}
-					}
-				}
-
-				void set_empty() {
-					if (start_k_)
-						start_k_->set_ended_wiki_keyword(true);
-				}
-
-				StringT xpath() { return xpath_; }
-				void xpath(StringT xpath) { xpath_ = xpath; }
-
-			private:
-				/**
-				 * all_text is true for including children' texts
-				 */
-				void text(StringT& text
-						, bool all_text
-						, ie_map& nm
-						, bool sub_text = false
-						, bool force = false) {
-
-					if (nm.size() > 0 &&
-						(!sub_text || (force && sub_text))) {
-						//static_cast<Layout*>(*it)->text(text, all_text, nm, sub_text, force);
-						//else  {
-
-						//Layout* tmp_elem_ptr = static_cast<Layout*>((*it));
-
-						typename ie_map::iterator ie_node = nm.find(this->name());
-						bool found = ie_node != nm.end();
-
-						if (found) {
-							if (!(ie_node->second))
-								return;
-							else
-								sub_text = true;
-								//static_cast<Layout*>(*it)->text(text, all_text, nm, true, force);
-						}
-						//else
-						//	sub_text = false;
-							//static_cast<Layout*>(*it)->text(text, all_text, nm, false, force);
-					}
-
-					this->reset();
-					while (this->more()) {
-						entity_iterator it = this->next();
-
-						if ((*it)->type() == TEXT || (*it)->type() == TAG) {
-							if (sub_text || (nm.size() == 0)) {
-								if (text.length() > 0)
-									text.append("\n");
-								if ((*it)->type() == TAG)
-									text.append((*it)->content().begin(), (*it)->content().end());
-								else
-									text.append((*it)->begin(), (*it)->end());
-							}
-						}
-						else if ((*it)->is_element() && all_text) {
-							static_cast<WikiTag*>(*it)->text(text, all_text, nm, sub_text, force);
-						}
-					}
-
-				}
-
-				virtual void print_tag(std::ostream &out, int level) {
-					if (start_k_)
-						start_k_->print(out, level);
-				}
-
-				virtual void print_end_tag(std::ostream &out, int level) {
-					if (start_k_)
-						start_k_->print(out, level);
-				}
-
-				void print_text(std::ostream &out, int level) {
-					out << " - " ;
-					this->reset();
-					while (this->more()) {
-						entity_iterator it = this->next();
-						if ((*it)->type() == TEXT) {
-							(*it)->print(out);
-						}
-					}
-				}
-
-				void print_childrent(std::ostream &out, int level) {
-					this->reset();
-					while (this->more()) {
-						entity_iterator it = this->next();
-						if ((*it)->type() == TAG) {
-							reinterpret_cast<WikiTag*>(*it)->print(out, level + 1);
-						} else {
-							(*it)->print(out, level + 1);
-						}
-					}
-				}
-
-
-				// find children elements with child_name
-				// if child name is empty, then return all children
-				void find_children(StringT child_name, tree_type& tree, bool all) {
-					//int count = 0;
-					entity_iterator it;
-					for (it = this->iter_begin(); it != this->iter_end(); ++it) {
-						if ((*it)->is_element()) {
-							WikiTag* child = reinterpret_cast<WikiTag*>(*it);
-							StringT name = child->name();
-							// debug
-							// cout << "comparing with " << name << endl;
-							if (name == child_name || all) {
-								// create the most simple xpath
-								std::ostringstream oss;
-								oss << "//" << name << "[" << (tree.size()) << "]";
-								child->xpath(oss.str());
-
-								tree.push_back(*it);
-							}
-							else
-								child->find(child_name, tree);
-						}
-					}
-					return;
-				}
-
-				void init() {
-					last_tag_ptr_ = NULL;
-					start_k_ = NULL;
-					end_k_ = NULL;
-					this->children.begin(this->begin());
-					this->children.end(this->begin());
-					this->type(TAG);
-				}
-
-				void cleanup() {
-					if (start_k_)
-						delete start_k_;
-					if (end_k_)
-						delete end_k_;
-					cleanup_last_tag();
-				}
-
-				void cleanup_last_tag() {
-					if (last_tag_ptr_) {
-						delete last_tag_ptr_;
-						last_tag_ptr_ = NULL;
-					}
-				}
 		};
 
 
@@ -1507,7 +741,45 @@ namespace stpl {
 
 					cell_ptr->set_cell_id(this->cell_id_);
 					WikiEntity<StringT, IteratorT>::process_child(cell_ptr);
-				}				
+				}
+
+				void print_last_cell(std::ostream &ss, TableCell<StringT, IteratorT> *last_format, std::vector<TableCell<StringT, IteratorT>* >& last_cells, int rows, bool row_header, bool& first_col) {
+					if (rows == 0 && row_header) {
+						ss << "<th";
+					}
+					else {
+						ss << "<td";
+					}	
+					if (rows > 0 && first_col && row_header) {
+						ss << " " << "row-header=\"true\" ";
+						first_col = false;							
+					}					
+
+					if (last_format && last_cells.size() > 0) 
+						ss << " " << last_format->to_std_string();
+					ss << ">";
+
+					if (last_cells.size() > 0) {
+						for (int i = 0; i < last_cells.size(); ++i) {
+							auto cell = last_cells[i];
+							if (i == 0) 
+								ss << cell->to_html();
+							else {
+								ss << "|";
+								ss << cell->to_html();
+							}
+						}
+					}
+					else if (last_format)
+						ss << last_format->to_html();		
+
+					if (rows == 0 && row_header) {
+						ss << "</th>" << std::endl;
+					}
+					else {
+						ss << "</td>" << std::endl;
+					}	
+				}
 
 				virtual std::string to_html() {
 					std::stringstream ss;
@@ -1528,41 +800,18 @@ namespace stpl {
 						if ((*it)->get_type() == SEPARATOR || (rows == 0 && cols == 0)) {
 							// ss << (*it)->to_html() << std::endl;
 							if ((*it)->get_type() == SEPARATOR) {
-								if (last_format && last_cells.size() > 0) 
-									ss << " " << last_format->to_std_string();
-								ss << ">";
-
-								if (last_cells.size() > 0) {
-									for (int i = 0; i < last_cells.size(); ++i) {
-										auto cell = last_cells[i];
-										if (i == 0) 
-											ss << cell->to_html();
-										else {
-											ss << "|";
-											ss << cell->to_html();
-										}
-									}
-								}
-								else
-									ss << last_format->to_html();		
-
-								if (rows == 0 && row_header) {
-									ss << "</th>" << std::endl;
-								}
-								else {
-									ss << "</td>" << std::endl;
-								}														
+								print_last_cell(ss, last_format, last_cells, rows, row_header, first_col);			
 							}
 
 							if (rows > 0) {
 								ss << "</tr>" << std::endl;
 							}
 							ss << "<tr>" << std::endl;
-							bool first_col = true;
 							cols = 0;
 							++rows;
 							last_cells.clear();
 							last_format = NULL;
+							first_col = true;
 
 							if ((*it)->get_type() == SEPARATOR) {
 								++it;
@@ -1574,6 +823,7 @@ namespace stpl {
 						row_header = rows_header_ind_[rows] == '1';
 						int skip_cells = cell_ptr->get_cell_id() - last_cell_id;
 						if (skip_cells > 1) {
+							// fill up the missing cells
 							for (int i = 1; i < skip_cells; ++i) {
 								if (rows == 0 && row_header) {
 									ss << "<th ></th>" << std::endl;
@@ -1582,53 +832,10 @@ namespace stpl {
 									ss << "<td ></td>" << std::endl;
 							}
 						}
+
+						// we print it only we have the last cell
 						if (last_format && skip_cells > 0) {
-							// time to output
-
-							if (skip_cells == 0) {
-								// actually this for the last cell
-								if (rows == 0 && row_header) {
-
-									if (cols > 0) {
-										ss << "</th>" << std::endl;
-
-									}
-									ss << "<th";
-								}
-								else {
-			
-									if (cols > 0)
-										ss << "</td>" << std::endl;
-									ss << "<td";
-									
-									if (first_col && row_header) {
-										ss << " " << "row-header=\"true\" ";
-										first_col = false;							
-									}
-								}	
-
-								if (last_format && last_cells.size() > 0) 
-									ss << " " << last_format->to_std_string();
-								ss << ">";
-
-								if (last_cells.size() > 0) {
-									for (int i = 0; i < last_cells.size(); ++i) {
-										auto cell = last_cells[i];
-										if (i == 0) 
-											ss << cell->to_html();
-										else {
-											ss << "|";
-											ss << cell->to_html();
-										}
-									}
-								}
-								else
-									ss << last_format->to_html();
-							}
-
-							cols += skip_cells + 1;
-							last_format = NULL;
-							last_cells.clear();
+							print_last_cell(ss, last_format, last_cells, rows, row_header, first_col);
 						}
 						else {
 							if (last_format) {
@@ -1639,35 +846,13 @@ namespace stpl {
 						}
 
 						last_cell_ptr = cell_ptr;
-
+						last_cell_id = cell_ptr->get_cell_id();
 						++it;
 					}
 
-					if (last_format && last_cells.size() > 0) 
-						ss << " " << last_format->to_std_string();
-					ss << ">";
-
-					if (last_cells.size() > 0) {
-						for (int i = 0; i < last_cells.size(); ++i) {
-							auto cell = last_cells[i];
-							if (i == 0) 
-								ss << cell->to_html();
-							else {
-								ss << "|";
-								ss << cell->to_html();
-							}
-						}
-					}
-					else
-						ss << last_format->to_html();
-
-					if (rows == 0 && row_header) {
-						ss << "</th>" << std::endl;
-					}
-					else
-						ss << "</td>" << std::endl;
-
-					ss << "</tr>" << std::endl;
+					print_last_cell(ss, last_format, last_cells, rows, row_header, first_col);
+					if (rows > 0)
+						ss << "</tr>" << std::endl;
 					ss << "</table>";
 					return ss.str();
 				}
@@ -1678,7 +863,7 @@ namespace stpl {
 						if (*next == '|') {
 							// | will be used as
 							// ++it;
-							it = next;
+							it = next + 1;
 							while (*it == ' ')
 								++it;
 							this->style_.begin(it);
@@ -1952,18 +1137,18 @@ namespace stpl {
 						
 						auto it = this->children_.begin();
 
-						if (this->children_.size() == 1) {
-							ss << "<template ";
-							ss << " name=\"" << name << "\"";
-							ss << " value=\"" << (*it)->to_string() << "\"";
-							ss << "></template>";
-						}
-						else if (this->children_.size() == 2) {
-							ss << "<span type=\"template\"";
-							ss << " " << name <<  "=\"" << (*it++)->to_string() << "\"";
-							ss << ">" << (*it)->to_string() << "</span>";
-						}
-						else {
+						// if (this->children_.size() == 1) {
+						// 	ss << "<template ";
+						// 	ss << " name=\"" << name << "\"";
+						// 	ss << " value=\"" << (*it)->to_string() << "\"";
+						// 	ss << "></template>";
+						// }
+						// else if (this->children_.size() == 2) {
+						// 	ss << "<span type=\"template\"";
+						// 	ss << " " << name <<  "=\"" << (*it++)->to_string() << "\"";
+						// 	ss << ">" << (*it)->to_string() << "</span>";
+						// }
+						// else {
 							ss << "<template ";
 							ss << " name=\"" << name << "\">";
 							while (it != this->children_.end()) {
@@ -1975,7 +1160,7 @@ namespace stpl {
 								++it;
 							}
 							ss << "</template>";
-						}
+						// }
 						
 					}
 					return ss.str();
@@ -2011,24 +1196,24 @@ namespace stpl {
 		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
-		class WikiEntityOrdered: public WikiEntityContainer<StringT, IteratorT>
+		class LayoutOrderedList: public WikiEntity<StringT, IteratorT>
 		{
 			public:
 				typedef	StringT	string_type;
 				typedef IteratorT	iterator;
 
 			public:
-				WikiEntityOrdered() : WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer() { init(); }
-				WikiEntityOrdered(IteratorT it)
-					 : WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer(it) { init(); }
-				WikiEntityOrdered(IteratorT begin, IteratorT end)
-					 : WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer(begin, end) { init(); }
-				WikiEntityOrdered(StringT content) :
-					WikiEntityContainer<StringT, IteratorT>::WikiEntityContainer() {
+				LayoutOrderedList() : WikiEntity<StringT, IteratorT>::WikiEntity() { init(); }
+				LayoutOrderedList(IteratorT it)
+					 : WikiEntity<StringT, IteratorT>::WikiEntity(it) { init(); }
+				LayoutOrderedList(IteratorT begin, IteratorT end)
+					 : WikiEntity<StringT, IteratorT>::WikiEntity(begin, end) { init(); }
+				LayoutOrderedList(StringT content) :
+					WikiEntity<StringT, IteratorT>::WikiEntity() {
 					init();
 					this->create(content);
 				}
-				virtual ~WikiEntityOrdered() {}
+				virtual ~LayoutOrderedList() {}
 
 				virtual std::string to_html() {
 					return "<ol>" + WikiEntity<StringT, IteratorT>::to_html() + "</ol>";
@@ -2040,7 +1225,7 @@ namespace stpl {
 						this->skip_whitespace(next);
 						return *next != '#';
 					}
-					return WikiEntityContainer<StringT, IteratorT>::is_end(it);
+					return WikiEntity<StringT, IteratorT>::is_end(it);
 				}
 
 			private:
@@ -2055,7 +1240,7 @@ namespace stpl {
 		 *          table    {||}
 		 */
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
-		class WikiEntityLeveled: public WikiEntityOrdered<StringT, IteratorT>				
+		class WikiEntityLeveled: public WikiEntity<StringT, IteratorT>				
 		{
 			public:
 				typedef	StringT	                              string_type;
@@ -2072,13 +1257,13 @@ namespace stpl {
 				bool                                          strict_;
 
 			public:
-				WikiEntityLeveled() : WikiEntityOrdered<StringT, IteratorT>::WikiEntityOrdered() { init(); }
+				WikiEntityLeveled() : WikiEntity<StringT, IteratorT>::WikiEntity() { init(); }
 				WikiEntityLeveled(IteratorT it)
-					 : WikiEntityOrdered<StringT, IteratorT>::WikiEntityOrdered(it) { init(); }
+					 : WikiEntity<StringT, IteratorT>::WikiEntity(it) { init(); }
 				WikiEntityLeveled(IteratorT begin, IteratorT end)
-					 : WikiEntityOrdered<StringT, IteratorT>::WikiEntityOrdered(begin, end) { init(); }
+					 : WikiEntity<StringT, IteratorT>::WikiEntity(begin, end) { init(); }
 				WikiEntityLeveled(StringT content) :
-					WikiEntityOrdered<StringT, IteratorT>::WikiEntityOrdered() {
+					WikiEntity<StringT, IteratorT>::WikiEntity() {
 					init();
 					this->create(content);
 				}
@@ -2157,7 +1342,7 @@ namespace stpl {
 #endif // DEBUG							s
 						return true;
 					}
-					return WikiEntityOrdered<StringT, IteratorT>::is_end(it); // this->eow(it) || text_stop(it);
+					return WikiEntity<StringT, IteratorT>::is_end(it); // this->eow(it) || text_stop(it);
 				}
 
 				virtual void add_content(StringT& text) {
@@ -2364,6 +1549,7 @@ namespace stpl {
 					bool ret = WikiEntityLeveled<StringT, IteratorT>::is_start(it);
 					if (ret) {
 						this->external_ = this->matched_levels_ == 1;
+						this->set_type(LINK_EXTERNAL);
 						url_.begin(it);
 						url_.end(it);
 						anchor_.begin(it);
@@ -2372,23 +1558,29 @@ namespace stpl {
 					return ret;
 				}
 
-				virtual bool is_end(IteratorT& it, bool advance=true) {
-					// when the line ends it ends
-					if (url_.end() == url_.begin() && (external_ && *it == ' ') || *it == '|') {
-						url_.end(it++);
-						anchor_.begin(it);
-						anchor_.end(it);
-						return false;
-					}
-					bool ret = WikiEntityLeveled<StringT, IteratorT>::is_end(it);
-					if (ret) {
-						anchor_.end(it - this->level_);
-						if (url_.begin() == anchor_.begin())
-							url_.end(anchor_.end());
-						// anchor and url are the same if there is only one property
-					}
-					return ret;
+				// we collect text node and others
+				// anything is a pause including new line
+				virtual bool is_pause(IteratorT& it) {
+					return true;
 				}
+
+				// virtual bool is_end(IteratorT& it, bool advance=true) {
+				// 	// when the line ends it ends
+				// 	// if (url_.end() == url_.begin() && (external_ && *it == ' ') || *it == '|') {
+				// 	// 	url_.end(it++);
+				// 	// 	anchor_.begin(it);
+				// 	// 	anchor_.end(it);
+				// 	// 	return false;
+				// 	// }
+				// 	bool ret = WikiEntityLeveled<StringT, IteratorT>::is_end(it, advance);
+				// 	if (ret) {
+				// 		anchor_.end(it - this->level_);
+				// 		if (url_.begin() == anchor_.begin())
+				// 			url_.end(anchor_.end());
+				// 		// anchor and url are the same if there is only one property
+				// 	}
+				// 	return ret;
+				// }
 
 				const StringB& get_anchor() const {
 					return anchor_;
@@ -2411,17 +1603,37 @@ namespace stpl {
 				 * 
 				 */
 				virtual std::string to_html() {
+					auto first = this->children_.begin();
+					auto second = this->children_.end() - 1;
 					stringstream ss;
-					ss << "<a href=\"";
-					if (this->external_) {
-						ss << url_.to_string();
+					if (this->size() > 2) {
+						ss << "<div ";
+						auto it = first + 1;
+						while (it != second) {
+							ss << (*it)->to_std_string();
+							++it;
+						}
+						ss << ">" << std::endl;
 					}
-					else {
-						ss << WikiEntityVariables::protocol << "://" + WikiEntityVariables::host << WikiEntityVariables::path << url_.to_string();
+//					else {
+						ss << "<a href=\"";
+						if (this->external_) {
+							ss << (*first)->to_std_string();
+						}
+						else {
+							ss << WikiEntityVariables::protocol << "://" + WikiEntityVariables::host << WikiEntityVariables::path <<  (*first)->to_std_string();
+						}
+						ss << "\">";
+
+						if (second > first)
+							ss << (*second)->to_std_string();
+						else
+							ss << (*first)->to_std_string();
+						ss << "</a>";
+//					}
+					if (this->size() > 2) {
+						ss << "</div>" << std::endl;
 					}
-					ss << "\">";
-					ss << this->anchor_.to_std_string();
-					ss << "</a>";
 					return ss.str();
 				}
 
@@ -2434,6 +1646,7 @@ namespace stpl {
 			private:
 				void init() {
 					this->group_ = LINK;
+					this->set_type(LINK_P);
 					this->set_wiki_key_char();
 				}
 		};
