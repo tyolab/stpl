@@ -313,12 +313,14 @@ namespace stpl {
 				virtual std::string to_json() {
 					stringstream ss;
 					ss << "{" << std::endl;
-					ss << "\"id\": "  << "\"" << this->get_id() << "\"" << std::endl;
+					ss << "\"id\": "  << "\"" << this->get_id() << "\"," << std::endl;
 					if (this->get_level() > 0) {
-						ss << "\"level\": " << "\"" << this->get_level() << "\"" << std::endl;
-						ss << "\"line\": "  << "\"" << this->get_line() << "\"" << std::endl;
+						ss << "\"level\": " << "\"" << this->get_level() << "\"," << std::endl;
+						ss << "\"line\": "  << "\"" << this->get_line() << "\"," << std::endl;
 					}
-					ss <<  "\"text\": "  << "\"" << this->children_to_html() << "\"" << std::endl;
+					std::string html = this->children_to_html();
+					html.erase(std::remove(html.begin(), html.end(), '\n'), html.end());
+					ss <<  "\"text\": "  << "\"" << utils::escape_quote(html) << "\"" << std::endl;
 					ss <<  "}" << std::endl;
 
 					return ss.str();
