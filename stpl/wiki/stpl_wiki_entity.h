@@ -27,12 +27,10 @@
 #include <list>
 #include <regex>
 
-#include "../../utils/strings.h"
-
 #include "stpl_wiki_basic.h"
-
 #include "../stpl_property.h"
-
+#include "../../utils/icstring.h"
+#include "../../utils/strings.h"
 #include "../lang/stpl_character.h"
 
 namespace stpl {
@@ -430,7 +428,7 @@ namespace stpl {
 						// do we need to advance here?
 						// please check and find out, and put some reasons here
 						IteratorT next = it + 1;
-						if (*next == '|') {
+						if (*next == '|' || *next == '!') {
 							// we are not gonna advance, because table need new line for other properties
 							// if (advance)
 							// 	it = next + 1;
@@ -442,7 +440,8 @@ namespace stpl {
 					if (*it == '|')
 						return true;
 
-					return WikiEntity<StringT, IteratorT>::is_end(it);
+					// The cell is only ended when a pipe is seen
+					return false; // WikiEntity<StringT, IteratorT>::is_end(it);
 				}
 
 				// we collect text node and others
@@ -453,7 +452,8 @@ namespace stpl {
 
 			private:
 				void init() { 
-					this->set_group(CELL);					
+					this->set_group(CELL);
+					this->set_type(P_CELL);					
 				}	
 		};		
 
@@ -496,13 +496,15 @@ namespace stpl {
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (*it == '\n') {
-						if (this->last_child_ && it > this->last_child_->end()) {
-							// we need to record the last text node
-							this->create_text_child_after(it);
-						}
+						// if (this->last_child_ && it > this->last_child_->end()) {
+						// 	// we need to record the last text node
+						// 	this->create_text_child_after(it);
+						// }
+						if (advance)
+							it = it + 1;
 						return true;
 					}
-					return false;
+					return WikiEntity<StringT, IteratorT>::is_end(it);
 				}
 
 			private:
@@ -757,6 +759,9 @@ namespace stpl {
 				}
 
 				void print_last_cell(std::ostream &ss, TableCell<StringT, IteratorT> *last_format, std::vector<TableCell<StringT, IteratorT>* >& last_cells, int rows, bool row_header, bool& first_col) {
+					if (!last_format)
+						return;
+
 					if (rows == 0 && row_header) {
 						ss << "<th";
 					}
@@ -792,6 +797,8 @@ namespace stpl {
 					else {
 						ss << "</td>" << std::endl;
 					}	
+					last_format = NULL;
+					last_cells.clear();
 				}
 
 				virtual std::string to_html() {
@@ -801,8 +808,8 @@ namespace stpl {
 						ss << " " << style_.to_std_string();
 					}
 					ss << ">" << std::endl;;
-					int rows = 0;
-					int cols = 0;
+					int rows = -1;
+					int cols = -1;
 					auto it = this->children_.begin();
 					bool first_col = true;
 					int last_cell_id = 0;
@@ -810,7 +817,7 @@ namespace stpl {
 					std::vector<TableCell<StringT, IteratorT>* > last_cells;
 					bool row_header = false;
 					while (it != this->children_.end()) {
-						if ((*it)->get_type() == SEPARATOR || (rows == 0 && cols == 0)) {
+						if ((*it)->get_type() == SEPARATOR || (rows == -1 && cols == -1)) {
 							// ss << (*it)->to_html() << std::endl;
 							if ((*it)->get_type() == SEPARATOR) {
 								print_last_cell(ss, last_format, last_cells, rows, row_header, first_col);			
@@ -849,6 +856,7 @@ namespace stpl {
 						// we print it only we have the last cell
 						if (last_format && skip_cells > 0) {
 							print_last_cell(ss, last_format, last_cells, rows, row_header, first_col);
+							last_format = cell_ptr;
 						}
 						else {
 							if (last_format) {
@@ -921,8 +929,8 @@ namespace stpl {
 										//}
 
 										col_id_ = -1;
-										++rows_;
 										row_id_ = rows_;
+										++rows_;
 										// if (row_prev_ == -1)
 										// 	row_prev_ = 0;
 										// else
@@ -1127,7 +1135,7 @@ namespace stpl {
 					std::stringstream ss;
 					int count = 0;
 					std::string name = this->name_.to_std_string();
-					if (name == "lang") {
+					if (("lang") == name) {
 						ss << "<span type=\"template\" lang=";
 						auto it = this->children_.begin();
 						while (it != this->children_.end()) {
@@ -1145,9 +1153,12 @@ namespace stpl {
 						ss << "</span>";
 
 					}
+					// else if (("math") == name) {
+					// 	ss << "<math>" << std::endl;
+					// 	ss << this->children_to_html();
+					// 	ss << "</math>" << std::endl;
+					// }
 					else {
-						
-						
 						auto it = this->children_.begin();
 
 						// if (this->children_.size() == 1) {
@@ -1595,7 +1606,7 @@ namespace stpl {
 					return true;
 				}
 
-				// virtual bool is_end(IteratorT& it, bool advance=true) {
+				virtual bool is_end(IteratorT& it, bool advance=true) {
 				// 	// when the line ends it ends
 				// 	// if (url_.end() == url_.begin() && (external_ && *it == ' ') || *it == '|') {
 				// 	// 	url_.end(it++);
@@ -1603,15 +1614,15 @@ namespace stpl {
 				// 	// 	anchor_.end(it);
 				// 	// 	return false;
 				// 	// }
-				// 	bool ret = WikiEntityLeveled<StringT, IteratorT>::is_end(it, advance);
-				// 	if (ret) {
-				// 		anchor_.end(it - this->level_);
-				// 		if (url_.begin() == anchor_.begin())
-				// 			url_.end(anchor_.end());
-				// 		// anchor and url are the same if there is only one property
-				// 	}
-				// 	return ret;
-				// }
+					if (WikiEntityLeveled<StringT, IteratorT>::is_end(it, advance)) {
+						// anchor_.end(it - this->level_);
+						// if (url_.begin() == anchor_.begin())
+						// 	url_.end(anchor_.end());
+						// anchor and url are the same if there is only one property
+						return true;
+					}
+					return false;
+				}
 
 				const StringB& get_anchor() const {
 					return anchor_;
@@ -1638,6 +1649,7 @@ namespace stpl {
 					auto second = this->children_.end() - 1;
 					stringstream ss;
 					if (this->size() > 2) {
+						// must be a file link
 						ss << "<div ";
 						auto it = first + 1;
 						while (it != second) {
@@ -1645,8 +1657,24 @@ namespace stpl {
 							++it;
 						}
 						ss << ">" << std::endl;
+
+						ss << "<div class='innerlink'>" << std::endl;
+						ss << "<a href=\"";
+						if (this->external_) {
+							ss << (*first)->to_std_string();
+						}
+						else {
+							ss << WikiEntityVariables::protocol << "://" + WikiEntityVariables::host << WikiEntityVariables::path <<  (*first)->to_std_string();
+						}
+						ss << "\">";
+						ss << "<div class='linkcaption'>" << std::endl;
+						ss << (*second)->to_html();
+						ss << "</div>" << std::endl;
+						ss << "</div>" << std::endl;
+
+						ss << "</div>" << std::endl;
 					}
-//					else {
+					else {
 						ss << "<a href=\"";
 						if (this->external_) {
 							ss << (*first)->to_std_string();
@@ -1664,10 +1692,8 @@ namespace stpl {
 						else
 							ss << (*first)->to_std_string();
 						ss << "</a>";
-//					}
-					if (this->size() > 2) {
-						ss << "</div>" << std::endl;
 					}
+
 					return ss.str();
 				}
 

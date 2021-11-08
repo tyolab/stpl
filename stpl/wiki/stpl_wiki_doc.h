@@ -460,21 +460,26 @@ namespace stpl {
 							}
 							break;
 						case WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE:
-							new_entity_check_passed = 1;
-							start_from_newline = false;
-							next = it + 1;
-							if (*next == WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE) {
-								if (parent_ptr && parent_ptr->get_group() == PROPERTY) {
-									parent_ptr->end(it);
-									parent_ptr->set_open(false);
-									begin = it;
-									return parent_ptr;
-								}
-								else if (parent_ptr && parent_ptr->get_group() == TBASE) {
-									parent_ptr->end(++next);
-									parent_ptr->set_open(false);
-									begin = next;
-									return parent_ptr;
+							if (parent_ptr && parent_ptr->is_end(it, false)) {
+								return parent_ptr;
+							}
+							else {
+								new_entity_check_passed = 1;
+								start_from_newline = false;
+								next = it + 1;
+								if (*next == WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE) {
+									if (parent_ptr && parent_ptr->get_group() == PROPERTY) {
+										parent_ptr->end(it);
+										parent_ptr->set_open(false);
+										begin = it;
+										return parent_ptr;
+									}
+									else if (parent_ptr && parent_ptr->get_group() == TBASE) {
+										parent_ptr->end(++next);
+										parent_ptr->set_open(false);
+										begin = next;
+										return parent_ptr;
+									}
 								}
 							}
 							break;

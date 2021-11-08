@@ -425,19 +425,23 @@ namespace stpl {
 					// special treatment for text node inside a compund entity
 					//  e.g. WikiProperty node when it sees a '=' character
 					if (this->parent_ptr_) {
-						if (this->parent_ptr_->get_type() == P_PROPERTY && *it == '=')
+						if (this->parent_ptr_->is_end(it, false))
 							return true;
+						else if (this->parent_ptr_->get_type() == P_PROPERTY && *it == '=')
+							return true;
+						else if (this->parent_ptr_->get_type() == P_CELL && *it == '\n')
+							return true;							
 						else if (this->parent_ptr_->get_type() == P_LINK && *it == '|')
 							return true;
 						else if (this->parent_ptr_->get_type() == LINK_EXTERNAL && *it == ' ')
 							return true;
-						else if (this->parent_ptr_->get_type() == LINK_P && *it == '|')
-							return true;
-						// specifial character for FILE: TEMPLATE: CATEGORY, LINK TO CATEGORY
-						// else if (this->parent_ptr_->get_type() == LINK_P && *it == ':')
-						// 	return false;							
-						else if (this->parent_ptr_->is_end(it, false))
-							return true;
+						else if (this->parent_ptr_->get_type() == LINK_P) {
+							if (*it == '|')
+								return true;
+							// specifial character for FILE: TEMPLATE: CATEGORY, LINK TO CATEGORY
+							else if (*it == '#')
+								return false;	
+						}					
 					}					 
 					// for a text node, it finishes when it sees a special character
 					// because it is a text node it have to move forward a char first
@@ -635,10 +639,10 @@ namespace stpl {
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (BasicWikiEntity<StringT, IteratorT>::is_end(it)) {
-						if (last_child_ && it > last_child_->end()) {
-							// we need to record the last text node
-							this->create_text_child_after(it);
-						}
+						// if (last_child_ && it > last_child_->end()) {
+						// 	// we need to record the last text node
+						// 	this->create_text_child_after(it);
+						// }
 						return true;
 					}	
 					return false;	
