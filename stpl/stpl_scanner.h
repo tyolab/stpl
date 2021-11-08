@@ -120,6 +120,10 @@ namespace stpl {
 						if(tmp_entity->end() > tmp_entity->begin())
 							last_e_ = tmp_entity;							
 					}
+					else {
+						// no more entity found, so we are done
+						last_e_ = NULL;
+					}
 					// as if the entity does't close on the first match it means it has children
 					// anything happens inside here, nothing to do with last_e_
 					while (tmp_entity && tmp_entity->isopen()) {
@@ -193,11 +197,18 @@ namespace stpl {
 						reset_state(last_e_);
 					}
 					else {
+						// not quite sure why this is necessry
 						// need to restore to the previous state
-						last_e_ = handle_char(previous_pos, (current_pos_ = ++previous_pos));
-;
-						state_ = previous_state;
-						delete tmp_entity;
+						// now I think I know a bit more about this
+						// when we come the end of the file, between last entity and the end of the file
+						// there could text in between
+						if (current_pos_ > previous_pos) {
+							last_e_ = handle_char(previous_pos, current_pos_);
+	;
+							state_ = previous_state;
+						}
+						if (tmp_entity)
+							delete tmp_entity;
 					}
 				}
 				else

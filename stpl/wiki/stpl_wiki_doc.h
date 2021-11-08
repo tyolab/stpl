@@ -723,15 +723,28 @@ namespace stpl {
 						// as we couldn't find a new entity based on current character, 
 						// forward one character, otherwise we will be stuck here						
 						// ++it;
-						EntityT *text_ptr = new Text<StringT, IteratorT>(begin, end);
-						if (parent_ptr && parent_ptr->should_have_children()) {
-							text_ptr->set_parent(parent_ptr);
-						}						
-						return text_ptr;
+						if (*it == '\n') {
+							// if it is a newline, and parent is still open, we let parent to deal with it
+							// otherwise, just move forward as a new line text node by itself doesn't mean much as it 
+							// merely the separator between two entities not a break between two text nodes
+							if (parent_ptr && parent_ptr->isopen()) {
+								return parent_ptr;
+							}
+							++it;
+							begin = it;
+						}
+						else {
+							begin = it;
+							EntityT *text_ptr = new Text<StringT, IteratorT>(begin, end);
+							if (parent_ptr && parent_ptr->should_have_children()) {
+								text_ptr->set_parent(parent_ptr);
+							}						
+							return text_ptr;
+						}
 					}
 
 					// Anything that we cannot parse it is a text node
-					if (it >= end && !entity_ptr && it > begin) {
+					if (it < end && !entity_ptr && it > begin) {
 						entity_ptr = new Text<StringT, IteratorT>(begin, end);
 						entity_ptr->set_open(false);
 						entity_ptr->set_group(TEXT);

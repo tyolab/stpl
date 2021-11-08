@@ -135,8 +135,10 @@ namespace stpl {
 							//}
 						}
 					}
-					else
+					else {
+						ss << ">";
 						ss << this->children_to_html();
+					}
 					ss << "</property>";
 	
 					//return Property<StringT, IteratorT>::to_std_string();
@@ -205,10 +207,10 @@ namespace stpl {
 
 						++it;
 
-						//WikiEntity<StringT, IteratorT>::skip_whitespace(it);
+						WikiEntity<StringT, IteratorT>::skip_whitespace(it);
 
-						// this->value_.begin(it);
-						// this->value_.end(it);
+						this->value_.begin(it);
+						this->value_.end(it);
 					}
 					// else if (*it == '\n') {
 					// 	// do we need to advance here?
@@ -255,9 +257,18 @@ namespace stpl {
 				virtual ~CommonChildEntity() {
 				}
 
-				// virtual bool is_start(IteratorT& it) {
-				// 	return true;
-				// }
+				virtual std::string to_html() {
+					if (this->children_.size() > 0) {
+						std::stringstream ss;
+						
+						auto it = this->children_.begin();
+						for (; it != this->children_.end(); ++it)
+							ss << (*it)->to_html();
+						
+						return ss.str();
+					}
+					return this->to_std_string();
+				}
 
 				virtual bool is_pause(IteratorT& it) {
 					return true;
@@ -1317,27 +1328,42 @@ namespace stpl {
 					else if (this->eow(it))
 						return true;
 					else if (*it == this->wiki_key_char_end_) {
+						// BUG before if adavance is false, it wasn't dealt with
+						// if advance
 						IteratorT next = it + 1;
-						++this->matched_levels_;
-						while (*next == this->wiki_key_char_end_ && !this->eow(it)) {
+						if (advance) {
 							++this->matched_levels_;
-							++next;
-							if (this->matched_levels_ > 0)
-								break;
-							else if (this->end_in_same_line_ && *it == '\n')
-								break;
-						}
-						
-						level_ += this->matched_levels_;
+							while (*next == this->wiki_key_char_end_ && !this->eow(it)) {
+								++this->matched_levels_;
+								++next;
+								if (this->matched_levels_ > 0)
+									break;
+								else if (this->end_in_same_line_ && *it == '\n')
+									break;
+							}
+							
+							level_ += this->matched_levels_;
 
-						if (strict_ && this->matched_levels_ != 0) {
-							this->begin(it);
-							this->end(it);
-						}
-						// now there is a delimma, should we go strict or auto correct?
-						
-						if (advance)
+							if (strict_ && this->matched_levels_ != 0) {
+								this->begin(it);
+								this->end(it);
+							}
+							// now there is a delimma, should we go strict or auto correct?
+					
 							it = next;
+						}
+						else {
+							int count = this->level_ - 1;
+							while (count > 0) {
+								if (*next != this->wiki_key_char_end_) {
+									return false;
+								}
+
+								--count;
+								++next;
+							}
+
+						}
 #ifdef DEBUG
 						else
 							int a = 1;
@@ -1447,15 +1473,17 @@ namespace stpl {
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (WikiEntityLeveled<StringT, IteratorT>::is_end(it, advance)) {
-						if (this->level_ != 2 && this->level_ != 3 && this->level_ != 5) {
-							this->begin(it);
-							this->end(it);
-						}
-						else {
-							if (this->level_ == 3)
-								this->set_type(STYLE_BOLD);
-							else if (this->level_ == 5)
-								this->set_type(STYLE_BOTH);
+						if (advance) {
+							if (this->level_ != 2 && this->level_ != 3 && this->level_ != 5) {
+								this->begin(it);
+								this->end(it);
+							}
+							else {
+								if (this->level_ == 3)
+									this->set_type(STYLE_BOLD);
+								else if (this->level_ == 5)
+									this->set_type(STYLE_BOTH);
+							}
 						}
 						return true;
 					}
@@ -1551,7 +1579,8 @@ namespace stpl {
 					bool ret = WikiEntityLeveled<StringT, IteratorT>::is_start(it);
 					if (ret) {
 						this->external_ = this->matched_levels_ == 1;
-						this->set_type(LINK_EXTERNAL);
+						if (this->external_) 
+							this->set_type(LINK_EXTERNAL);
 						url_.begin(it);
 						url_.end(it);
 						anchor_.begin(it);
@@ -1612,7 +1641,7 @@ namespace stpl {
 						ss << "<div ";
 						auto it = first + 1;
 						while (it != second) {
-							ss << (*it)->to_std_string();
+							ss << (*it)->to_std_string() << " ";
 							++it;
 						}
 						ss << ">" << std::endl;
@@ -1627,8 +1656,11 @@ namespace stpl {
 						}
 						ss << "\">";
 
+						// now the anchor text
+						// the anchor text could be a compound entity
 						if (second > first)
-							ss << (*second)->to_std_string();
+							ss << (*second)->to_html();
+						// we are using the url as the anchor text
 						else
 							ss << (*first)->to_std_string();
 						ss << "</a>";
