@@ -50,83 +50,84 @@ namespace stpl {
 
 		// NONE for un-initialized node, or just TEXT
 		// MISC node type includes COMMENT, PI or DOCTYPE (COMMENT)
-		enum WikiNodeType {NONE,
-							// Sub node of LANG
-							LANG_VARIANT,
+		enum WikiNodeType {
+			NONE,
+			// Sub node of LANG
+			LANG_VARIANT,
 
-							// Sub node types of STYLE
-							STYLE_ITALIC,
-							STYLE_BOLD,
-							STYLE_BOTH,
-							STYLE_INDENT,
+			// Sub node types of STYLE
+			STYLE_ITALIC,
+			STYLE_BOLD,
+			STYLE_BOTH,
+			STYLE_INDENT,
 
-							// Sub node types of LAYOUT
-							LAYOUT_SECTION, 
-							LAYOUT_HEADING, 
-							LAYOUT_HZ_RULE, 
-							LAYOUT_T_LB,
-							LAYOUT_T_LI,
-							LAYOUT_T_UL,
-							LAYOUT_LI,
-							LAYOUT_UL,
-							LAYOUT_DESC,
+			// Sub node types of LAYOUT
+			LAYOUT_SECTION, 
+			LAYOUT_HEADING, 
+			LAYOUT_HZ_RULE, 
+			LAYOUT_T_LB,
+			LAYOUT_T_LI,
+			LAYOUT_T_UL,
+			LAYOUT_LI,
+			LAYOUT_UL,
+			LAYOUT_DESC,
 
-							// Sub node types of LINK
-							LINK_EXTERNAL,
-							LINK_P,
-							LINK_REDIRECT,
-							LINK_LANG,
-							LINK_INTERWIKI,
-							LINK_CATEGORY,
-							LINK_T_ASOF,
-							LINK_MEDIA,
-							LINK_IMAGE,
+			// Sub node types of LINK
+			LINK_EXTERNAL,
+			LINK_P,
+			LINK_REDIRECT,
+			LINK_LANG,
+			LINK_INTERWIKI,
+			LINK_CATEGORY,
+			LINK_T_ASOF,
+			LINK_MEDIA,
+			LINK_IMAGE,
 
-							// Sub node types of TABLE
-							TABLE,
+			// Sub node types of TABLE
+			TABLE,
 
-							// Sub node types of TEMPLATE
-							TEMPLATE,
-							TEMPLATE_PA,                         // pronuciation aids
-							TEMPLATE_COLBEGIN, 	                // column begin
-							TEMPLATE_COLEND,   					// column end
-							TEMPLATE_DEFN, 						// definition / description lists
+			// Sub node types of TEMPLATE
+			TEMPLATE,
+			TEMPLATE_PA,                         // pronuciation aids
+			TEMPLATE_COLBEGIN, 	                // column begin
+			TEMPLATE_COLEND,   					// column end
+			TEMPLATE_DEFN, 						// definition / description lists
 
-							// Sub node types of TAG
-							TAG_REF,
-							// Cite book, web, needed
-							// attributes:
-							// |isbn
-							// |url
-							// |title
-							// |author
-							// |first
-							// |last
-							// |location
-							// |publisher
-							// |date
-							// |year
-							// |accessdate
+			// Sub node types of TAG
+			TAG_REF,
+			// Cite book, web, needed
+			// attributes:
+			// |isbn
+			// |url
+			// |title
+			// |author
+			// |first
+			// |last
+			// |location
+			// |publisher
+			// |date
+			// |year
+			// |accessdate
 
-							// Templates
-							TEMPLATE_COLOR,
-							TEMPLATE_FONT_COLOR,
-							TEMPLATE_FONT_STRIKE,
+			// Templates
+			TEMPLATE_COLOR,
+			TEMPLATE_FONT_COLOR,
+			TEMPLATE_FONT_STRIKE,
 
-							TAG_NOWIKI,
-							TAG_PRE,
-							TAG_POEM,
+			TAG_NOWIKI,
+			TAG_PRE,
+			TAG_POEM,
 
-							// Property Types
-							P_LINK,
-							P_PROPERTY,
-							P_CELL,
-							P_HEADER,
-							P_ROW_HEADER,
-							
-							// Separator
-							SEPARATOR
-							}; 
+			// Property Types
+			P_LINK,
+			P_PROPERTY,
+			P_CELL,
+			P_HEADER,
+			P_ROW_HEADER,
+			
+			// Separator
+			SEPARATOR
+			}; 
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 		class WikiAttribute : public Property<StringT, IteratorT> {
@@ -235,6 +236,10 @@ namespace stpl {
 				virtual StringBound<StringT, IteratorT>& content() {
 					return body_;
 				}
+
+				virtual bool is_child_end(WikiNodeGroup group, WikiNodeType type, IteratorT& it) {
+					return false;
+				}	
 
 				virtual const int children_count() {
 					return 0;
@@ -427,25 +432,25 @@ namespace stpl {
 					if (this->parent_ptr_) {
 						if (this->parent_ptr_->is_end(it, false))
 							return true;
-						else if (this->parent_ptr_->get_type() == P_PROPERTY && *it == '=')
+						else if (this->parent_ptr_->is_child_end(TEXT, this->get_type(), it))
 							return true;
-						else if (this->parent_ptr_->get_type() == P_CELL && *it == '\n')
-							return true;							
-						else if (this->parent_ptr_->get_type() == P_LINK && *it == '|')
-							return true;
-						else if (this->parent_ptr_->get_type() == LINK_EXTERNAL && *it == ' ')
-							return true;
-						else if (this->parent_ptr_->get_type() == LINK_P) {
-							if (*it == '|')
-								return true;
-							// specifial character for FILE: TEMPLATE: CATEGORY, LINK TO CATEGORY
-							else if (*it == '#')
-								return false;	
-						}					
+						// else if (this->parent_ptr_->get_type() == P_PROPERTY && *it == '=')
+						// 	return true;
+						// else if (this->parent_ptr_->get_type() == P_CELL && *it == '\n')
+						// 	return true;							
+						// else if (this->parent_ptr_->get_type() == P_LINK && *it == '|')
+						// 	return true;
+						// else if (this->parent_ptr_->get_type() == LINK_EXTERNAL && *it == ' ')
+						// 	return true;
+						// else if (this->parent_ptr_->get_type() == LINK_P) {
+
+						// }					
 					}					 
 					// for a text node, it finishes when it sees a special character
 					// because it is a text node it have to move forward a char first
-				 	return it > this->begin() && BasicWikiEntity<StringT, IteratorT>::is_pause(it);
+					if (it > this->begin() && BasicWikiEntity<StringT, IteratorT>::is_pause(it))
+				 		return true;
+					return false;
 				 }
 		};
 

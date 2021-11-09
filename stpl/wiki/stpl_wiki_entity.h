@@ -44,6 +44,7 @@ namespace stpl {
 
 			private:
 				int													property_id_;
+				int                                                 name_count_;       // for the size of the name
 
 			public:
 				WikiProperty() :
@@ -111,7 +112,7 @@ namespace stpl {
 						ss << name << "\">";
 						if (this->children_.size() > 0) {
 							// name is a child too
-							++it;
+							it = it + name_count_;
 							// ss << name << "=";
 							// if (this->has_quote())
 							// 	ss << "\"";
@@ -196,19 +197,25 @@ namespace stpl {
 					// }
 					// else 
 					if (*it == '=') {
-						this->has_delimiter_ = true; // WikiProperty doesn't use quote for value boundary
-						// backward for removing space
-						// deside where is the end of name
-						IteratorT pre = it;
-						WikiEntity<StringT, IteratorT>::skip_whitespace_backward(--pre);
-						this->name_.end(++pre);
+					    if (!this->has_delimiter_) {
+							this->has_delimiter_ = true; // WikiProperty doesn't use quote for value boundary
+							// backward for removing space
+							// deside where is the end of name
+							IteratorT pre = it;
+							WikiEntity<StringT, IteratorT>::skip_whitespace_backward(--pre);
+							this->name_.end(++pre);
 
-						++it;
+							name_count_ = this->children_.size();
 
-						WikiEntity<StringT, IteratorT>::skip_whitespace(it);
+							++it;
 
-						this->value_.begin(it);
-						this->value_.end(it);
+							WikiEntity<StringT, IteratorT>::skip_whitespace(it);
+
+							this->value_.begin(it);
+							this->value_.end(it);
+						}
+						else
+							return false;
 					}
 					// else if (*it == '\n') {
 					// 	// do we need to advance here?
@@ -223,13 +230,23 @@ namespace stpl {
 
 				virtual bool is_separated(IteratorT& it) {
 					return *it == WikiEntityConstants::WIKI_KEY_PROPERTY_DELIMITER;
-				}				
+				}	
+
+				virtual bool is_child_end(WikiNodeGroup group, WikiNodeType type, IteratorT& it) {
+					if (TEXT == group && *it == '=') {
+						if (this->has_delimiter_) 
+							return false;
+						return true;
+					} 
+					return false;
+				}							
 
 			private:
 				void init() {
 					this->has_delimiter_ = false;
 					this->group_ = PROPERTY;
 					this->set_type(P_PROPERTY);
+					this->name_count_ = 0;
 				}
 		};
 
@@ -271,6 +288,13 @@ namespace stpl {
 				virtual bool is_pause(IteratorT& it) {
 					return true;
 				}
+
+				virtual bool is_child_end(WikiNodeGroup group, WikiNodeType type, IteratorT& it) {
+					if (TEXT == group && *it == '|') {
+						return true;
+					} 
+					return false;
+				}					
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					return this->parent_ptr_ && this->parent_ptr_->is_end(it, false);
@@ -421,6 +445,13 @@ namespace stpl {
 				void set_cell_id(int cellId) {
 					cell_id_ = cellId;
 				}
+
+				virtual bool is_child_end(WikiNodeGroup group, WikiNodeType type, IteratorT& it) {
+					if (TEXT == group && *it == '\n') {
+						return true;
+					} 
+					return false;
+				}					
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					// no, newline is not end yet
@@ -1344,23 +1375,19 @@ namespace stpl {
 						IteratorT next = it + 1;
 						if (advance) {
 							++this->matched_levels_;
-							while (*next == this->wiki_key_char_end_ && !this->eow(it)) {
+							while (this->matched_levels_ < 0) {
+								if (*next != this->wiki_key_char_end_)
+									return false;
+
 								++this->matched_levels_;
 								++next;
-								if (this->matched_levels_ > 0)
-									break;
-								else if (this->end_in_same_line_ && *it == '\n')
-									break;
 							}
-							
-							level_ += this->matched_levels_;
 
-							if (strict_ && this->matched_levels_ != 0) {
-								this->begin(it);
-								this->end(it);
-							}
+							// if (strict_ && this->matched_levels_ != 0) {
+							// 	this->begin(it);
+							// 	this->end(it);
+							// }
 							// now there is a delimma, should we go strict or auto correct?
-					
 							it = next;
 						}
 						else {
@@ -1498,7 +1525,7 @@ namespace stpl {
 						}
 						return true;
 					}
-					return WikiEntityLeveled<StringT, IteratorT>::is_end(it);
+					return false;
 				}
 
 
@@ -1623,6 +1650,23 @@ namespace stpl {
 					}
 					return false;
 				}
+
+				virtual bool is_child_end(WikiNodeGroup group, WikiNodeType type, IteratorT& it) {
+					if (TEXT == group) {
+						if (LINK_EXTERNAL == this->get_type()) {
+							if (*it == ' ')
+								return true;
+						}
+						else {
+							if (*it == '|')
+								return true;
+							// specifial character for FILE: TEMPLATE: CATEGORY, LINK TO CATEGORY
+							else if (*it == '#')
+								return false;	
+						}
+					} 
+					return false;
+				}					
 
 				const StringB& get_anchor() const {
 					return anchor_;
