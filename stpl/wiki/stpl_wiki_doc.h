@@ -36,7 +36,8 @@ namespace stpl {
 
 			private:
 				std::vector<EntityT *> 												templates_;
-				std::vector<EntityT *>                                              sections_;		
+				std::vector<EntityT *>                                              sections_;
+				EntityT                                                             *redirect_;		
 				bool                                                                organized_;		
 
 			public:
@@ -79,8 +80,13 @@ namespace stpl {
 
 				std::string to_html() {
 					organize();
-
 					std::stringstream ss;
+					
+					if (redirect_) {
+						ss << "<meta http-equiv='refresh' content='0;url=\"/" << redirect_->to_std_string() << "\'" << ">" << std::endl;
+						return ss.str();
+					}
+
 					ss << "<html>" << std::endl;
 					ss << "<head>" << std::endl;
 					ss << "<!-- Created By wiki2json (TYO Lab, https://tyo.com.au) -->" << std::endl;
@@ -151,19 +157,26 @@ namespace stpl {
 					std::stringstream ss;
 
 					ss << "{" << std::endl;
-					ss << "\"article\": {" << std::endl;
-					ss << "\"sections\": [" << std::endl;
-					int count = 0;
-					for (auto it = sections_.begin(); it != sections_.end(); ++it) {
-						if (count > 0) 
-							ss << "," << std::endl;				
-						ss << (*it)->to_json();
-						ss << std::endl;
-						++count;
+
+					if (redirect_) {
+						ss << "\"redirect\": \"" << redirect_->to_std_string() << "\"," << std::endl;
 					}
-					ss << "]" << std::endl;
+					else {
+						ss << "\"article\": {" << std::endl;
+						ss << "\"sections\": [" << std::endl;
+						int count = 0;
+						for (auto it = sections_.begin(); it != sections_.end(); ++it) {
+							if (count > 0) 
+								ss << "," << std::endl;				
+							ss << (*it)->to_json();
+							ss << std::endl;
+							++count;
+						}
+						ss << "]" << std::endl;
+						ss << "}" << std::endl;
+					}
 					ss << "}" << std::endl;
-					ss << "}" << std::endl;
+
 					return ss.str();
 				}
 
@@ -200,10 +213,20 @@ namespace stpl {
 
 					auto nodes = this->children();
 					bool ind = true;
-					WikiSection<StringT, IteratorT> *section = NULL;
 					int count = 0;
+					auto it = nodes.begin();
 
-					for (auto it = nodes.begin(); it != nodes.end(); ++it) {
+					if (it != nodes.end() && (*it)->get_group() == REDIRECT) {
+						++it;
+						if (it != nodes.end()) 
+							redirect_ = (EntityT *)(*it);
+					    // should be a link
+					    redirect_->set_type(LINK_REDIRECT);
+						return;
+					}
+
+					WikiSection<StringT, IteratorT> *section = NULL;
+					for (; it != nodes.end(); ++it) {
 						EntityT *entity_ptr = *it;
 						if (!section && entity_ptr->get_group() == TBASE && entity_ptr->get_type() == TEMPLATE) {
 							templates_.push_back(entity_ptr);
@@ -237,6 +260,7 @@ namespace stpl {
 
 				void init() {
 					organized_ = false;
+					redirect_ = NULL;
 				}
 		};
 
@@ -382,9 +406,17 @@ namespace stpl {
 									entity_ptr = parent_ptr;
 								}
 								else {
-									pre_it = it > begin ? it - 1 : it;
-									if (start_from_newline || *pre_it == '\n')
+									pre_it = it;
+									while (pre_it > this->begin_) {
+										--pre_it;
+										if (*pre_it != ' ') {
+											break;
+										}
+									}
+									if (start_from_newline || *pre_it == '\n') {
+										start_from_newline = true;
 										new_entity_check_passed = 1;
+									}
 									else
 										entity_ptr = parent_ptr;
 								}
@@ -534,9 +566,9 @@ namespace stpl {
 								break;
 							case WikiEntityConstants::WIKI_KEY_STYLE_INDENT:
 								{
-									next = it + 1;
+									//next = it + 1;
 									// confirmation
-									if (*next == WikiEntityConstants::WIKI_KEY_STYLE_INDENT) {
+									if (start_from_newline) {
 										entity_ptr = new StyleIndent<StringT, IteratorT>(it, end);
 										entity_ptr->set_group(STYLE);
 										entity_ptr->set_type(STYLE_INDENT);											

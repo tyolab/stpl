@@ -112,7 +112,11 @@ namespace stpl {
 
 							it = tmp_entity->match();
 							previous_pos = tmp_entity->begin();
-
+							// if (!tmp_entity->isopen() && it == current_pos_) {
+							// 	// it is not moving forward, which is bad
+							// 	// creating a dead loop
+							// 	tmp_entity->end(++it);
+							// }
 						}
 						else
 							it = tmp_entity->end();
@@ -141,6 +145,12 @@ namespace stpl {
 								stack_.push_front(parent_entity);
 								tmp_entity = child_entity;
 								it = tmp_entity->match();
+
+								// if (!tmp_entity->isopen() && tmp_entity->get_group()&& it == current_pos_) {
+								// 	// it is not moving forward, which is bad
+								// 	// creating a dead loop
+								// 	tmp_entity->end(++it);
+								// }
 							}
 							else
 								// as the child entity is closed, there is no point to matching it again, 

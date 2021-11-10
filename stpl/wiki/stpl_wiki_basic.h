@@ -40,12 +40,13 @@ namespace stpl {
 			TBASE,
 			COMMENT,
 			TEXT,
+			REDIRECT,
 			PROPERTY,
 			CELL,
 			STYLE,
 			LANG,
 			SECTION,
-			DEBUG
+			DEBUG_NODE
 		};
 
 		// NONE for un-initialized node, or just TEXT
@@ -329,7 +330,7 @@ namespace stpl {
 				 * Let parent close it up, so advance is false here
 				 */
 				virtual bool is_end(IteratorT& it, bool advance=true) {
-					return this->is_separated(it) || (this->parent_ptr_ && this->parent_ptr_->is_end(it, false))/*  || StringBound<StringT, IteratorT>::is_end(it) */;
+					return /* this->is_separated(it) ||  */(this->parent_ptr_ && this->parent_ptr_->is_end(it, false))/*  || StringBound<StringT, IteratorT>::is_end(it) */;
 				}			
 
 				/**
@@ -403,37 +404,39 @@ namespace stpl {
 				 * But generally we won't end until a new enity is found which can't be just link and template
 				 */
 				 virtual bool is_end(IteratorT& it, bool advance=true) {
+					 IteratorT from = it;
 					 /**
 					  * @brief there two special characters: - and :
 					  * need to specially dealt with
 					  */
+					 bool ret = false;
 					 switch (*it) {
 						 case '-':
 						 	{
 								IteratorT next = it + 1;
 								if (*next == '{') 
-							 		return true;
+							 		ret = true;
 							}
-							return false;
+							break;
 						 case ':':
 						 	{
 								IteratorT pre = it - 1;
 								while (*pre == ' ')
 									--pre;
 								if (*pre == '\n') 
-							 		return true;
+							 		ret = true;
 							}						 
-							return false;
+							break;
 						default:
 							break;
 					 }
 					// special treatment for text node inside a compund entity
 					//  e.g. WikiProperty node when it sees a '=' character
-					if (this->parent_ptr_) {
+					if (!ret && this->parent_ptr_) {
 						if (this->parent_ptr_->is_end(it, false))
-							return true;
+							ret = true;
 						else if (this->parent_ptr_->is_child_end(TEXT, this->get_type(), it))
-							return true;
+							ret = true;
 						// else if (this->parent_ptr_->get_type() == P_PROPERTY && *it == '=')
 						// 	return true;
 						// else if (this->parent_ptr_->get_type() == P_CELL && *it == '\n')
@@ -448,9 +451,12 @@ namespace stpl {
 					}					 
 					// for a text node, it finishes when it sees a special character
 					// because it is a text node it have to move forward a char first
-					if (it > this->begin() && BasicWikiEntity<StringT, IteratorT>::is_pause(it))
-				 		return true;
-					return false;
+					if (!ret && it > this->begin() && BasicWikiEntity<StringT, IteratorT>::is_pause(it))
+				 		ret = true;
+
+					if (ret && it == this->begin())
+						ret = false;
+					return ret;
 				 }
 		};
 
@@ -462,7 +468,9 @@ namespace stpl {
 				typedef IteratorT	iterator;
 
 			private:
-				void init() { this->group_ = TEXT; }
+				void init() {
+					 this->group_ = REDIRECT;
+				}
 
 			public:
 				Redirect() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() { init(); }
@@ -479,14 +487,24 @@ namespace stpl {
 
 				virtual std::string to_html() {
 					return this->to_std_string();
+				}
+
+				virtual std::string to_json() {
+					return this->to_std_string();
 				}						
 
-			protected:
 				virtual bool is_start(IteratorT& it) {
 					return true;
 				}
 
 				virtual bool is_pause(IteratorT& it) {
+					return false;
+				}
+
+				virtual bool is_end(IteratorT& it, bool advance=true) {
+					if ((it - this->begin()) > 9) {
+						return true;
+					}
 					return false;
 				}
 
@@ -504,7 +522,7 @@ namespace stpl {
 				typedef IteratorT	iterator;
 
 			private:
-				void init() { this->group_ = DEBUG; }
+				void init() { this->group_ = DEBUG_NODE; }
 
 			public:
 				DebugNode() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() { init(); }

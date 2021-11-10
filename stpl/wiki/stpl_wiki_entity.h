@@ -296,9 +296,9 @@ namespace stpl {
 					return false;
 				}					
 
-				virtual bool is_end(IteratorT& it, bool advance=true) {
-					return this->parent_ptr_ && this->parent_ptr_->is_end(it, false);
-				}
+				// virtual bool is_end(IteratorT& it, bool advance=true) {
+				// 	return this->parent_ptr_ && this->parent_ptr_->is_end(it, false);
+				// }
 
 			private:
 				void init() {}
@@ -1343,6 +1343,8 @@ namespace stpl {
 						return std::string("");
 					auto begin = StringBound<StringT, IteratorT>::begin() + this->level_;
 					auto end = StringBound<StringT, IteratorT>::end() - this->level_;
+					if (begin >= end)
+						return std::string("");
 					return std::string(begin, end);
 				}				
 
@@ -1361,8 +1363,9 @@ namespace stpl {
 					if (this->end_in_same_line_ && *it == '\n') {
 						if (this->matched_levels_ != 0) {
 							// OK, this is not a valid entity
-							this->begin(it);
-							this->end(it);
+#ifdef DEBUG
+							int a = 1;
+#endif // DEBUG				
 						}
 
 						return true;
@@ -1401,13 +1404,13 @@ namespace stpl {
 								++next;
 							}
 
-						}
-#ifdef DEBUG
-						else
-							int a = 1;
-#endif // DEBUG							s
+						}							
 						return true;
 					}
+#ifdef DEBUG
+					else
+						int a = 1;
+#endif // DEBUG					
 					return WikiEntity<StringT, IteratorT>::is_end(it); // this->eow(it) || text_stop(it);
 				}
 
@@ -1563,6 +1566,32 @@ namespace stpl {
 					this->create(content);
 				}
 				virtual ~StyleIndent() {}
+
+			public:
+				virtual bool is_end(IteratorT& it, bool advance=true) {
+					if (*it == '\n') {
+						return true;
+					}
+					return false;
+				}
+
+				virtual bool is_start(IteratorT& it) {
+					while (*it == WikiEntityConstants::WIKI_KEY_STYLE_INDENT) {
+						this->level_++;
+						++it;
+					}
+					return true;
+				}
+				
+				virtual std::string to_html() {
+					std::stringstream ss;
+					
+					ss << "<div class=\"textindent" << this->level_ << "\"" << ">" << std::endl;
+					ss << this->children_to_html();
+					ss << "</div>" << std::endl;
+					
+					return ss.str();
+				}							
 
 			protected:
 				virtual void set_wiki_key_char() override {
@@ -1739,6 +1768,17 @@ namespace stpl {
 					}
 
 					return ss.str();
+				}
+
+				virtual std::string to_std_string() {
+					if (LINK_REDIRECT == this->get_type()) {
+						auto first = this->children_.begin();
+						if (first != this->children_.end()) {
+							return (*first)->to_std_string();
+						}
+						return "";
+					}
+					return WikiEntityLeveled<StringT, IteratorT>::to_std_string();
 				}
 
 			protected:
