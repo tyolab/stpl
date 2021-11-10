@@ -24,170 +24,13 @@
 #include "../stpl_entity.h"
 #include "../stpl_property.h"
 
+#include "stpl_wiki_constants.h"
+
 #include <map>
 #include <iostream>
 
 namespace stpl {
 	namespace WIKI {
-		
-		// TEMPLATE node includes wiki declarations, text declarations,
-		// If not any of others, then just TEXT
-		enum WikiNodeGroup {
-			LAYOUT, 
-			LAYOUT_ITEM,
-			TAG,
-			LINK,
-			TBASE,
-			COMMENT,
-			TEXT,
-			REDIRECT,
-			PROPERTY,
-			CELL,
-			STYLE,
-			LANG,
-			SECTION,
-			DEBUG_NODE
-		};
-
-		// NONE for un-initialized node, or just TEXT
-		// MISC node type includes COMMENT, PI or DOCTYPE (COMMENT)
-		enum WikiNodeType {
-			NONE,
-			// Sub node of LANG
-			LANG_VARIANT,
-
-			// Sub node types of STYLE
-			STYLE_ITALIC,
-			STYLE_BOLD,
-			STYLE_BOTH,
-			STYLE_INDENT,
-
-			// Sub node types of LAYOUT
-			LAYOUT_SECTION, 
-			LAYOUT_HEADING, 
-			LAYOUT_HZ_RULE, 
-			LAYOUT_T_LB,
-			LAYOUT_T_LI,
-			LAYOUT_T_UL,
-			LAYOUT_LI,
-			LAYOUT_UL,
-			LAYOUT_DESC,
-
-			// Sub node types of LINK
-			LINK_EXTERNAL,
-			LINK_P,
-			LINK_REDIRECT,
-			LINK_LANG,
-			LINK_INTERWIKI,
-			LINK_CATEGORY,
-			LINK_T_ASOF,
-			LINK_MEDIA,
-			LINK_IMAGE,
-
-			// Sub node types of TABLE
-			TABLE,
-
-			// Sub node types of TEMPLATE
-			TEMPLATE,
-			TEMPLATE_PA,                         // pronuciation aids
-			TEMPLATE_COLBEGIN, 	                // column begin
-			TEMPLATE_COLEND,   					// column end
-			TEMPLATE_DEFN, 						// definition / description lists
-
-			// Sub node types of TAG
-			TAG_REF,
-			// Cite book, web, needed
-			// attributes:
-			// |isbn
-			// |url
-			// |title
-			// |author
-			// |first
-			// |last
-			// |location
-			// |publisher
-			// |date
-			// |year
-			// |accessdate
-
-			// Templates
-			TEMPLATE_COLOR,
-			TEMPLATE_FONT_COLOR,
-			TEMPLATE_FONT_STRIKE,
-
-			TAG_NOWIKI,
-			TAG_PRE,
-			TAG_POEM,
-
-			// Property Types
-			P_LINK,
-			P_PROPERTY,
-			P_CELL,
-			P_HEADER,
-			P_ROW_HEADER,
-			
-			// Separator
-			SEPARATOR
-			}; 
-
-		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
-		class WikiAttribute : public Property<StringT, IteratorT> {
-			public:
-				typedef std::map<StringT, WikiAttribute*>	attributes_type;
-
-			public:
-				WikiAttribute() :
-					Property<StringT, IteratorT>::Property() { init(); }
-				WikiAttribute(IteratorT begin) :
-				    Property<StringT, IteratorT>::Property(begin) { init(); }
-				WikiAttribute(IteratorT begin, IteratorT end) :
-				    Property<StringT, IteratorT>::Property(begin, end) { init(); }
-				WikiAttribute(StringT content) :
-					Property<StringT, IteratorT>::Property(content) {
-				}
-				virtual ~WikiAttribute() {}
-
-				virtual bool is_end_char(IteratorT& it) {
-					if (Property<StringT, IteratorT>::is_end_char(it))
-						return true;
-					else {
-						IteratorT next = it;
-					}
-					return false;
-				}				
-
-			private:
-				void init() {
-					// this->delimiter_ = '=';
-					this->force_end_quote_ = true;
-				}
-
-
-		};
-
-		class WikiEntityConstants {
-			public:
-				static const char WIKI_KEY_OPEN_TAG = '<';
-				static const char WIKI_KEY_STYLE = '\'';
-				static const char WIKI_KEY_STYLE_INDENT = ':';
-				static const char WIKI_KEY_CLOSE_TAG = '>';
-				static const char WIKI_KEY_HEADING = '=';
-				static const char WIKI_KEY_LIST = '*';
-				static const char WIKI_KEY_LIST_ORDERED = '#';
-				static const char WIKI_KEY_OPEN_TEMPLATE = '{';
-				static const char WIKI_KEY_CLOSE_TEMPLATE = '}';
-				static const char WIKI_KEY_OPEN_LINK = '[';
-				static const char WIKI_KEY_CLOSE_LINK = ']';
-				static const char WIKI_KEY_PROPERTY_DELIMITER = '|';
-				static const char WIKI_KEY_SLASH = '/';
-		};
-
-		class WikiEntityVariables {
-			public:
-				static std::string protocol;
-				static std::string path;
-				static std::string host;
-		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 		class BasicWikiEntity : public StringBound<StringT, IteratorT> 
@@ -203,7 +46,7 @@ namespace stpl {
 					
 			private:
 				void init() {
-					group_ = TEXT;
+					group_ = GRUOP_NONE;
 					type_ = NONE;
 					parent_ptr_ = NULL;
 
@@ -240,7 +83,11 @@ namespace stpl {
 
 				virtual bool is_child_end(WikiNodeGroup group, WikiNodeType type, IteratorT& it) {
 					return false;
-				}	
+				}
+
+				virtual bool is_empty() {
+					return false;
+				}
 
 				virtual const int children_count() {
 					return 0;
@@ -363,7 +210,7 @@ namespace stpl {
 				typedef IteratorT	iterator;
 
 			private:
-				void init() { this->group_ = TEXT; }
+				int 															is_empty_;					
 
 			public:
 				Text() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() { init(); }
@@ -377,6 +224,21 @@ namespace stpl {
 					this->create(content);
 				}
 				virtual ~Text() {}	
+
+				virtual bool is_empty() {
+					if (is_empty_ == -1) {
+						IteratorT pre = this->end() - 1;
+						while (isspace(*pre)) {
+							if (pre < this->begin())
+								break;
+							--pre;
+						}
+
+						if (pre < this->begin())
+							is_empty_ = 1;
+					}
+					return is_empty_ == 1;
+				}
 
 				virtual std::string to_html() {
 					return this->to_std_string();
@@ -454,10 +316,18 @@ namespace stpl {
 					if (!ret && it > this->begin() && BasicWikiEntity<StringT, IteratorT>::is_pause(it))
 				 		ret = true;
 
-					if (ret && it == this->begin())
-						ret = false;
+					if (ret) {
+						if (it == this->begin())
+							ret = false;
+				 	}
 					return ret;
-				 }
+				}
+
+			private:
+				void init() { 
+					this->group_ = TEXT; 
+					this->is_empty_ = -1;
+				}				 
 		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>

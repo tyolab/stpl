@@ -7,6 +7,7 @@
 
 #include <string>
 #include <sstream>
+#include <algorithm>
 
 #include <string.h>
 #include <stddef.h>
@@ -49,5 +50,17 @@ namespace utils {
         *to = '\0';
         return text;
     }
+
+    bool iccompare(const std::string& str1, const std::string& str2) {
+            if (str1.size() != str2.size()) {
+                return false;
+            }
+            for (string::const_iterator c1 = str1.begin(), c2 = str2.begin(); c1 != str1.end(); ++c1, ++c2) {
+                if (tolower(static_cast<unsigned char>(*c1)) != tolower(static_cast<unsigned char>(*c2))) {
+                    return false;
+                }
+            }
+            return true;
+    }    
 }
 #endif  /* STRINGS_H_ */

@@ -36,6 +36,9 @@ namespace stpl {
 
 			private:
 				std::vector<EntityT *> 												templates_;
+				std::vector<EntityT *> 												templates2_;  // templates at the end, no need to show
+				std::vector<EntityT *> 												images_;      // image file in the beginning, no need to show
+				std::vector<EntityT *> 												categories_;
 				std::vector<EntityT *>                                              sections_;
 				EntityT                                                             *redirect_;		
 				bool                                                                organized_;		
@@ -163,8 +166,22 @@ namespace stpl {
 					}
 					else {
 						ss << "\"article\": {" << std::endl;
-						ss << "\"sections\": [" << std::endl;
+
 						int count = 0;
+						// template
+						ss << "\"templates\": [" << std::endl;
+						for (auto it = templates_.begin(); it != templates_.end(); ++it) {
+							if (count > 0) 
+								ss << "," << std::endl;				
+							ss << (*it)->to_json();
+							ss << std::endl;
+							++count;
+						}
+						ss << "]" << std::endl;
+						ss << "}," << std::endl;
+
+						// article section
+						ss << "\"sections\": [" << std::endl;
 						for (auto it = sections_.begin(); it != sections_.end(); ++it) {
 							if (count > 0) 
 								ss << "," << std::endl;				
@@ -173,7 +190,30 @@ namespace stpl {
 							++count;
 						}
 						ss << "]" << std::endl;
-						ss << "}" << std::endl;
+						ss << "}," << std::endl;
+
+						// data
+						ss << "\"templates2\": [" << std::endl;
+						for (auto it = templates2_.begin(); it != templates2_.end(); ++it) {
+							if (count > 0) 
+								ss << "," << std::endl;				
+							ss << (*it)->to_json();
+							ss << std::endl;
+							++count;
+						}
+						ss << "]" << std::endl;
+						ss << "}," << std::endl;
+
+						// categories
+						ss << "\"categories\": [" << std::endl;
+						for (auto it = categories_.begin(); it != categories_.end(); ++it) {
+							if (count > 0) 
+								ss << "," << std::endl;				
+							ss << (*it)->to_json();
+							ss << std::endl;
+						}
+						ss << "]" << std::endl;
+						ss << "}" << std::endl;						
 					}
 					ss << "}" << std::endl;
 
@@ -228,9 +268,16 @@ namespace stpl {
 					WikiSection<StringT, IteratorT> *section = NULL;
 					for (; it != nodes.end(); ++it) {
 						EntityT *entity_ptr = *it;
-						if (!section && entity_ptr->get_group() == TBASE && entity_ptr->get_type() == TEMPLATE) {
-							templates_.push_back(entity_ptr);
-							continue;
+						if (!section) {
+							if (entity_ptr->get_group() == TBASE && entity_ptr->get_type() == TEMPLATE) {
+								templates_.push_back(entity_ptr);
+								continue;
+							}
+							else if (entity_ptr->get_group() == LINK) {
+								images_.push_back(entity_ptr);
+								continue;
+							}
+							
 						}
 
 						if (!section || (LAYOUT == entity_ptr->get_group() && LAYOUT_HEADING == entity_ptr->get_type())) {
@@ -253,6 +300,32 @@ namespace stpl {
 						else {
 							section->add(entity_ptr);
 						}
+					}
+
+					// last section
+					it = section->children().end() - 1;
+					int last_count = 0;
+					while (it != section->children().begin()) {
+						int group = (*it)->get_group();
+						if (group == TEXT && (*it)->is_empty()) {
+							--it;
+							continue;
+						}
+						else if (group == LINK || group == TBASE) {
+							int type = (*it)->get_type();
+							if (type == LINK_CATEGORY)
+								categories_.push_back(*it);
+							else if (type == TEMPLATE)
+								templates2_.push_back(*it);
+						}
+						else
+							break;
+						++last_count;
+						--it;
+					}
+					++it;
+					if (it < section->children().end()) {
+						section->children().erase(it, section->children().end());
 					}
 
 					organized_ = true;
@@ -532,7 +605,6 @@ namespace stpl {
 							else if (!entity_ptr && it > begin) {
 								entity_ptr = new Text<StringT, IteratorT>(begin, it);
 								entity_ptr->set_open(false);
-								entity_ptr->set_group(TEXT);
 								begin = it;
 							}
 						}
@@ -784,7 +856,6 @@ namespace stpl {
 					if (it < end && !entity_ptr && it > begin) {
 						entity_ptr = new Text<StringT, IteratorT>(begin, end);
 						entity_ptr->set_open(false);
-						entity_ptr->set_group(TEXT);
 						if (parent_ptr && parent_ptr->should_have_children()) {
 							entity_ptr->set_parent(parent_ptr);
 						}

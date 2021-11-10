@@ -95,6 +95,34 @@ namespace stpl {
 					return BasicWikiEntity<StringT, IteratorT>::to_std_string();
 				}
 
+				virtual std::string to_json() {
+					stringstream ss;
+					ss << "{" << std::endl;
+					auto it = this->children_.begin();
+					ss << "\"name\": ";
+					if (this->has_delimiter_) {
+						ss << "\"" << std::string(this->name_.begin(), this->name_.end()) << "\",";
+						ss << "\"value\": ";
+						ss <<  "\"";
+						it = it + name_count_;
+						// ss << name << "=";
+						// if (this->has_quote())
+						// 	ss << "\"";
+						while (it != this->children_.end()) {
+							std::string content = (*it++)->to_html();
+							ss << utils::escape_quote(content);
+						}
+
+						ss << "\"" << std::endl;
+					}
+					else {
+						std::string content = this->children_to_html();
+						ss <<  "\"" << utils::escape_quote(content) << "\"" << std::endl;	
+					}			
+					ss << "}" << std::endl;	
+					return ss.str();
+				}
+
 				/**
 				 * For all properties, it could be a property name or property value, which is decided by 
 				 * the appearing order
@@ -1162,6 +1190,19 @@ namespace stpl {
 				}
 				virtual ~Template() {}
 
+				virtual std::string to_json() {
+					std::stringstream ss;
+					ss << "[" << std::endl;
+					auto it = this->children_.begin();
+					while (it != this->children_.end()) {
+						if (it > this->children_.begin())
+							ss << ",";
+						ss << (*it)->to_json();	
+					}
+					ss << "]" << std::endl;					
+					return ss.str();
+				}
+
 				virtual std::string to_html() {
 					std::stringstream ss;
 					int count = 0;
@@ -1681,13 +1722,26 @@ namespace stpl {
 				}
 
 				virtual bool is_child_end(WikiNodeGroup group, WikiNodeType type, IteratorT& it) {
+					// from a text child to enqurie if parent is ended
 					if (TEXT == group) {
 						if (LINK_EXTERNAL == this->get_type()) {
 							if (*it == ' ')
 								return true;
 						}
 						else {
-							if (*it == '|')
+							if (*it == ':' && this->size() == 1) {
+								// ok, now we backward to see what kind of link it is
+								IteratorT pre = this->begin() + this->level_;
+								std::string link_kind = std::string(pre, it);
+								if (utils::iccompare(link_kind, WikiEntityVariables::link_category)) {
+									this->set_type(LINK_CATEGORY);
+								}
+								else if (utils::iccompare(link_kind, WikiEntityVariables::link_file)) {
+									this->set_type(LINK_IMAGE);
+								}
+								return false;
+							}
+							else if (*it == '|')
 								return true;
 							// specifial character for FILE: TEMPLATE: CATEGORY, LINK TO CATEGORY
 							else if (*it == '#')
@@ -1737,7 +1791,7 @@ namespace stpl {
 							ss << (*first)->to_std_string();
 						}
 						else {
-							ss << WikiEntityVariables::protocol << "://" + WikiEntityVariables::host << WikiEntityVariables::path <<  (*first)->to_std_string();
+							ss /* << WikiEntityVariables::protocol << "://" + WikiEntityVariables::host */ << WikiEntityVariables::path <<  (*first)->to_std_string();
 						}
 						ss << "\">";
 						ss << "<div class='linkcaption'>" << std::endl;
@@ -1767,6 +1821,28 @@ namespace stpl {
 						ss << "</a>";
 					}
 
+					return ss.str();
+				}
+
+				virtual std::string to_json() {
+					auto first = this->children_.begin();
+					auto second = this->children_.end() - 1;
+					stringstream ss;
+					ss << "{" << std::endl;
+					if (second > first) {
+						ss << "\"anchor\":\"";
+						ss << (*second)->to_html();
+						ss  << "\"," << std::endl;
+					}
+					ss << "\"url\":\"";
+					if (this->external_) {
+						ss << (*first)->to_std_string();
+					}
+					else {
+						ss << WikiEntityVariables::path <<  (*first)->to_std_string();
+					}
+					ss << "\"" << std::endl;
+					ss << "}" << std::endl;
 					return ss.str();
 				}
 
