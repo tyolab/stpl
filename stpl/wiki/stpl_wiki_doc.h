@@ -170,6 +170,7 @@ namespace stpl {
 						int count = 0;
 						// template
 						ss << "\"templates\": [" << std::endl;
+						count = 0;
 						for (auto it = templates_.begin(); it != templates_.end(); ++it) {
 							if (count > 0) 
 								ss << "," << std::endl;				
@@ -177,11 +178,11 @@ namespace stpl {
 							ss << std::endl;
 							++count;
 						}
-						ss << "]" << std::endl;
-						ss << "}," << std::endl;
+						ss << "]," << std::endl;
 
 						// article section
 						ss << "\"sections\": [" << std::endl;
+						count = 0;
 						for (auto it = sections_.begin(); it != sections_.end(); ++it) {
 							if (count > 0) 
 								ss << "," << std::endl;				
@@ -189,11 +190,11 @@ namespace stpl {
 							ss << std::endl;
 							++count;
 						}
-						ss << "]" << std::endl;
-						ss << "}," << std::endl;
+						ss << "]," << std::endl;
 
 						// data
 						ss << "\"templates2\": [" << std::endl;
+						count = 0;
 						for (auto it = templates2_.begin(); it != templates2_.end(); ++it) {
 							if (count > 0) 
 								ss << "," << std::endl;				
@@ -201,20 +202,35 @@ namespace stpl {
 							ss << std::endl;
 							++count;
 						}
-						ss << "]" << std::endl;
-						ss << "}," << std::endl;
+						ss << "]," << std::endl;
 
 						// categories
 						ss << "\"categories\": [" << std::endl;
+						count = 0;
 						for (auto it = categories_.begin(); it != categories_.end(); ++it) {
 							if (count > 0) 
 								ss << "," << std::endl;				
 							ss << (*it)->to_json();
-							ss << std::endl;
+							++count;
 						}
 						ss << "]" << std::endl;
-						ss << "}" << std::endl;						
+
+						// images
+						if (images_.size() > 0) {
+							count = 0;
+							ss << "," << std::endl;
+							ss << "\"image\": [" << std::endl;
+							for (auto it = images_.begin(); it != images_.end(); ++it) {
+								if (count > 0) 
+									ss << "," << std::endl;				
+								ss << (*it)->to_json();
+								ss << std::endl;
+								++count;
+							}
+							ss << "]" << std::endl;
+						}												
 					}
+					ss << "}" << std::endl;
 					ss << "}" << std::endl;
 
 					return ss.str();

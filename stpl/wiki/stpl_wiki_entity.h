@@ -1192,14 +1192,18 @@ namespace stpl {
 
 				virtual std::string to_json() {
 					std::stringstream ss;
-					ss << "[" << std::endl;
+					ss << "{" << std::endl;
+					ss << "\"name\": \"" << this->name_.to_std_string() << "\"," << std::endl;
+					ss << "\"properties\": [" << std::endl;
 					auto it = this->children_.begin();
 					while (it != this->children_.end()) {
 						if (it > this->children_.begin())
 							ss << ",";
 						ss << (*it)->to_json();	
+						++it;
 					}
-					ss << "]" << std::endl;					
+					ss << "]" << std::endl;	
+					ss << "}" << std::endl;				
 					return ss.str();
 				}
 
@@ -1729,23 +1733,30 @@ namespace stpl {
 								return true;
 						}
 						else {
-							if (*it == ':' && this->size() == 1) {
+							// this is for the link
+							if (this->size() == 1) {
+								if (*it == ':') {
 								// ok, now we backward to see what kind of link it is
-								IteratorT pre = this->begin() + this->level_;
-								std::string link_kind = std::string(pre, it);
-								if (utils::iccompare(link_kind, WikiEntityVariables::link_category)) {
-									this->set_type(LINK_CATEGORY);
+									IteratorT pre = this->begin() + this->level_;
+									std::string link_kind = std::string(pre, it);
+									if (utils::iccompare(link_kind, WikiEntityVariables::link_category)) {
+										this->set_type(LINK_CATEGORY);
+									}
+									else if (utils::iccompare(link_kind, WikiEntityVariables::link_file)) {
+										this->set_type(LINK_IMAGE);
+									}
+									// we need to move forward otherwise it will be stopped
+									++it;
+									return false;
 								}
-								else if (utils::iccompare(link_kind, WikiEntityVariables::link_file)) {
-									this->set_type(LINK_IMAGE);
-								}
-								return false;
+								else if (*it == '#') {
+									++it;
+									return false;	
+								}								
 							}
-							else if (*it == '|')
+							if (*it == '|')
 								return true;
 							// specifial character for FILE: TEMPLATE: CATEGORY, LINK TO CATEGORY
-							else if (*it == '#')
-								return false;	
 						}
 					} 
 					return false;
@@ -1830,16 +1841,37 @@ namespace stpl {
 					stringstream ss;
 					ss << "{" << std::endl;
 					if (second > first) {
-						ss << "\"anchor\":\"";
-						ss << (*second)->to_html();
-						ss  << "\"," << std::endl;
+						std::string html = (*second)->to_html();
+						html = utils::escape_quote(html);
+						if (this->children().size() > 2) {
+							ss << "\"caption\":\"";
+							ss << html;
+							ss  << "\"," << std::endl;
+							ss << "\"properties\": [";
+							auto it = first + 1;
+							int count = 0;
+							while (it < second) {
+								if (count > 0)
+									ss << ",";
+								std::string content =  (*it)->to_html();
+								ss << "\"" << utils::escape_quote(content) << "\"" ;
+								++it;
+								++count;
+							}
+							ss  << "]," << std::endl;
+						}
+						else {
+							ss << "\"anchor\":\"";
+							ss << html;
+							ss  << "\"," << std::endl;
+						}
 					}
 					ss << "\"url\":\"";
 					if (this->external_) {
 						ss << (*first)->to_std_string();
 					}
 					else {
-						ss << WikiEntityVariables::path <<  (*first)->to_std_string();
+						ss /* << WikiEntityVariables::path */ <<  (*first)->to_std_string();
 					}
 					ss << "\"" << std::endl;
 					ss << "}" << std::endl;
