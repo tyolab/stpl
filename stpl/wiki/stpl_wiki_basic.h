@@ -163,7 +163,16 @@ namespace stpl {
 				 */
 				virtual std::string to_json() {
 					return "";
-				}				
+				}
+
+				/**
+				 * @brief by default we don't output
+				 * 
+				 * @return std::string 
+				 */
+				virtual std::string to_text() {
+					return "";
+				}
 
 				virtual void process_child(BasicWikiEntity<StringT, IteratorT>* child) {
 					// if it doesn't get implemented, it has no children 
@@ -223,7 +232,11 @@ namespace stpl {
 					init();
 					this->create(content);
 				}
-				virtual ~Text() {}	
+				virtual ~Text() {}
+
+				virtual std::string to_text() {
+					return this->to_std_string();
+				}
 
 				virtual bool is_empty() {
 					if (is_empty_ == -1) {
@@ -353,7 +366,7 @@ namespace stpl {
 					init();
 					this->create(content);
 				}
-				virtual ~Redirect() {}	
+				virtual ~Redirect() {}
 
 				virtual std::string to_html() {
 					return this->to_std_string();
@@ -519,6 +532,15 @@ namespace stpl {
 						return ss.str();
 					}
 					return this->to_std_string();
+				}
+
+				virtual std::string to_text() {
+					std::stringstream ss;
+					auto it = this->children_.begin();
+					while (it != this->children_.end()) {
+						ss << (*it++)->to_text();
+					}
+					return ss.str();
 				}
 
 				std::string children_to_html() {

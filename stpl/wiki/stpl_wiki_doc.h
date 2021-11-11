@@ -154,6 +154,36 @@ namespace stpl {
 					return ss.str();
 				}
 
+				/**
+				 * @brief for indexing
+				 * 
+				 * @return std::string 
+				 */
+				std::string to_trec(int id) {
+					organize();
+					std::stringstream ss;
+					ss << "<DOC>" << std::endl;
+					ss << "<DOCNO>" << id << "</DOCNO>" << std::endl;
+					// categories
+					ss << "<CATEGORIES>" << std::endl;
+					for (auto it = categories_.begin(); it != categories_.end(); ++it) {			
+						ss << "<CATEGORY>" << std::endl;
+						ss << (*it)->to_text();
+						ss << "<CATEGORY>" << std::endl;
+					}
+					ss << "</CATEGORIES>" << std::endl;
+
+					ss << "<TEXT>" << std::endl;
+					for (auto it = sections_.begin(); it != sections_.end(); ++it) {		
+						ss << (*it)->to_text();
+						ss << std::endl;
+					}
+					ss << "</TEXT>" << std::endl;
+
+					ss << "<DOC>" << std::endl;
+					return ss.str();
+				}
+
 				std::string to_json() {
 					organize();
 

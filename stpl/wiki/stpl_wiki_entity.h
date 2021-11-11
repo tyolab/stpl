@@ -123,6 +123,10 @@ namespace stpl {
 					return ss.str();
 				}
 
+				virtual std::string to_text() {
+					return "";
+				};
+
 				/**
 				 * For all properties, it could be a property name or property value, which is decided by 
 				 * the appearing order
@@ -300,6 +304,10 @@ namespace stpl {
 				virtual ~CommonChildEntity() {
 				}
 
+				virtual std::string to_text() {
+					return WikiEntity<StringT, IteratorT>::to_text();
+				}			
+
 				virtual std::string to_html() {
 					if (this->children_.size() > 0) {
 						std::stringstream ss;
@@ -360,16 +368,6 @@ namespace stpl {
 					init();
 				}
 				virtual ~WikiSection() {};
-
-				virtual std::string to_html() {
-					// stringstream ss;
-					// ss << "<section>" << std::endl;
-					// ss <<  this->children_to_html();
-					// ss <<  "</section>" << std::endl;
-
-					// return ss.str();
-					return this->children_to_html();
-				}
 
 				virtual std::string to_json() {
 					stringstream ss;
@@ -451,6 +449,10 @@ namespace stpl {
 					init();
 				}
 				virtual ~TableCell() {};
+
+				virtual std::string to_text() {
+					return "";
+				}		
 
 				virtual std::string to_html() {
 					// stringstream ss;
@@ -1708,13 +1710,6 @@ namespace stpl {
 				}
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
-				// 	// when the line ends it ends
-				// 	// if (url_.end() == url_.begin() && (external_ && *it == ' ') || *it == '|') {
-				// 	// 	url_.end(it++);
-				// 	// 	anchor_.begin(it);
-				// 	// 	anchor_.end(it);
-				// 	// 	return false;
-				// 	// }
 					if (WikiEntityLeveled<StringT, IteratorT>::is_end(it, advance)) {
 						// anchor_.end(it - this->level_);
 						// if (url_.begin() == anchor_.begin())
@@ -1777,7 +1772,23 @@ namespace stpl {
 				void set_url(const StringB &url) {
 					url_ = url;
 				}
-				
+
+				virtual std::string to_text() {
+					std::stringstream ss;
+					if (this->get_type() == LINK_IMAGE)
+						return "";
+					else if (this->get_type() == LINK_EXTERNAL)
+						return "";
+					auto first = this->children_.begin();
+					std::string url = (*first)->to_text();
+
+					ss << (this->get_type() == LINK_CATEGORY ? url.substr(9) : url);
+					auto second = this->children_.end() - 1;
+					if (second > first)
+						ss << "(" << (*second)->to_text() <<  ") ";
+					return ss.str();
+				}
+
 				/**
 				 * For the link things might get a bit interesting
 				 * 
@@ -1786,30 +1797,41 @@ namespace stpl {
 					auto first = this->children_.begin();
 					auto second = this->children_.end() - 1;
 					stringstream ss;
-					if (this->size() > 2) {
+					if (this->get_type() == LINK_IMAGE) {
+						ss << "<div class=\"placeholder\" style=\"display:none;\"";
 						// must be a file link
-						ss << "<div ";
-						auto it = first + 1;
-						while (it != second) {
-							ss << (*it)->to_std_string() << " ";
-							++it;
-						}
-						ss << ">" << std::endl;
+						if (this->size() > 2) {
+							auto it = first + 1;
+							while (it != second) {
+								ss << (*it)->to_std_string() << " ";
+								++it;
+							}
+							ss << ">" << std::endl;
 
-						ss << "<div class='innerlink'>" << std::endl;
-						ss << "<a href=\"";
-						if (this->external_) {
-							ss << (*first)->to_std_string();
+							ss << "<div class='innerlink'>" << std::endl;
+							ss << "<a href=\"";
+							std::string img_url;
+							// if (this->external_) {
+							// 	img_url =  (*first)->to_std_string();
+							// }
+							// else {
+								// ss /* << WikiEntityVariables::protocol << "://" + WikiEntityVariables::host */ << WikiEntityVariables::path <<  (*first)->to_std_string();
+							img_url =  WikiEntityVariables::path + (*first)->to_std_string();
+							// }
+							ss << img_url;
+							ss << "\">";
+							ss << "<img src=\"" << "\">" << std::endl;
+							ss << "</img>" << std::endl;
+							ss << "</a>" << std::endl;
+							ss << "<div class='linkcaption'>" << std::endl;
+							ss << (*second)->to_html();
+							ss << "</div>" << std::endl;
+							ss << "</div>" << std::endl;
+
 						}
 						else {
-							ss /* << WikiEntityVariables::protocol << "://" + WikiEntityVariables::host */ << WikiEntityVariables::path <<  (*first)->to_std_string();
-						}
-						ss << "\">";
-						ss << "<div class='linkcaption'>" << std::endl;
-						ss << (*second)->to_html();
-						ss << "</div>" << std::endl;
-						ss << "</div>" << std::endl;
 
+						}
 						ss << "</div>" << std::endl;
 					}
 					else {
@@ -1829,7 +1851,7 @@ namespace stpl {
 						// we are using the url as the anchor text
 						else
 							ss << (*first)->to_std_string();
-						ss << "</a>";
+						ss << "</a> ";
 					}
 
 					return ss.str();
