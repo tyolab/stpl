@@ -151,6 +151,8 @@ namespace stpl {
 				static std::string path;
 				static std::string host;
 
+				static std::string html_head;
+
 				static std::string link_category;
 				static std::string link_file;
 		};
@@ -161,6 +163,8 @@ namespace stpl {
 
 		std::string WikiEntityVariables::link_category = "Category";
 		std::string WikiEntityVariables::link_file = "File";
+
+		std::string WikiEntityVariables::html_head = "";
 	}
 
 }

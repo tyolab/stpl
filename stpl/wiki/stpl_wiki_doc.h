@@ -92,18 +92,9 @@ namespace stpl {
 
 					ss << "<html>" << std::endl;
 					ss << "<head>" << std::endl;
-					ss << "<!-- Created By wiki2json (TYO Lab, https://tyo.com.au) -->" << std::endl;
-					ss << "<link href=\"style.css\" rel=\"stylesheet\" type=\"text/css\"/>" << std::endl;
+					ss << WikiEntityVariables::html_head << std::endl;
 					ss << "</head>" << std::endl;
 					ss << "<body>" << std::endl;
-// 					auto nodes = this->children();
-// 					for (auto it = nodes.begin(); it != nodes.end(); ++it) {
-// #ifdef DEBUG
-// 						ss << '(' << (*it)->get_id() << ") ";
-// #endif // DEBUG						
-// 						ss << (*it)->to_html();
-// 						ss << std::endl;
-// 					}
 
 					for (auto it = templates_.begin(); it != templates_.end(); ++it) {
 						ss << (*it)->to_html() << std::endl;

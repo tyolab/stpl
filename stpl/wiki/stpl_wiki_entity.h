@@ -1213,21 +1213,28 @@ namespace stpl {
 					std::stringstream ss;
 					int count = 0;
 					std::string name = this->name_.to_std_string();
-					if (("lang") == name) {
+					if (("lang") == name.substr(0, 4)) {
 						ss << "<span type=\"template\" lang=";
 						auto it = this->children_.begin();
-						while (it != this->children_.end()) {
-							if (count == 0) 
-								ss << "\"" << (*it)->to_std_string() << "\"";
-							else if (count == 1)
-								break;
+						if (name.size() > 2) {
+							while (it != this->children_.end()) {
+								if (count == 0) 
+									ss << "\"" << (*it)->to_std_string() << "\"";
+								else if (count == 1)
+									break;
 
-							++count;
-							++it;
+								++count;
+								++it;
+							}
+							ss << ">";
+							if (it != this->children_.end())
+								ss << (*it)->to_std_string();
 						}
-						ss << ">";
-						if (it != this->children_.end())
+						else {
+							ss << "\"" << name << "\"";
+							ss << ">";
 							ss << (*it)->to_std_string();
+						}
 						ss << "</span>";
 
 					}
