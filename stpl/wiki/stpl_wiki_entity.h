@@ -1105,7 +1105,7 @@ namespace stpl {
 				void init() { 
 					row_prev_ = -1;
 					rows_ = 0;
-					row_id_ -1;
+					row_id_ = -1;
 					rows_header_ind_ = "0";
 					cell_id_ = -1;
 				}
@@ -1801,6 +1801,8 @@ namespace stpl {
 				 * 
 				 */
 				virtual std::string to_html() {
+					if (this->children_.size() == 0)
+						return "";
 					auto first = this->children_.begin();
 					auto second = this->children_.end() - 1;
 					stringstream ss;

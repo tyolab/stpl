@@ -16,14 +16,6 @@
 	#include <stdlib.h>
 #endif
 
-#ifdef _MSC_VER
-	inline char *strlower(char *a) { return _strlwr(a); }
-	inline char *strlower(const char *a) { return strlower((char *)a); }
-	#define strnicmp _strnicmp
-#else
-	inline int strnicmp (const char *s1, const char *s2, size_t n) { return ::strncasecmp (s1, s2, n); }
-#endif
-
 namespace utils {
 
     std::string escape_quote(std::string& source) {

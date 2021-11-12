@@ -175,7 +175,7 @@ namespace stpl {
 					return ss.str();
 				}
 
-				std::string to_json() {
+				std::string to_json(std::string extras = "") {
 					organize();
 
 					std::stringstream ss;
@@ -252,6 +252,12 @@ namespace stpl {
 						}												
 					}
 					ss << "}" << std::endl;
+
+					if (extras.size() > 0) {
+						ss << "," << std::endl;
+						ss << "extras: " << extras << std::endl;
+						ss << extras;
+					}
 					ss << "}" << std::endl;
 
 					return ss.str();
@@ -340,29 +346,36 @@ namespace stpl {
 					}
 
 					// last section
-					it = section->children().end() - 1;
-					int last_count = 0;
-					while (it != section->children().begin()) {
-						int group = (*it)->get_group();
-						if (group == TEXT && (*it)->is_empty()) {
-							--it;
-							continue;
-						}
-						else if (group == LINK || group == TBASE) {
-							int type = (*it)->get_type();
-							if (type == LINK_CATEGORY)
-								categories_.push_back(*it);
-							else if (type == TEMPLATE)
-								templates2_.push_back(*it);
-						}
-						else
-							break;
-						++last_count;
-						--it;
+#ifdef DEBUG
+					if (!section) {
+						std::cout << "last section is null!!! " << std::endl;
 					}
-					++it;
-					if (it < section->children().end()) {
-						section->children().erase(it, section->children().end());
+#endif // DEBUG					
+					if (section && section->children().size() > 0) {
+						it = section->children().end() - 1;
+						int last_count = 0;
+						while (it != section->children().begin()) {
+							int group = (*it)->get_group();
+							if (group == TEXT && (*it)->is_empty()) {
+								--it;
+								continue;
+							}
+							else if (group == LINK || group == TBASE) {
+								int type = (*it)->get_type();
+								if (type == LINK_CATEGORY)
+									categories_.push_back(*it);
+								else if (type == TEMPLATE)
+									templates2_.push_back(*it);
+							}
+							else
+								break;
+							++last_count;
+							--it;
+						}
+						++it;
+						if (it < section->children().end()) {
+							section->children().erase(it, section->children().end());
+						}
 					}
 
 					organized_ = true;

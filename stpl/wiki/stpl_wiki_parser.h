@@ -40,6 +40,7 @@ namespace stpl {
 																, EntityT
 																, ScannerT
 																>::Parser(begin, end) { }
+
 				virtual ~WikiParser() {}
 
 				virtual DocumentT& parse() {

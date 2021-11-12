@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <climits>
 
+#include "stpl_atom.h"
 #include "lang/stpl_character.h"
 
 using namespace std;
@@ -34,27 +35,6 @@ using namespace std;
 namespace stpl {
 
 	const char SPACING[] = {"  "};
-
-	/**
-	 * The smallest object in the class chain
-	 */
-	class Atom {
-		public:
-			static int                                      counter;
-			static int                                      line_counter;
-
-		protected:
-			int												id_;	
-
-		public:
-			int get_id() const {
-				return id_;
-			}
-
-			void set_id(int id) {
-				id_ = id;
-			}
-	};	
 
 	/**
 	 * There are two types of boundaries
