@@ -24,6 +24,8 @@
 #include "../stpl_entity.h"
 #include "../stpl_property.h"
 
+#include "../../utils/xml.h"
+
 #include "stpl_wiki_constants.h"
 
 #include <map>
@@ -95,6 +97,10 @@ namespace stpl {
 
 				virtual const bool should_have_children() {
 					return false;
+				}
+
+				virtual BasicWikiEntity<StringT, IteratorT> *create_child(IteratorT& begin, IteratorT& end) {
+					return NULL;
 				}
 
 				static bool is_start_symbol(IteratorT it) {
@@ -253,8 +259,17 @@ namespace stpl {
 					return is_empty_ == 1;
 				}
 
+				virtual std::string to_json() {
+					return this->to_html();
+				}	
+
 				virtual std::string to_html() {
-					return this->to_std_string();
+					std::string html = this->to_std_string();
+#ifndef DEBUG
+					// this a very time consuming part
+					utils::unescape_xml(html);
+#endif // !DEBUG					
+					return html;
 				}						
 
 				virtual bool is_pause(IteratorT& it) {
@@ -474,6 +489,10 @@ namespace stpl {
 
 				virtual const bool should_have_children() {
 					return true;
+				}
+
+				virtual BasicWikiEntity<StringT, IteratorT> *create_child(IteratorT& begin, IteratorT& end) {
+					return new Text<StringT, IteratorT>(begin, end);
 				}
 
 				/**

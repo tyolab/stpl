@@ -652,11 +652,11 @@ namespace stpl {
 								parent_ptr->set_open(false);
 								return parent_ptr;
 							}
-							else if (!entity_ptr && it > begin) {
-								entity_ptr = new Text<StringT, IteratorT>(begin, it);
-								entity_ptr->set_open(false);
-								begin = it;
-							}
+							// else if (!entity_ptr && it > begin) {
+							// 	entity_ptr = new Text<StringT, IteratorT>(begin, it);
+							// 	entity_ptr->set_open(false);
+							// 	begin = it;
+							// }
 						}
 
 						if (!entity_ptr) {
@@ -871,7 +871,7 @@ namespace stpl {
 								// this is in the middle of it
 								// 3. if parent has no child(ren) yet
 								// this is the first one, so it would hurt either
-								EntityT *text_ptr = new Text<StringT, IteratorT>(begin, end);
+								EntityT *text_ptr = parent_ptr->create_child(begin, end);
 								text_ptr->set_parent(parent_ptr);							
 								return text_ptr;
 							}

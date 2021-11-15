@@ -28,10 +28,15 @@
 #include <regex>
 
 #include "stpl_wiki_basic.h"
+
 #include "../stpl_property.h"
+
 #include "../../utils/icstring.h"
 #include "../../utils/strings.h"
+#include "../../utils/xml.h"
+
 #include "../lang/stpl_character.h"
+
 
 namespace stpl {
 	namespace WIKI {
@@ -819,11 +824,28 @@ namespace stpl {
 				}
 				virtual ~Table() {}
 
+				virtual BasicWikiEntity<StringT, IteratorT> *create_child(IteratorT& begin, IteratorT& end) {
+					++this->cell_id_;
+					return new TableCell<StringT, IteratorT>(begin, end);
+				}
+
 				virtual void process_child(BasicWikiEntity<StringT, IteratorT>* child) {
 					TableCell<StringT, IteratorT>* cell_ptr = reinterpret_cast<TableCell<StringT, IteratorT> *>(child);
 
-					cell_ptr->set_cell_id(this->cell_id_);
-					WikiEntity<StringT, IteratorT>::process_child(cell_ptr);
+                    if (cell_ptr) {
+						cell_ptr->set_cell_id(this->cell_id_);
+						WikiEntity<StringT, IteratorT>::process_child(cell_ptr);
+		               
+					}
+#ifdef DEBUG			
+                    else {
+						std::cerr << "Table::process_child: child is not a TableCell" << std::endl;
+					}
+
+					// if (this->cell_id_ == -1)
+					// 	std::cerr << "Table::process_child: cell_id_ is -1" << std::endl;
+					// std::cerr << "Table::process_child: child, cell id: " << this->cell_id_ << std::endl;					
+#endif // DEBUG					
 				}
 
 				void print_last_cell(std::ostream &ss, TableCell<StringT, IteratorT> *last_format, std::vector<TableCell<StringT, IteratorT>* >& last_cells, int rows, bool row_header, bool& first_col) {
@@ -841,8 +863,19 @@ namespace stpl {
 						first_col = false;							
 					}					
 
-					if (last_format && last_cells.size() > 0) 
-						ss << " " << last_format->to_std_string();
+					/**
+					 * 
+					 * handle the cell style
+					 */
+					if (last_cells.size() > 0) {
+						std::string format = last_format->to_std_string();
+						utils::unescape_xml(format);
+						if (format.size() > 0) {
+							if (format[0] != '<' && last_format && last_cells.size() > 0) 
+								ss << " " << format;
+						}
+					}
+
 					ss << ">";
 
 					if (last_cells.size() > 0) {
@@ -873,7 +906,9 @@ namespace stpl {
 					std::stringstream ss;
 					ss << "<table";
 					if (style_.length() > 0) {
-						ss << " " << style_.to_std_string();
+						std::string table_style = style_.to_std_string();
+						utils::unescape_xml(table_style);
+						ss << " " << table_style;
 					}
 					ss << ">" << std::endl;;
 					int rows = -1;
@@ -908,34 +943,54 @@ namespace stpl {
 						}
 
 						cell_ptr = reinterpret_cast<TableCell<StringT, IteratorT> *>(*it);
-						row_header = rows_header_ind_[rows] == '1';
-						int skip_cells = cell_ptr->get_cell_id() - last_cell_id;
-						if (skip_cells > 1) {
-							// fill up the missing cells
-							for (int i = 1; i < skip_cells; ++i) {
-								if (rows == 0 && row_header) {
-									ss << "<th ></th>" << std::endl;
+						if (cell_ptr) {
+							row_header = rows_header_ind_[rows] == '1';
+							int skip_cells = cell_ptr->get_cell_id() - last_cell_id;
+							bool should_be_cell = false;
+							if (cell_ptr->children().size() > 0) {
+								auto child = cell_ptr->children().begin();
+								while (child != cell_ptr->children().end()) {
+									if ((*child)->get_group() != TEXT) {
+										should_be_cell = true;
+										break;
+									}
+									++child;
 								}
-								else 
-									ss << "<td ></td>" << std::endl;
 							}
-						}
 
-						// we print it only we have the last cell
-						if (last_format && skip_cells > 0) {
-							print_last_cell(ss, last_format, last_cells, rows, row_header, first_col);
-							last_format = cell_ptr;
-						}
-						else {
-							if (last_format) {
-								last_cells.push_back(cell_ptr);
+							if (skip_cells > 1) {
+								// fill up the missing cells
+								for (int i = 1; i < skip_cells; ++i) {
+									if (rows == 0 && row_header) {
+										ss << "<th ></th>" << std::endl;
+									}
+									else 
+										ss << "<td ></td>" << std::endl;
+								}
 							}
-							else
+							else {
+								if (should_be_cell) {
+									skip_cells = 1;
+									last_format = cell_ptr;
+								}
+							}
+
+							// we print it only we have the last cell
+							if (last_format && skip_cells > 0) {
+								print_last_cell(ss, last_format, last_cells, rows, row_header, first_col);
 								last_format = cell_ptr;
-						}
+							}
+							else {
+								if (last_format) {
+									last_cells.push_back(cell_ptr);
+								}
+								else
+									last_format = cell_ptr;
+							}
 
-						last_cell_ptr = cell_ptr;
-						last_cell_id = cell_ptr->get_cell_id();
+							last_cell_ptr = cell_ptr;
+							last_cell_id = cell_ptr->get_cell_id();
+						}
 						++it;
 					}
 
@@ -970,8 +1025,12 @@ namespace stpl {
 				virtual bool is_pause(IteratorT& it) {
 					if (*it == '\n') {
 						IteratorT next = it + 1;
-						if (*next == '|') {
-							// IteratorT pre = it - 1;
+						while (*next == ' ')
+							++next;
+						if (*next == '}') {
+							return true;
+						}
+						else if (*next == '|') {
 							++next;
 							switch (*next) {
 								case '+':
@@ -989,20 +1048,14 @@ namespace stpl {
 								// new row
 								case '-': 
 									{
-										//if (rows_ > 0) {
-											// need to set a row separator
-											auto separator = new Text<StringT, IteratorT>(it, it);
-											separator->set_type(SEPARATOR);
-											this->add(separator);
-										//}
+										// need to set a row separator
+										auto separator = new Text<StringT, IteratorT>(it, it);
+										separator->set_type(SEPARATOR);
+										this->add(separator);
 
 										col_id_ = -1;
 										row_id_ = rows_;
 										++rows_;
-										// if (row_prev_ == -1)
-										// 	row_prev_ = 0;
-										// else
-										// 	row_prev_ = row_id_;
 
 										rows_header_ind_.push_back('0');
 
@@ -1011,21 +1064,7 @@ namespace stpl {
 
 										it = next;						
 									}
-									return true;
-								// case '|':
-								// 	this is not a possible case;
-								//  if that happens it means the previous is an empty cell
-								// 	don't need to do anything
-								// 	just create a new WikiProperty
-								// 	++cell_id_;
-								// 	++col_id_;
-								// 	++it;
-								// 	return true;
-								// case '!':
-								// 	{
-								// 		row_id_ = 0;
-								// 	}
-								// 	break;		
+									return true;	
 								default:
 									break;					
 							}
@@ -1091,7 +1130,20 @@ namespace stpl {
 				 * It has clear end boundary, it end only when a boundary is seen
 				 */
 				virtual bool is_end(IteratorT& it, bool advance=true) {
-					if (*it == '|') {
+					if (*it == '\n') {
+						IteratorT next = it + 1;
+						while (*next == ' ')
+							++next;
+						if (*next == '|') {
+							++next;
+							if (*next == '}') {
+								if (advance)
+									it = next + 1;
+								return true;
+							}
+						}
+					}					
+					else if (*it == '|') {
 						IteratorT next = it + 1;
 						if (*next == '}') {
 							if (advance)
@@ -1200,6 +1252,10 @@ namespace stpl {
 					this->create(content);
 				}
 				virtual ~Template() {}
+
+				virtual BasicWikiEntity<StringT, IteratorT> *create_child(IteratorT& begin, IteratorT& end) {
+					return new WikiProperty<StringT, IteratorT>(begin, end);
+				}
 
 				virtual std::string to_json() {
 					std::stringstream ss;
@@ -1701,6 +1757,10 @@ namespace stpl {
 				}
 				virtual ~Link() {};
 
+				virtual BasicWikiEntity<StringT, IteratorT> *create_child(IteratorT& begin, IteratorT& end) {
+					return new CommonChildEntity<StringT, IteratorT>(begin, end);
+				}
+
 				bool is_external() {
 					return external_;
 				}
@@ -1760,7 +1820,7 @@ namespace stpl {
 									++it;
 									return false;
 								}
-								else if (*it == '#') {
+								else if (*it == '#' || *it == '-') {
 									++it;
 									return false;	
 								}								
