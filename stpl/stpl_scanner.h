@@ -98,6 +98,8 @@ namespace stpl {
 				IteratorT previous_pos = this->current();
 				IteratorT it;
 
+				EntityT *last_e = NULL;
+
 				if (!this->is_end()) {
 					/*
 					 * TODO make the skipping of the non-valid char happen here 
@@ -117,19 +119,24 @@ namespace stpl {
 							// 	// creating a dead loop
 							// 	tmp_entity->end(++it);
 							// }
+							if (it == this->end()) {
+								if (tmp_entity->isopen()) {
+									tmp_entity->end(it);
+								}
+							}
 						}
 						else
 							it = tmp_entity->end();
 
 						if(tmp_entity->end() > tmp_entity->begin())
-							last_e_ = tmp_entity;							
+							last_e = tmp_entity;						
 					}
-					else {
-						// no more entity found, so we are done
-						last_e_ = NULL;
-					}
+					// else {
+					// 	// no more entity found, so we are done
+					// 	last_e = NULL;
+					// }
 					// as if the entity does't close on the first match it means it has children
-					// anything happens inside here, nothing to do with last_e_
+					// anything happens inside here, nothing to do with last_e
 					while (tmp_entity && tmp_entity->isopen()) {
 						// after the state check, the previous entity may not be open
 						EntityT* child_entity = state_check(it, tmp_entity);
@@ -202,9 +209,9 @@ namespace stpl {
 					}
 					// }
 
-					if (last_e_) {
-						current_pos_ = last_e_->end();
-						reset_state(last_e_);
+					if (last_e) {
+						current_pos_ = last_e->end();
+						reset_state(last_e);
 					}
 					else {
 						// not quite sure why this is necessry
@@ -213,7 +220,7 @@ namespace stpl {
 						// when we come the end of the file, between last entity and the end of the file
 						// there could text in between
 						if (current_pos_ > previous_pos) {
-							last_e_ = handle_char(previous_pos, current_pos_);
+							last_e = handle_char(previous_pos, current_pos_);
 	;
 							state_ = previous_state;
 						}
@@ -221,8 +228,9 @@ namespace stpl {
 							delete tmp_entity;
 					}
 				}
-				else
-					last_e_ = NULL;
+				// else
+				// 	last_e_ = NULL;
+				last_e_ = last_e;
 
 				return last_e_;
 	 		}	 		
