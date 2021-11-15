@@ -235,16 +235,23 @@ namespace stpl {
 							// deside where is the end of name
 							IteratorT pre = it;
 							WikiEntity<StringT, IteratorT>::skip_whitespace_backward(--pre);
-							this->name_.end(++pre);
+							++pre;
+							if (pre > this->name_.begin()) {
+								this->name_.end(pre);
+								name_count_ = this->children_.size();
 
-							name_count_ = this->children_.size();
+								++it;
 
-							++it;
+								WikiEntity<StringT, IteratorT>::skip_whitespace(it);
 
-							WikiEntity<StringT, IteratorT>::skip_whitespace(it);
-
-							this->value_.begin(it);
-							this->value_.end(it);
+								this->value_.begin(it);
+								this->value_.end(it);
+							}
+							else {
+								// name supposed to be not empty
+								++it;
+								return false;
+							}
 						}
 						else
 							return false;
@@ -1029,23 +1036,25 @@ namespace stpl {
 							return true;
 						}
 						else if (*next == '!') {
-							++cell_id_;
-							++col_id_;
-							// if (row_id_ > 0) {
-							// 	// row header
-							// 	rows_header_ind_[row_id_] = '1';
-							// }
-							// else {
-								// column header
-								has_header_ = true;
-								rows_header_ind_[row_id_] = '1';
-								// IteratorT next = it + 1;
-								// if (*next == '!')
-								// 	it = next;
-							// }
-							it = next;
-							*it = '|';
-							return true;
+							if (row_id_ > -1 && row_id_ < rows_){
+								++cell_id_;
+								++col_id_;
+								// if (row_id_ > 0) {
+								// 	// row header
+								// 	rows_header_ind_[row_id_] = '1';
+								// }
+								// else {
+									// column header
+									has_header_ = true;
+									rows_header_ind_[row_id_] = '1';
+									// IteratorT next = it + 1;
+									// if (*next == '!')
+									// 	it = next;
+								// }
+								it = next;
+								*it = '|';
+								return true;
+							}
 						}
 					}
 					else if (*it == '|') {
