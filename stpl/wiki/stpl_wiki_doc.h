@@ -193,11 +193,15 @@ namespace stpl {
 						ss << "\"templates\": [" << std::endl;
 						count = 0;
 						for (auto it = templates_.begin(); it != templates_.end(); ++it) {
+							std::string link = (*it)->to_json();
 							if (count > 0) 
-								ss << "," << std::endl;				
-							ss << (*it)->to_json();
-							ss << std::endl;
-							++count;
+								ss << "," << std::endl;	
+
+							if (link.length() > 0) {
+								ss << link;
+								ss << std::endl;
+								++count;
+							}
 						}
 						ss << "]," << std::endl;
 
@@ -317,7 +321,21 @@ namespace stpl {
 								continue;
 							}
 							else if (entity_ptr->get_group() == LINK) {
-								images_.push_back(entity_ptr);
+								if (entity_ptr->get_type() == LINK_IMAGE)
+									images_.push_back(entity_ptr);
+								else {
+									static const std::vector<std::string> suffix_array = {
+										".jpg", ".jpeg", ".png", ".svg", ".jiff"
+									};
+									Link<StringT, IteratorT> *link = (Link<StringT, IteratorT> *)entity_ptr;
+									if (link->children().size() > 0) {
+										auto child = link->children().begin();
+										std::string link_text = (*child)->to_std_string();
+										if (utils::ends_with(link_text, suffix_array)) {
+											templates_.push_back(*child);
+										}
+									}
+								}
 								continue;
 							}
 							
@@ -806,8 +824,6 @@ namespace stpl {
 										if (parent_ptr->get_group() == LINK) {
 											begin = it + 1;
 											entity_ptr = new CommonChildEntity<StringT, IteratorT>(it + 1, end);
-											entity_ptr->set_group(PROPERTY);
-											entity_ptr->set_type(P_LINK);
 										}
 										else if (parent_ptr->get_group() == PROPERTY || parent_ptr->get_group() == CELL) {
 											// a property can't not be the paranet of another property

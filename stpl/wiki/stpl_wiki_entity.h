@@ -41,6 +41,67 @@
 namespace stpl {
 	namespace WIKI {
 
+		template <typename StringT = std::string
+					, typename IteratorT = typename StringT::iterator
+				  >
+		class CommonChildEntity: public WikiEntity<StringT, IteratorT>
+		{
+			public:
+				typedef StringT													string_type;
+				typedef IteratorT												iterator;
+
+			public:
+				CommonChildEntity() : WikiEntity<StringT, IteratorT>::WikiEntity()
+							 { init(); }
+				CommonChildEntity(IteratorT it) :
+					WikiEntity<StringT, IteratorT>::WikiEntity(it)/*, start_k_(it, it)*/
+					 { init(); }
+				CommonChildEntity(IteratorT begin, IteratorT end) :
+					WikiEntity<StringT, IteratorT>::WikiEntity(begin, end)/*, start_k_(begin, begin)*/
+					 { init(); }
+
+				virtual ~CommonChildEntity() {
+				}
+
+				virtual std::string to_text() {
+					return WikiEntity<StringT, IteratorT>::to_text();
+				}
+
+				virtual std::string to_html() {
+					if (this->children_.size() > 0) {
+						std::stringstream ss;
+
+						auto it = this->children_.begin();
+						for (; it != this->children_.end(); ++it)
+							ss << (*it)->to_html();
+
+						return ss.str();
+					}
+					return this->to_std_string();
+				}
+
+				virtual bool is_pause(IteratorT& it) {
+					return true;
+				}
+
+				virtual bool is_child_end(WikiNodeGroup group, WikiNodeType type, IteratorT& it) {
+					if (TEXT == group && *it == '|') {
+						return true;
+					}
+					return false;
+				}
+
+				// virtual bool is_end(IteratorT& it, bool advance=true) {
+				// 	return this->parent_ptr_ && this->parent_ptr_->is_end(it, false);
+				// }
+
+			private:
+				void init() {
+					this->set_group(PROPERTY);
+					this->set_type(P_LINK);
+				}
+		};
+
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 		class WikiProperty : public Property<StringT, IteratorT>, public WikiEntity<StringT, IteratorT> {
 			public:
@@ -64,6 +125,9 @@ namespace stpl {
 				}
 				virtual ~WikiProperty() {}
 
+				// virtual BasicWikiEntity<StringT, IteratorT> *create_child(IteratorT& begin, IteratorT& end) {
+				// 	return new CommonChildEntity<StringT, IteratorT>(begin, end);
+				// }
 
 				int get_property_id() const {
 					return property_id_;
@@ -292,64 +356,6 @@ namespace stpl {
 					this->set_type(P_PROPERTY);
 					this->name_count_ = 0;
 				}
-		};
-
-		template <typename StringT = std::string
-					, typename IteratorT = typename StringT::iterator
-				  >
-		class CommonChildEntity: public WikiEntity<StringT, IteratorT>
-		{
-			public:
-				typedef StringT													string_type;
-				typedef IteratorT												iterator;
-
-			public:
-				CommonChildEntity() : WikiEntity<StringT, IteratorT>::WikiEntity()
-							 { init(); }
-				CommonChildEntity(IteratorT it) :
-					WikiEntity<StringT, IteratorT>::WikiEntity(it)/*, start_k_(it, it)*/
-					 { init(); }
-				CommonChildEntity(IteratorT begin, IteratorT end) :
-					WikiEntity<StringT, IteratorT>::WikiEntity(begin, end)/*, start_k_(begin, begin)*/
-					 { init(); }
-
-				virtual ~CommonChildEntity() {
-				}
-
-				virtual std::string to_text() {
-					return WikiEntity<StringT, IteratorT>::to_text();
-				}			
-
-				virtual std::string to_html() {
-					if (this->children_.size() > 0) {
-						std::stringstream ss;
-						
-						auto it = this->children_.begin();
-						for (; it != this->children_.end(); ++it)
-							ss << (*it)->to_html();
-						
-						return ss.str();
-					}
-					return this->to_std_string();
-				}
-
-				virtual bool is_pause(IteratorT& it) {
-					return true;
-				}
-
-				virtual bool is_child_end(WikiNodeGroup group, WikiNodeType type, IteratorT& it) {
-					if (TEXT == group && *it == '|') {
-						return true;
-					} 
-					return false;
-				}					
-
-				// virtual bool is_end(IteratorT& it, bool advance=true) {
-				// 	return this->parent_ptr_ && this->parent_ptr_->is_end(it, false);
-				// }
-
-			private:
-				void init() {}
 		};
 
 		template <typename StringT = std::string,
@@ -1935,7 +1941,9 @@ namespace stpl {
 					return ss.str();
 				}
 
-				virtual std::string to_json() {
+				virtual std::string to_json() {			
+					if (this->children_.size() == 0)
+						return "{url: \"\"}";	
 					auto first = this->children_.begin();
 					auto second = this->children_.end() - 1;
 					stringstream ss;
