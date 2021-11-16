@@ -725,16 +725,10 @@ namespace stpl {
 								if (*next == '{') {
 									Scanner<EntityT>::state_ = TBASE;
 									entity_ptr = new Template<StringT, IteratorT>(it, end);
-
-									entity_ptr->set_group(TBASE);
-									entity_ptr->set_type(TEMPLATE);
 								}
 								else if (*next == '|') {
 									Scanner<EntityT>::state_ = TBASE;
 									entity_ptr = new Table<StringT, IteratorT>(it, end);
-
-									entity_ptr->set_group(TBASE);
-									entity_ptr->set_type(TABLE);
 								}
 								break;
 							case WikiEntityConstants::WIKI_KEY_LIST:
@@ -745,16 +739,10 @@ namespace stpl {
 								}							
 								else if (parent_ptr && parent_ptr->get_type() == LAYOUT_UL) {
 									entity_ptr = new ListItemUnordered<StringT, IteratorT>(it, end);
-									// entity_ptr->set_group(LAYOUT);
-									// entity_ptr->set_type(LAYOUT_UL);
-									// parent_ptr->set_open(false);
-									// return parent_ptr;
 								}
 								else {
 									Scanner<EntityT>::state_ = LAYOUT;
 									entity_ptr = new LayoutUnorderedList<StringT, IteratorT>(it, end);
-									entity_ptr->set_group(LAYOUT);
-									entity_ptr->set_type(LAYOUT_UL);
 								}
 								break;
 							case WikiEntityConstants::WIKI_KEY_LIST_ORDERED:
@@ -780,8 +768,6 @@ namespace stpl {
 											else {
 												Scanner<EntityT>::state_ = LAYOUT;
 												entity_ptr = new LayoutOrderedList<StringT, IteratorT>(it, end);
-												entity_ptr->set_group(LAYOUT);
-												entity_ptr->set_type(LAYOUT_LI);
 											}
 										}
 									}

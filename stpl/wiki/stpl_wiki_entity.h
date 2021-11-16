@@ -679,65 +679,6 @@ namespace stpl {
 				 }			
 		};				
 
-		/**
-		 * Can be either Template or Table
-		 */
-		template <typename StringT = std::string,
-							typename IteratorT = typename StringT::iterator
-						  >
-		class TBase : public WikiEntity<StringT, IteratorT>
-		{
-			public:
-				typedef	StringT                                      string_type;
-				typedef IteratorT	                                 iterator;
-				typedef StringBound<StringT, IteratorT>              StringB;
-
-			protected:
-				StringBound<StringT, IteratorT>                      name_;
-				int	                                                 level_marks_;
-
-			public:
-				TBase() : WikiEntity<StringT, IteratorT>::WikiEntity() {}
-				TBase(IteratorT it) :
-					WikiEntity<StringT, IteratorT>::WikiEntity(it) {
-					init();
-				}
-				TBase(IteratorT begin, IteratorT end) :
-					WikiEntity<StringT, IteratorT>::WikiEntity(begin, end) { init(); }
-				TBase(StringT content) :
-					WikiEntity<StringT, IteratorT>::WikiEntity(content) {
-					init();
-				}
-				virtual ~TBase() {};
-
-			protected:
-				virtual bool is_delimiter(IteratorT& it) {
-					return *it == '|';
-				}
-
-				virtual bool is_start(IteratorT& it) {
-					IteratorT from = it;
-					while (!this->eow(it) && ( *it != '|' && *it != '}' && *it != '\n' && *it != '\r'))
-						++it;
-					name_.begin(from);
-					name_.end(it);
-
-					return name_.length() > 0;
-				}
-
-				virtual bool is_pause(IteratorT& it) {
-					if (*it == '|') {
-						IteratorT next = it + 1;
-						return !(this->type_ == TABLE && *next == '}');
-					}
-					return false;
-				}
-
-
-			private:
-				void init() { }			
-		};
-
 		template <typename StringT = std::string
 							, typename IteratorT = typename StringT::iterator
 						  >
@@ -785,594 +726,10 @@ namespace stpl {
 				}
 
 			private:
-				void init() {}
-		};
-
-
-		template <
-			typename StringT = std::string, 
-			typename IteratorT = typename StringT::iterator
-			>
-		class Table: public TBase<StringT, IteratorT>
-		{
-			public:
-				typedef	StringT	string_type;
-				typedef IteratorT	iterator;
-
-			private:
-				StringBound<StringT, IteratorT>           caption_;
-				StringBound<StringT, IteratorT>           style_;
-
-				int                                       cell_id_;
-				int                                       col_id_;
-				int                                       row_id_;
-				int                                       rows_;           // including headers
-				int                                       row_prev_;
-				int                                       col_prev_;       // previously added column id
-
-				bool                                      has_row_header_;
-				bool                                      has_header_;
-
-				std::string                               rows_header_ind_;
-
-				WikiProperty<StringT, IteratorT>*         current_parent_;
-
-			public:
-				Table() : TBase<StringT, IteratorT>::TBase() { init(); }
-				Table(IteratorT it)
-					 : TBase<StringT, IteratorT>::TBase(it) { init(); }
-				Table(IteratorT begin, IteratorT end)
-					 : TBase<StringT, IteratorT>::TBase(begin, end) { init(); }
-				Table(StringT content) :
-					TBase<StringT, IteratorT>::TBase() {
-					init();
-					this->create(content);
+				void init() {
+					this->set_group(LAYOUT);
+					this->set_type(LAYOUT_UL);					
 				}
-				virtual ~Table() {}
-
-				virtual BasicWikiEntity<StringT, IteratorT> *create_child(IteratorT& begin, IteratorT& end) {
-					++this->cell_id_;
-					return new TableCell<StringT, IteratorT>(begin, end);
-				}
-
-				virtual void process_child(BasicWikiEntity<StringT, IteratorT>* child) {
-					TableCell<StringT, IteratorT>* cell_ptr = reinterpret_cast<TableCell<StringT, IteratorT> *>(child);
-
-                    if (cell_ptr) {
-						cell_ptr->set_cell_id(this->cell_id_);
-						WikiEntity<StringT, IteratorT>::process_child(cell_ptr);
-		               
-					}
-#ifdef DEBUG			
-                    else {
-						std::cerr << "Table::process_child: child is not a TableCell" << std::endl;
-					}
-
-					// if (this->cell_id_ == -1)
-					// 	std::cerr << "Table::process_child: cell_id_ is -1" << std::endl;
-					// std::cerr << "Table::process_child: child, cell id: " << this->cell_id_ << std::endl;					
-#endif // DEBUG					
-				}
-
-				void print_last_cell(std::ostream &ss, TableCell<StringT, IteratorT> *last_format, std::vector<TableCell<StringT, IteratorT>* >& last_cells, int rows, bool row_header, bool& first_col) {
-					if (!last_format)
-						return;
-
-					if (rows == 0 && row_header) {
-						ss << "<th";
-					}
-					else {
-						ss << "<td";
-					}	
-					if (rows > 0 && first_col && row_header) {
-						ss << " " << "row-header=\"true\" ";
-						first_col = false;							
-					}					
-
-					/**
-					 * 
-					 * handle the cell style
-					 */
-					if (last_cells.size() > 0) {
-						std::string format = last_format->to_std_string();
-						utils::unescape_xml(format);
-						if (format.size() > 0) {
-							if (format[0] != '<' && last_format && last_cells.size() > 0) 
-								ss << " " << format;
-						}
-					}
-
-					ss << ">";
-
-					if (last_cells.size() > 0) {
-						for (int i = 0; i < last_cells.size(); ++i) {
-							auto cell = last_cells[i];
-							if (i == 0) 
-								ss << cell->to_html();
-							else {
-								ss << "|";
-								ss << cell->to_html();
-							}
-						}
-					}
-					else if (last_format)
-						ss << last_format->to_html();		
-
-					if (rows == 0 && row_header) {
-						ss << "</th>" << std::endl;
-					}
-					else {
-						ss << "</td>" << std::endl;
-					}	
-					last_format = NULL;
-					last_cells.clear();
-				}
-
-				virtual std::string to_html() {
-					std::stringstream ss;
-					ss << "<table";
-					if (style_.length() > 0) {
-						std::string table_style = style_.to_std_string();
-						utils::unescape_xml(table_style);
-						ss << " " << table_style;
-					}
-					ss << ">" << std::endl;;
-					int rows = -1;
-					int cols = -1;
-					auto it = this->children_.begin();
-					bool first_col = true;
-					int last_cell_id = 0;
-					TableCell<StringT, IteratorT> *last_format = NULL, *last_cell_ptr = NULL, *cell_ptr;
-					std::vector<TableCell<StringT, IteratorT>* > last_cells;
-					bool row_header = false;
-					while (it != this->children_.end()) {
-						if ((*it)->get_type() == SEPARATOR || (rows == -1 && cols == -1)) {
-							// ss << (*it)->to_html() << std::endl;
-							if ((*it)->get_type() == SEPARATOR) {
-								print_last_cell(ss, last_format, last_cells, rows, row_header, first_col);			
-							}
-
-							if (rows > 0) {
-								ss << "</tr>" << std::endl;
-							}
-							ss << "<tr>" << std::endl;
-							cols = 0;
-							++rows;
-							last_cells.clear();
-							last_format = NULL;
-							first_col = true;
-
-							if ((*it)->get_type() == SEPARATOR) {
-								++it;
-								continue;
-							}
-						}
-
-						cell_ptr = reinterpret_cast<TableCell<StringT, IteratorT> *>(*it);
-						if (cell_ptr) {
-							row_header = rows_header_ind_[rows] == '1';
-							int skip_cells = cell_ptr->get_cell_id() - last_cell_id;
-							bool should_be_cell = false;
-							if (cell_ptr->children().size() > 0) {
-								auto child = cell_ptr->children().begin();
-								while (child != cell_ptr->children().end()) {
-									if ((*child)->get_group() != TEXT) {
-										should_be_cell = true;
-										break;
-									}
-									++child;
-								}
-							}
-
-							if (skip_cells > 1) {
-								// fill up the missing cells
-								for (int i = 1; i < skip_cells; ++i) {
-									if (rows == 0 && row_header) {
-										ss << "<th ></th>" << std::endl;
-									}
-									else 
-										ss << "<td ></td>" << std::endl;
-								}
-							}
-							else {
-								if (should_be_cell) {
-									skip_cells = 1;
-									last_format = cell_ptr;
-								}
-							}
-
-							// we print it only we have the last cell
-							if (last_format && skip_cells > 0) {
-								print_last_cell(ss, last_format, last_cells, rows, row_header, first_col);
-								last_format = cell_ptr;
-							}
-							else {
-								if (last_format) {
-									last_cells.push_back(cell_ptr);
-								}
-								else
-									last_format = cell_ptr;
-							}
-
-							last_cell_ptr = cell_ptr;
-							last_cell_id = cell_ptr->get_cell_id();
-						}
-						++it;
-					}
-
-					print_last_cell(ss, last_format, last_cells, rows, row_header, first_col);
-					if (rows > 0)
-						ss << "</tr>" << std::endl;
-					ss << "</table>";
-					return ss.str();
-				}
-
-				virtual bool is_start(IteratorT& it) {
-					if (*it == '{' ) {
-						IteratorT next = it + 1;
-						if (*next == '|') {
-							// | will be used as
-							// ++it;
-							it = next + 1;
-							while (*it == ' ')
-								++it;
-							this->style_.begin(it);
-
-							while (*it != '\n')
-								++it;
-							this->style_.end(it);
-
-							return true; // TBase<StringT, IteratorT>::is_start(it);
-						}
-					}
-					return false;
-				}
-
-				virtual bool is_pause(IteratorT& it) {
-					if (*it == '\n') {
-						IteratorT next = it + 1;
-						while (*next == ' ')
-							++next;
-						if (*next == '}') {
-							return true;
-						}
-						else if (*next == '|') {
-							++next;
-							switch (*next) {
-								case '+':
-									{
-										++next;
-										caption_.begin(next);
-										while (*next != '\n')
-											++next;
-										
-										caption_.end(next);
-
-										it = next;
-									}
-									return true;;
-								// new row
-								case '-': 
-									{
-										// need to set a row separator
-										auto separator = new Text<StringT, IteratorT>(it, it);
-										separator->set_type(SEPARATOR);
-										this->add(separator);
-
-										col_id_ = -1;
-										row_id_ = rows_;
-										++rows_;
-
-										rows_header_ind_.push_back('0');
-
-										while (*next != '\n')
-											++next;			
-
-										it = next;						
-									}
-									return true;	
-								default:
-									break;					
-							}
-							++cell_id_;
-							++col_id_;
-							++it;
-							// that will be a table cell
-							return true;
-						}
-						else if (*next == '!') {
-							if (row_id_ > -1 && row_id_ < rows_){
-								++cell_id_;
-								++col_id_;
-								// if (row_id_ > 0) {
-								// 	// row header
-								// 	rows_header_ind_[row_id_] = '1';
-								// }
-								// else {
-									// column header
-									has_header_ = true;
-									rows_header_ind_[row_id_] = '1';
-									// IteratorT next = it + 1;
-									// if (*next == '!')
-									// 	it = next;
-								// }
-								it = next;
-								*it = '|';
-								return true;
-							}
-						}
-					}
-					else if (*it == '|') {
-						// this is in the middle of a cell
-						// last child needs to become a parent of many things
-						IteratorT next = it + 1;
-						if (*next == '|') {
-							++cell_id_;
-							++col_id_;
-						}
-						it = next;
-						return true;
-						// auto temp = new Text<StringT, IteratorT>(last_child_->begin(), last_child_->end());
-						// last_child_->process_child(temp);
-					}
-					else if (*it == '!') {
-						// this is in the middle of a cell of header row
-						IteratorT next = it + 1;
-						if (row_id_ == 0) {
-							if (*next == '!') {
-								++cell_id_;
-								++col_id_;
-							}
-						}
-						it = next;
-						*it = '|';
-						return true;
-					}							
-									
-					return false;
-				}
-
-				/**
-				 * It has clear end boundary, it end only when a boundary is seen
-				 */
-				virtual bool is_end(IteratorT& it, bool advance=true) {
-					if (*it == '\n') {
-						IteratorT next = it + 1;
-						while (*next == ' ')
-							++next;
-						if (*next == '|') {
-							++next;
-							if (*next == '}') {
-								if (advance)
-									it = next + 1;
-								return true;
-							}
-						}
-					}					
-					else if (*it == '|') {
-						IteratorT next = it + 1;
-						if (*next == '}') {
-							if (advance)
-								it = next + 1;
-							return true;
-						}
-					}
-					else if (*it == '}') {
-						IteratorT prev = it - 1;
-						if (*prev == '|') {
-							if (advance)
-								++it;
-							return true;
-						}
-					}
-					return false;
-				}
-
-			private:
-				void init() { 
-					row_prev_ = -1;
-					rows_ = 0;
-					row_id_ = -1;
-					rows_header_ind_ = "0";
-					cell_id_ = -1;
-				}
-		};
-
-		template <
-			typename StringT = std::string, 
-			typename IteratorT = typename StringT::iterator
-			>
-		class LangVariant: public TBase<StringT, IteratorT>
-		{
-			public:
-				typedef	StringT	string_type;
-				typedef IteratorT	iterator;
-
-			public:
-				LangVariant() : TBase<StringT, IteratorT>::TBase() { init(); }
-				LangVariant(IteratorT it)
-					 : TBase<StringT, IteratorT>::TBase(it) { init(); }
-				LangVariant(IteratorT begin, IteratorT end)
-					 : TBase<StringT, IteratorT>::TBase(begin, end) { init(); }
-				LangVariant(StringT content) :
-					TBase<StringT, IteratorT>::TBase() {
-					init();
-					this->create(content);
-				}
-				virtual ~LangVariant() {}
-
-				virtual std::string to_html() {
-					return "";
-				}
-
-				virtual bool is_start(IteratorT& it) {
-					if (*it == '-' && (*++it) == '{') {
-						++it;
-						return true; // TBase<StringT, IteratorT>::is_start(it);
-					}
-					return false;
-				}
-
-				virtual bool is_pause(IteratorT& it) {
-					return *it == ';';
-				}
-
-				/**
-				 * It has clear end boundary, it end only when a boundary is seen
-				 */
-				virtual bool is_end(IteratorT& it, bool advance=true) {
-					if (*it == '}') {
-						IteratorT next = it + 1;
-						if (*next == '-') {
-							if (advance)
-								it = next + 1;
-							return true;
-						}
-					}
-					return false;
-				}
-
-			private:
-				void init() { }
-		};		
-
-		template <
-			typename StringT = std::string,
-			typename IteratorT = typename StringT::iterator
-			>
-		class Template: public TBase<StringT, IteratorT>
-		{
-			public:
-				typedef	StringT	string_type;
-				typedef IteratorT	iterator;
-
-			public:
-				Template() : TBase<StringT, IteratorT>::TBase() { init(); }
-				Template(IteratorT it)
-					 : TBase<StringT, IteratorT>::TBase(it) { init(); }
-				Template(IteratorT begin, IteratorT end)
-					 : TBase<StringT, IteratorT>::TBase(begin, end) { init(); }
-				Template(StringT content) :
-					TBase<StringT, IteratorT>::TBase() {
-					init();
-					this->create(content);
-				}
-				virtual ~Template() {}
-
-				virtual BasicWikiEntity<StringT, IteratorT> *create_child(IteratorT& begin, IteratorT& end) {
-					return new WikiProperty<StringT, IteratorT>(begin, end);
-				}
-
-				virtual std::string to_json() {
-					std::stringstream ss;
-					ss << "{" << std::endl;
-					ss << "\"name\": \"" << this->name_.to_std_string() << "\"," << std::endl;
-					ss << "\"properties\": [" << std::endl;
-					auto it = this->children_.begin();
-					while (it != this->children_.end()) {
-						if (it > this->children_.begin())
-							ss << ",";
-						ss << (*it)->to_json();	
-						++it;
-					}
-					ss << "]" << std::endl;	
-					ss << "}" << std::endl;				
-					return ss.str();
-				}
-
-				virtual std::string to_html() {
-					std::stringstream ss;
-					int count = 0;
-					std::string name = this->name_.to_std_string();
-					if (("lang") == name.substr(0, 4)) {
-						ss << "<span type=\"template\" lang=";
-						auto it = this->children_.begin();
-						if (name.size() > 2) {
-							while (it != this->children_.end()) {
-								if (count == 0) 
-									ss << "\"" << (*it)->to_std_string() << "\"";
-								else if (count == 1)
-									break;
-
-								++count;
-								++it;
-							}
-							ss << ">";
-							if (it != this->children_.end())
-								ss << (*it)->to_std_string();
-						}
-						else {
-							ss << "\"" << name << "\"";
-							ss << ">";
-							ss << (*it)->to_std_string();
-						}
-						ss << "</span>";
-
-					}
-					// else if (("math") == name) {
-					// 	ss << "<math>" << std::endl;
-					// 	ss << this->children_to_html();
-					// 	ss << "</math>" << std::endl;
-					// }
-					else {
-						auto it = this->children_.begin();
-
-						// if (this->children_.size() == 1) {
-						// 	ss << "<template ";
-						// 	ss << " name=\"" << name << "\"";
-						// 	ss << " value=\"" << (*it)->to_string() << "\"";
-						// 	ss << "></template>";
-						// }
-						// else if (this->children_.size() == 2) {
-						// 	ss << "<span type=\"template\"";
-						// 	ss << " " << name <<  "=\"" << (*it++)->to_string() << "\"";
-						// 	ss << ">" << (*it)->to_string() << "</span>";
-						// }
-						// else {
-							ss << "<template ";
-							ss << " name=\"" << name << "\">";
-							while (it != this->children_.end()) {
-								// if (count >= 0) 
-								// 	ss << " ";
-								ss  << (*it)->to_html();
-
-								++count;
-								++it;
-							}
-							ss << "</template>";
-						// }
-						
-					}
-					return ss.str();
-				}
-
-				virtual bool is_start(IteratorT& it) {
-					if (*it == '{' && (*++it) == '{')
-						return TBase<StringT, IteratorT>::is_start(++it);
-					return false;
-				}
-
-				virtual bool is_pause(IteratorT& it) {
-					return (*it == '|');
-				}
-
-				/**
-				 * It has clear end boundary, it end only when a boundary is seen
-				 */
-				virtual bool is_end(IteratorT& it, bool advance=true) {
-					if (*it == '}') {
-						IteratorT next = it + 1;
-						if (*next == '}') {
-							if (advance)
-								it = next + 1;
-							return true;
-						}
-					}
-					return false;
-				}
-
-			private:
-				void init() { }
 		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
@@ -1409,7 +766,10 @@ namespace stpl {
 				}
 
 			private:
-				void init() {  }
+				void init() { 
+					this->set_group(LAYOUT);
+					this->set_type(LAYOUT_LI);
+				}
 		};
 
 		/**
@@ -1427,8 +787,12 @@ namespace stpl {
 				typedef IteratorT	                          iterator;
 
 			protected:
-				char                                          wiki_key_char_start_;
-				char                                          wiki_key_char_end_;
+				char                                          *wiki_key_char_start_;
+				char                                          *wiki_key_char_end_;
+				bool										  is_reversed_sequence_;
+
+				int											  start_sequence_size_;
+				int											  end_sequence_size_;
 
 				int			                                  level_;
 				int                                           matched_levels_;
@@ -1447,7 +811,12 @@ namespace stpl {
 					init();
 					this->create(content);
 				}
-				virtual ~WikiEntityLeveled() {}
+				virtual ~WikiEntityLeveled() {
+					if (this->wiki_key_char_end_)
+						delete [] this->wiki_key_char_end_;
+					if (this->wiki_key_char_start_)
+						delete [] this->wiki_key_char_start_;
+				}
 
 				int get_level() const {
 					return level_;
@@ -1474,17 +843,33 @@ namespace stpl {
 				}				
 
 				virtual bool is_start(IteratorT& it) {
-					while (*it == this->wiki_key_char_start_) {
-						++level_;
-						++it;
+					if (!this->wiki_key_char_start_)
+						throw std::invalid_argument("No start sequence defined");
+
+					if (start_sequence_size_ == 1)
+						while (*it == *this->wiki_key_char_start_) {
+							++level_;
+							++it;
+						}
+					else {
+						level_ = 1;
+						int count = 0;
+						while (count < start_sequence_size_) {
+							char matched_char = wiki_key_char_start_[count];
+							if (*it != matched_char)
+								return false;
+							++count;
+							++it;
+						}
 					}
 					this->matched_levels_ = -level_;
-					// this->skip_whitespace(it);
-					// this->begin(it);
 					return true;
 				}
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
+					if (!this->wiki_key_char_end_)
+						throw std::invalid_argument("No end sequence defined");
+
 					if (this->end_in_same_line_ && *it == '\n') {
 						if (this->matched_levels_ != 0) {
 							// OK, this is not a valid entity
@@ -1497,44 +882,63 @@ namespace stpl {
 					}
 					else if (this->eow(it))
 						return true;
-					else if (*it == this->wiki_key_char_end_) {
-						// BUG before if adavance is false, it wasn't dealt with
-						// if advance
-						IteratorT next = it + 1;
-						if (advance) {
-							++this->matched_levels_;
-							while (this->matched_levels_ < 0) {
-								if (*next != this->wiki_key_char_end_)
-									return false;
+					else {
+						if (start_sequence_size_ == 1) {
+							if (*it == *this->wiki_key_char_end_) {
+								// BUG before if adavance is false, it wasn't dealt with
+								// if advance
+								IteratorT next = it + 1;
+								if (advance) {
+									++this->matched_levels_;
+									while (this->matched_levels_ < 0) {
+										if (*next != *this->wiki_key_char_end_)
+											return false;
 
-								++this->matched_levels_;
-								++next;
+										++this->matched_levels_;
+										++next;
+									}
+
+									// if (strict_ && this->matched_levels_ != 0) {
+									// 	this->begin(it);
+									// 	this->end(it);
+									// }
+									// now there is a delimma, should we go strict or auto correct?
+									it = next;
+								}
+								else {
+									int count = this->level_ - 1;
+									while (count > 0) {
+										if (*next != *this->wiki_key_char_end_) {
+											return false;
+										}
+
+										--count;
+										++next;
+									}
+
+								}							
+								return true;
 							}
-
-							// if (strict_ && this->matched_levels_ != 0) {
-							// 	this->begin(it);
-							// 	this->end(it);
-							// }
-							// now there is a delimma, should we go strict or auto correct?
-							it = next;
 						}
 						else {
-							int count = this->level_ - 1;
-							while (count > 0) {
-								if (*next != this->wiki_key_char_end_) {
-									return false;
+							int count = 0;
+							if (*it == wiki_key_char_end_[count]) {
+								++count;
+								IteratorT next = it + 1;
+								while (count < end_sequence_size_) {
+									char matched_char = wiki_key_char_end_[count];
+									if (*next != matched_char)
+										return false;
+									++next;
+									++count;
 								}
-
-								--count;
-								++next;
+								if (advance)
+									it = next;
+								return true;
 							}
-
-						}							
-						return true;
+						}
 					}
 #ifdef DEBUG
-					else
-						int a = 1;
 #endif // DEBUG					
 					return WikiEntity<StringT, IteratorT>::is_end(it); // this->eow(it) || text_stop(it);
 				}
@@ -1543,14 +947,151 @@ namespace stpl {
 					this->ref().append(text);
 				}
 
+			protected:
 				virtual void set_wiki_key_char() = 0;
 
 			private:
 				void init() {
+					wiki_key_char_start_ = NULL;
+					wiki_key_char_end_ = NULL;
 					level_ = 0;
 					end_in_same_line_ = false;
 					strict_ = false;
+					is_reversed_sequence_ = false;
+					start_sequence_size_ = 1;
+					end_sequence_size_ = 1;
 				}
+		};
+
+		template <typename StringT = std::string,
+							typename IteratorT = typename StringT::iterator
+						  >
+		class LangVariantProperty : public WikiProperty<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT                                      string_type;
+				typedef IteratorT	                                 iterator;
+				typedef StringBound<StringT, IteratorT>              StringB;
+
+			protected:
+				bool                                                 ordered_;
+				char                                                 start_with_;
+
+			public:
+				LangVariantProperty() : WikiProperty<StringT, IteratorT>::WikiProperty() {}
+				LangVariantProperty(IteratorT it) :
+					WikiProperty<StringT, IteratorT>::WikiProperty(it) {
+					init();
+				}
+				LangVariantProperty(IteratorT begin, IteratorT end) :
+					WikiProperty<StringT, IteratorT>::WikiProperty(begin, end) { init(); }
+				LangVariantProperty(StringT content) :
+					WikiProperty<StringT, IteratorT>::WikiProperty(content) {
+					init();
+				}
+				virtual ~LangVariantProperty() {};
+
+				virtual std::string to_html() {
+					return this->to_std_string();
+				}
+
+				virtual std::string to_json() {
+					return this->to_std_string();
+				}
+
+				virtual std::string to_text() {
+					return this->to_std_string();
+				}
+
+				virtual std::string to_std_string() {
+					if (this->children().size() == 0)
+						return "";
+					auto it = this->children().begin();
+					std:;stringstream ss;
+					int count = 0;
+					ss << " (";
+					while (it != this->children().end()) {
+						if (count > 0)
+							ss << ", ";
+						ss << (*it)->to_std_string();
+						++it;
+					}
+					ss << ") ";
+				}
+
+				virtual bool is_delimiter(IteratorT& it) {
+					if ( *it == ';' || *it == '}') {
+						if (this->value_.begin() > this->name_.end())
+							this->value_.end(it);
+						return true;
+					}
+					return Property<StringT, IteratorT>::is_delimiter(it);
+				}
+
+				virtual bool is_end(IteratorT& it, bool advance=true) {
+					if (*it == ';') {
+						// if (this->last_child_ && it > this->last_child_->end()) {
+						// 	// we need to record the last text node
+						// 	this->create_text_child_after(it);
+						// }
+						if (advance)
+							it = it + 1;
+						return true;
+					}
+					return WikiEntity<StringT, IteratorT>::is_end(it);
+				}
+
+			private:
+				void init() {
+					this->set_group(LAYOUT_ITEM);
+				}
+		};
+
+		template <
+			typename StringT = std::string,
+			typename IteratorT = typename StringT::iterator
+			>
+		class LangVariant: public WikiEntityLeveled<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT	string_type;
+				typedef IteratorT	iterator;
+
+			public:
+				LangVariant() : WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled() { init(); }
+				LangVariant(IteratorT it)
+					 : WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled(it) { init(); }
+				LangVariant(IteratorT begin, IteratorT end)
+					 : WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled(begin, end) { init(); }
+				LangVariant(StringT content) :
+					WikiEntityLeveled<StringT, IteratorT>::WikiEntityLeveled() {
+					init();
+					this->create(content);
+				}
+				virtual ~LangVariant() {}
+
+				virtual bool is_pause(IteratorT& it) {
+					return *it == ';';
+				}
+
+			protected:
+				virtual void set_wiki_key_char() override {
+					this->wiki_key_char_start_ = new char[2];
+					this->wiki_key_char_start_[1] = WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE;
+					this->wiki_key_char_start_[0] = '-';
+					
+					this->wiki_key_char_end_ = new char[2];
+					this->wiki_key_char_end_[1] = '-';
+					this->wiki_key_char_end_[0] = WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE;
+
+					this->start_sequence_size_ = 2;
+					this->end_sequence_size_ = 2;
+				}
+
+			private:
+				void init() {
+					this->set_wiki_key_char();
+				 }
 		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
@@ -1573,13 +1114,11 @@ namespace stpl {
 				}
 				virtual ~LayoutLeveled() {}
 
-				// virtual std::string to_html() {
-				// 	return "<section>" + this->to_std_string() + "</section>";
-				// }
-
 				virtual void set_wiki_key_char() override {
-					this->wiki_key_char_start_ = WikiEntityConstants::WIKI_KEY_HEADING;
-					this->wiki_key_char_end_ = WikiEntityConstants::WIKI_KEY_HEADING;
+					this->wiki_key_char_start_ = new char[1];
+					this->wiki_key_char_start_[0] = WikiEntityConstants::WIKI_KEY_HEADING;
+					this->wiki_key_char_end_ = new char[1];
+					this->wiki_key_char_end_[0] = WikiEntityConstants::WIKI_KEY_HEADING;					
 				}
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
@@ -1592,10 +1131,10 @@ namespace stpl {
 
 			private:
 				void init() {
-					this->set_wiki_key_char();
 					this->end_in_same_line_ = true;
 					this->set_group(LAYOUT);
 					this->set_type(LAYOUT_HEADING);
+					this->set_wiki_key_char();
 				}
 
 		};
@@ -1633,8 +1172,10 @@ namespace stpl {
 				}
 
 				virtual void set_wiki_key_char() override {
-					this->wiki_key_char_start_ = '\'';
-					this->wiki_key_char_end_ = '\'';
+					this->wiki_key_char_start_ = new char[1];
+					this->wiki_key_char_start_[0] = WikiEntityConstants::WIKI_KEY_STYLE;
+					this->wiki_key_char_end_ = new char[1];
+					this->wiki_key_char_end_[0] = WikiEntityConstants::WIKI_KEY_STYLE;
 				}
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
@@ -1664,7 +1205,6 @@ namespace stpl {
 
 			private:
 				void init() {
-
 					this->set_wiki_key_char();
 					this->end_in_same_line_ = true;
 					this->strict_ = true;
@@ -1720,8 +1260,10 @@ namespace stpl {
 
 			protected:
 				virtual void set_wiki_key_char() override {
-					this->wiki_key_char_start_ = ':';
-					this->wiki_key_char_end_ = '\n';
+					this->wiki_key_char_start_ = new char[1];
+					this->wiki_key_char_start_[0] = WikiEntityConstants::WIKI_KEY_STYLE_INDENT;
+					this->wiki_key_char_end_ = new char[1];
+					this->wiki_key_char_end_[0] = '\n';			
 				}
 
 			private:
@@ -1999,8 +1541,10 @@ namespace stpl {
 
 			protected:
 				virtual void set_wiki_key_char() override {
-					this->wiki_key_char_start_ = WikiEntityConstants::WIKI_KEY_OPEN_LINK;
-					this->wiki_key_char_end_ = WikiEntityConstants::WIKI_KEY_CLOSE_LINK;
+					this->wiki_key_char_start_ = new char[1];
+					this->wiki_key_char_start_[0] = WikiEntityConstants::WIKI_KEY_OPEN_LINK;
+					this->wiki_key_char_end_ = new char[1];
+					this->wiki_key_char_end_[0] = WikiEntityConstants::WIKI_KEY_CLOSE_LINK;					
 				}
 
 			private:
@@ -2008,6 +1552,600 @@ namespace stpl {
 					this->group_ = LINK;
 					this->set_type(LINK_P);
 					this->set_wiki_key_char();
+				}
+		};
+
+		/**
+		 * Can be either Template or Table
+		 */
+		template <typename StringT = std::string,
+							typename IteratorT = typename StringT::iterator
+						  >
+		class TBase : public WikiEntityLeveled<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT                                      string_type;
+				typedef IteratorT	                                 iterator;
+				typedef StringBound<StringT, IteratorT>              StringB;
+
+			protected:
+				StringBound<StringT, IteratorT>                      name_;
+				int	                                                 level_marks_;
+
+			public:
+				TBase() :  WikiEntityLeveled<StringT, IteratorT>:: WikiEntityLeveled() {}
+				TBase(IteratorT it) :
+					 WikiEntityLeveled<StringT, IteratorT>:: WikiEntityLeveled(it) {
+					init();
+				}
+				TBase(IteratorT begin, IteratorT end) :
+					 WikiEntityLeveled<StringT, IteratorT>:: WikiEntityLeveled(begin, end) { init(); }
+				TBase(StringT content) :
+					 WikiEntityLeveled<StringT, IteratorT>:: WikiEntityLeveled(content) {
+					init();
+				}
+				virtual ~TBase() {};
+
+			protected:
+				virtual bool is_delimiter(IteratorT& it) {
+					return *it == '|';
+				}
+
+				virtual bool is_start(IteratorT& it) {
+					if (WikiEntityLeveled<StringT, IteratorT>::is_start(it)) {
+						IteratorT from = it;
+						while (!this->eow(it) && ( *it != '|' && *it != '}' && *it != '\n' && *it != '\r'))
+							++it;
+						name_.begin(from);
+						name_.end(it);
+						return true;
+					}
+
+					return false;
+				}
+
+				virtual bool is_pause(IteratorT& it) {
+					if (*it == '|') {
+						IteratorT next = it + 1;
+						return !(this->type_ == TABLE && *next == '}');
+					}
+					return false;
+				}
+
+
+			private:
+				void init() {
+				
+				}
+		};
+
+
+		template <
+			typename StringT = std::string,
+			typename IteratorT = typename StringT::iterator
+			>
+		class Table: public TBase<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT	string_type;
+				typedef IteratorT	iterator;
+
+			private:
+				StringBound<StringT, IteratorT>           caption_;
+				StringBound<StringT, IteratorT>           style_;
+
+				int                                       cell_id_;
+				int                                       col_id_;
+				int                                       row_id_;
+				int                                       rows_;           // including headers
+				int                                       row_prev_;
+				int                                       col_prev_;       // previously added column id
+
+				bool                                      has_row_header_;
+				bool                                      has_header_;
+
+				std::string                               rows_header_ind_;
+
+				WikiProperty<StringT, IteratorT>*         current_parent_;
+
+			public:
+				Table() : TBase<StringT, IteratorT>::TBase() { init(); }
+				Table(IteratorT it)
+					 : TBase<StringT, IteratorT>::TBase(it) { init(); }
+				Table(IteratorT begin, IteratorT end)
+					 : TBase<StringT, IteratorT>::TBase(begin, end) { init(); }
+				Table(StringT content) :
+					TBase<StringT, IteratorT>::TBase() {
+					init();
+					this->create(content);
+				}
+				virtual ~Table() {}
+
+				virtual BasicWikiEntity<StringT, IteratorT> *create_child(IteratorT& begin, IteratorT& end) {
+					++this->cell_id_;
+					return new TableCell<StringT, IteratorT>(begin, end);
+				}
+
+				virtual void process_child(BasicWikiEntity<StringT, IteratorT>* child) {
+					TableCell<StringT, IteratorT>* cell_ptr = reinterpret_cast<TableCell<StringT, IteratorT> *>(child);
+
+                    if (cell_ptr) {
+						cell_ptr->set_cell_id(this->cell_id_);
+						 WikiEntityLeveled<StringT, IteratorT>::process_child(cell_ptr);
+
+					}
+#ifdef DEBUG
+                    else {
+						std::cerr << "Table::process_child: child is not a TableCell" << std::endl;
+					}
+
+					// if (this->cell_id_ == -1)
+					// 	std::cerr << "Table::process_child: cell_id_ is -1" << std::endl;
+					// std::cerr << "Table::process_child: child, cell id: " << this->cell_id_ << std::endl;
+#endif // DEBUG
+				}
+
+				void print_last_cell(std::ostream &ss, TableCell<StringT, IteratorT> *last_format, std::vector<TableCell<StringT, IteratorT>* >& last_cells, int rows, bool row_header, bool& first_col) {
+					if (!last_format)
+						return;
+
+					if (rows == 0 && row_header) {
+						ss << "<th";
+					}
+					else {
+						ss << "<td";
+					}
+					if (rows > 0 && first_col && row_header) {
+						ss << " " << "row-header=\"true\" ";
+						first_col = false;
+					}
+
+					/**
+					 *
+					 * handle the cell style
+					 */
+					if (last_cells.size() > 0) {
+						std::string format = last_format->to_std_string();
+						utils::unescape_xml(format);
+						if (format.size() > 0) {
+							if (format[0] != '<' && last_format && last_cells.size() > 0)
+								ss << " " << format;
+						}
+					}
+
+					ss << ">";
+
+					if (last_cells.size() > 0) {
+						for (int i = 0; i < last_cells.size(); ++i) {
+							auto cell = last_cells[i];
+							if (i == 0)
+								ss << cell->to_html();
+							else {
+								ss << "|";
+								ss << cell->to_html();
+							}
+						}
+					}
+					else if (last_format)
+						ss << last_format->to_html();
+
+					if (rows == 0 && row_header) {
+						ss << "</th>" << std::endl;
+					}
+					else {
+						ss << "</td>" << std::endl;
+					}
+					last_format = NULL;
+					last_cells.clear();
+				}
+
+				virtual std::string to_html() {
+					std::stringstream ss;
+					ss << "<table";
+					if (style_.length() > 0) {
+						std::string table_style = style_.to_std_string();
+						utils::unescape_xml(table_style);
+						ss << " " << table_style;
+					}
+					ss << ">" << std::endl;;
+					int rows = -1;
+					int cols = -1;
+					auto it = this->children_.begin();
+					bool first_col = true;
+					int last_cell_id = 0;
+					TableCell<StringT, IteratorT> *last_format = NULL, *last_cell_ptr = NULL, *cell_ptr;
+					std::vector<TableCell<StringT, IteratorT>* > last_cells;
+					bool row_header = false;
+					while (it != this->children_.end()) {
+						if ((*it)->get_type() == SEPARATOR || (rows == -1 && cols == -1)) {
+							// ss << (*it)->to_html() << std::endl;
+							if ((*it)->get_type() == SEPARATOR) {
+								print_last_cell(ss, last_format, last_cells, rows, row_header, first_col);
+							}
+
+							if (rows > 0) {
+								ss << "</tr>" << std::endl;
+							}
+							ss << "<tr>" << std::endl;
+							cols = 0;
+							++rows;
+							last_cells.clear();
+							last_format = NULL;
+							first_col = true;
+
+							if ((*it)->get_type() == SEPARATOR) {
+								++it;
+								continue;
+							}
+						}
+
+						cell_ptr = reinterpret_cast<TableCell<StringT, IteratorT> *>(*it);
+						if (cell_ptr) {
+							row_header = rows_header_ind_[rows] == '1';
+							int skip_cells = cell_ptr->get_cell_id() - last_cell_id;
+							bool should_be_cell = false;
+							if (cell_ptr->children().size() > 0) {
+								auto child = cell_ptr->children().begin();
+								while (child != cell_ptr->children().end()) {
+									if ((*child)->get_group() != TEXT) {
+										should_be_cell = true;
+										break;
+									}
+									++child;
+								}
+							}
+
+							if (skip_cells > 1) {
+								// fill up the missing cells
+								for (int i = 1; i < skip_cells; ++i) {
+									if (rows == 0 && row_header) {
+										ss << "<th ></th>" << std::endl;
+									}
+									else
+										ss << "<td ></td>" << std::endl;
+								}
+							}
+							else {
+								if (should_be_cell) {
+									skip_cells = 1;
+									last_format = cell_ptr;
+								}
+							}
+
+							// we print it only we have the last cell
+							if (last_format && skip_cells > 0) {
+								print_last_cell(ss, last_format, last_cells, rows, row_header, first_col);
+								last_format = cell_ptr;
+							}
+							else {
+								if (last_format) {
+									last_cells.push_back(cell_ptr);
+								}
+								else
+									last_format = cell_ptr;
+							}
+
+							last_cell_ptr = cell_ptr;
+							last_cell_id = cell_ptr->get_cell_id();
+						}
+						++it;
+					}
+
+					print_last_cell(ss, last_format, last_cells, rows, row_header, first_col);
+					if (rows > 0)
+						ss << "</tr>" << std::endl;
+					ss << "</table>";
+					return ss.str();
+				}
+
+				virtual bool is_start(IteratorT& it) {
+					if (*it == '{' ) {
+						IteratorT next = it + 1;
+						if (*next == '|') {
+							// | will be used as
+							// ++it;
+							it = next + 1;
+							while (*it == ' ')
+								++it;
+							this->style_.begin(it);
+
+							while (*it != '\n')
+								++it;
+							this->style_.end(it);
+
+							return true; // TBase<StringT, IteratorT>::is_start(it);
+						}
+					}
+					return false;
+				}
+
+				virtual bool is_pause(IteratorT& it) {
+					if (*it == '\n') {
+						IteratorT next = it + 1;
+						while (*next == ' ')
+							++next;
+						if (*next == '}') {
+							return true;
+						}
+						else if (*next == '|') {
+							++next;
+							switch (*next) {
+								case '+':
+									{
+										++next;
+										caption_.begin(next);
+										while (*next != '\n')
+											++next;
+
+										caption_.end(next);
+
+										it = next;
+									}
+									return true;;
+								// new row
+								case '-':
+									{
+										// need to set a row separator
+										auto separator = new Text<StringT, IteratorT>(it, it);
+										separator->set_type(SEPARATOR);
+										this->add(separator);
+
+										col_id_ = -1;
+										row_id_ = rows_;
+										++rows_;
+
+										rows_header_ind_.push_back('0');
+
+										while (*next != '\n')
+											++next;
+
+										it = next;
+									}
+									return true;
+								default:
+									break;
+							}
+							++cell_id_;
+							++col_id_;
+							++it;
+							// that will be a table cell
+							return true;
+						}
+						else if (*next == '!') {
+							if (row_id_ > -1 && row_id_ < rows_){
+								++cell_id_;
+								++col_id_;
+								// if (row_id_ > 0) {
+								// 	// row header
+								// 	rows_header_ind_[row_id_] = '1';
+								// }
+								// else {
+									// column header
+									has_header_ = true;
+									rows_header_ind_[row_id_] = '1';
+									// IteratorT next = it + 1;
+									// if (*next == '!')
+									// 	it = next;
+								// }
+								it = next;
+								*it = '|';
+								return true;
+							}
+						}
+					}
+					else if (*it == '|') {
+						// this is in the middle of a cell
+						// last child needs to become a parent of many things
+						IteratorT next = it + 1;
+						if (*next == '|') {
+							++cell_id_;
+							++col_id_;
+						}
+						it = next;
+						return true;
+						// auto temp = new Text<StringT, IteratorT>(last_child_->begin(), last_child_->end());
+						// last_child_->process_child(temp);
+					}
+					else if (*it == '!') {
+						// this is in the middle of a cell of header row
+						IteratorT next = it + 1;
+						if (row_id_ == 0) {
+							if (*next == '!') {
+								++cell_id_;
+								++col_id_;
+							}
+						}
+						it = next;
+						*it = '|';
+						return true;
+					}
+
+					return false;
+				}
+
+				/**
+				 * It has clear end boundary, it end only when a boundary is seen
+				 */
+				virtual bool is_end(IteratorT& it, bool advance=true) {
+					if (*it == '\n') {
+						IteratorT next = it + 1;
+						while (*next == ' ')
+							++next;
+						if (*next == '|') {
+							++next;
+							if (*next == '}') {
+								if (advance)
+									it = next + 1;
+								return true;
+							}
+						}
+					}
+					else if (*it == '|') {
+						IteratorT next = it + 1;
+						if (*next == '}') {
+							if (advance)
+								it = next + 1;
+							return true;
+						}
+					}
+					else if (*it == '}') {
+						IteratorT prev = it - 1;
+						if (*prev == '|') {
+							if (advance)
+								++it;
+							return true;
+						}
+					}
+					return false;
+				}
+
+			protected:
+				virtual void set_wiki_key_char() override {
+					this->wiki_key_char_start_ = new char[2];
+					this->wiki_key_char_start_[0] = WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE;
+					this->wiki_key_char_start_[1] = '|';
+
+					this->wiki_key_char_end_ = new char[2];
+					this->wiki_key_char_end_[0] = '|';
+					this->wiki_key_char_end_[1] = WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE;
+
+					this->start_sequence_size_ = 2;
+					this->end_sequence_size_ = 2;
+				}
+
+			private:
+				void init() {
+					row_prev_ = -1;
+					rows_ = 0;
+					row_id_ = -1;
+					rows_header_ind_ = "0";
+					cell_id_ = -1;
+
+					this->set_group(TBASE);
+					this->set_type(TABLE);
+
+					this->set_wiki_key_char();						
+				}
+		};
+
+		template <
+			typename StringT = std::string,
+			typename IteratorT = typename StringT::iterator
+			>
+		class Template: public TBase<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT	string_type;
+				typedef IteratorT	iterator;
+
+			public:
+				Template() : TBase<StringT, IteratorT>::TBase() { init(); }
+				Template(IteratorT it)
+					 : TBase<StringT, IteratorT>::TBase(it) { init(); }
+				Template(IteratorT begin, IteratorT end)
+					 : TBase<StringT, IteratorT>::TBase(begin, end) { init(); }
+				Template(StringT content) :
+					TBase<StringT, IteratorT>::TBase() {
+					init();
+					this->create(content);
+				}
+				virtual ~Template() {}
+
+				virtual BasicWikiEntity<StringT, IteratorT> *create_child(IteratorT& begin, IteratorT& end) {
+					return new WikiProperty<StringT, IteratorT>(begin, end);
+				}
+
+				virtual std::string to_json() {
+					std::stringstream ss;
+					ss << "{" << std::endl;
+					ss << "\"name\": \"" << this->name_.to_std_string() << "\"," << std::endl;
+					ss << "\"properties\": [" << std::endl;
+					auto it = this->children_.begin();
+					while (it != this->children_.end()) {
+						if (it > this->children_.begin())
+							ss << ",";
+						ss << (*it)->to_json();
+						++it;
+					}
+					ss << "]" << std::endl;
+					ss << "}" << std::endl;
+					return ss.str();
+				}
+
+				virtual std::string to_html() {
+					std::stringstream ss;
+					int count = 0;
+					std::string name = this->name_.to_std_string();
+					if (("lang") == name.substr(0, 4)) {
+						ss << "<span type=\"template\" lang=";
+						auto it = this->children_.begin();
+						if (name.size() > 2) {
+							while (it != this->children_.end()) {
+								if (count == 0)
+									ss << "\"" << (*it)->to_std_string() << "\"";
+								else if (count == 1)
+									break;
+
+								++count;
+								++it;
+							}
+							ss << ">";
+							if (it != this->children_.end())
+								ss << (*it)->to_std_string();
+						}
+						else {
+							ss << "\"" << name << "\"";
+							ss << ">";
+							ss << (*it)->to_std_string();
+						}
+						ss << "</span>";
+
+					}
+					else {
+						auto it = this->children_.begin();
+						ss << "<template ";
+						ss << " name=\"" << name << "\">";
+						while (it != this->children_.end()) {
+							ss  << (*it)->to_html();
+
+							++count;
+							++it;
+						}
+						ss << "</template>";
+					}
+					return ss.str();
+				}
+
+				virtual bool is_pause(IteratorT& it) {
+					return (*it == '|');
+				}
+
+				virtual bool is_end(IteratorT& it, bool advance = true) {
+					if (*it == '|')
+						return false;
+					return TBase<StringT, IteratorT>::is_end(it, advance);
+				}				
+
+			protected:
+				virtual void set_wiki_key_char() override {
+					this->wiki_key_char_start_ = new char[2];
+					this->wiki_key_char_start_[0] = WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE;
+					this->wiki_key_char_start_[1] = WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE;
+
+					this->wiki_key_char_end_ = new char[2];
+					this->wiki_key_char_end_[0] = WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE;
+					this->wiki_key_char_end_[1] = WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE;
+
+					this->start_sequence_size_ = 2;
+					this->end_sequence_size_ = 2;
+				}
+
+			private:
+				void init() {
+					this->set_group(TBASE);
+					this->set_type(TEMPLATE);
+
+					this->set_wiki_key_char();	
 				}
 		};
 
