@@ -833,6 +833,15 @@ namespace stpl {
 											else
 												throw new runtime_error("Invalid TBASE type");
 										}
+										else {
+											// since we come down here, it much be a separator for either template or table, or link
+											EntityT *parent_parent_ptr = parent_ptr->get_parent();
+											if (parent_parent_ptr && parent_parent_ptr->is_end(it)) {
+												parent_ptr->set_open(false);
+												parent_ptr->end(it);
+												return parent_ptr;
+											}
+										}
 									}
 								}
 								break;								
