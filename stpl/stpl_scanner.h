@@ -137,6 +137,7 @@ namespace stpl {
 					// }
 					// as if the entity does't close on the first match it means it has children
 					// anything happens inside here, nothing to do with last_e
+					IteratorT start = it;
 					while (tmp_entity && tmp_entity->isopen()) {
 						// after the state check, the previous entity may not be open
 						EntityT* child_entity = state_check(it, tmp_entity);
@@ -205,7 +206,8 @@ namespace stpl {
 								break;
 							}
 						}
-											
+
+						// the child entity didn't do anything, so we better move forward a char					
 					}
 					// }
 

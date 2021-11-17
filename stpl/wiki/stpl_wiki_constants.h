@@ -130,6 +130,7 @@ namespace stpl {
 
 		class WikiEntityConstants {
 			public:
+				static const char WIKI_KEY_NEWLINE = '\n';
 				static const char WIKI_KEY_OPEN_TAG = '<';
 				static const char WIKI_KEY_STYLE = '\'';
 				static const char WIKI_KEY_STYLE_INDENT = ':';
@@ -139,10 +140,27 @@ namespace stpl {
 				static const char WIKI_KEY_LIST_ORDERED = '#';
 				static const char WIKI_KEY_OPEN_TEMPLATE = '{';
 				static const char WIKI_KEY_CLOSE_TEMPLATE = '}';
+				static const char WIKI_KEY_OPEN_TABLE = '{';
+				static const char WIKI_KEY_CLOSE_TABLE = '}';				
 				static const char WIKI_KEY_OPEN_LINK = '[';
 				static const char WIKI_KEY_CLOSE_LINK = ']';
 				static const char WIKI_KEY_PROPERTY_DELIMITER = '|';
 				static const char WIKI_KEY_SLASH = '/';
+				static const char WIKI_KEY_OPEN_LANGVARIANT = '-';
+				static const char WIKI_KEY_CLOSE_LANGVARIANT = '-';
+
+				static const char *WIKI_KEY_CHARS_STYLE_INDENT;
+				static const char *WIKI_KEY_CHARS_NEWLINE;
+				static const char *WIKI_KEY_CHARS_STYLE;
+				static const char *WIKI_KEY_CHARS_HEADING;
+				static const char *WIKI_KEY_CHARS_OPEN_TEMPLATE;
+				static const char *WIKI_KEY_CHARS_CLOSE_TEMPLATE;
+				static const char *WIKI_KEY_CHARS_OPEN_TABLE;
+				static const char *WIKI_KEY_CHARS_CLOSE_TABLE;
+				static const char *WIKI_KEY_CHARS_OPEN_LINK;
+				static const char *WIKI_KEY_CHARS_CLOSE_LINK;
+				static const char *WIKI_KEY_CHARS_OPEN_LANGVARIANT;
+				static const char *WIKI_KEY_CHARS_CLOSE_LANGVARIANT;
 		};
 
 		class WikiEntityVariables {
@@ -165,6 +183,19 @@ namespace stpl {
 		std::string WikiEntityVariables::link_file = "File";
 
 		std::string WikiEntityVariables::html_head = "";
+
+		const char *WikiEntityConstants::WIKI_KEY_CHARS_STYLE_INDENT = ":";
+		const char *WikiEntityConstants::WIKI_KEY_CHARS_NEWLINE = "\n";
+		const char *WikiEntityConstants::WIKI_KEY_CHARS_STYLE = "\'";
+		const char *WikiEntityConstants::WIKI_KEY_CHARS_HEADING = "=";
+		const char *WikiEntityConstants::WIKI_KEY_CHARS_OPEN_TEMPLATE = "{";
+		const char *WikiEntityConstants::WIKI_KEY_CHARS_CLOSE_TEMPLATE = "}";
+		const char *WikiEntityConstants::WIKI_KEY_CHARS_OPEN_TABLE = "{|";
+		const char *WikiEntityConstants::WIKI_KEY_CHARS_CLOSE_TABLE = "|}";				
+		const char *WikiEntityConstants::WIKI_KEY_CHARS_OPEN_LINK = "[";
+		const char *WikiEntityConstants::WIKI_KEY_CHARS_CLOSE_LINK = "]";
+		const char *WikiEntityConstants::WIKI_KEY_CHARS_OPEN_LANGVARIANT = "-{";
+		const char *WikiEntityConstants::WIKI_KEY_CHARS_CLOSE_LANGVARIANT = "}-";		
 	}
 
 }

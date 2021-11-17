@@ -787,12 +787,15 @@ namespace stpl {
 				typedef IteratorT	                          iterator;
 
 			protected:
-				char                                          *wiki_key_char_start_;
-				char                                          *wiki_key_char_end_;
+				char                                          wiki_key_char_start_;
+				char                                          wiki_key_char_end_;
 				bool										  is_reversed_sequence_;
 
 				int											  start_sequence_size_;
 				int											  end_sequence_size_;
+
+				int											  max_level_;
+				int											  min_level_;
 
 				int			                                  level_;
 				int                                           matched_levels_;
@@ -812,10 +815,8 @@ namespace stpl {
 					this->create(content);
 				}
 				virtual ~WikiEntityLeveled() {
-					if (this->wiki_key_char_end_)
-						delete [] this->wiki_key_char_end_;
-					if (this->wiki_key_char_start_)
-						delete [] this->wiki_key_char_start_;
+					this->max_level_ = -1;
+					this->min_level_ = 1;
 				}
 
 				int get_level() const {
@@ -846,17 +847,26 @@ namespace stpl {
 					if (!this->wiki_key_char_start_)
 						throw std::invalid_argument("No start sequence defined");
 
-					if (start_sequence_size_ == 1)
-						while (*it == *this->wiki_key_char_start_) {
+					if (start_sequence_size_ == 1) {
+						while (*it == this->wiki_key_char_start_) {
 							++level_;
 							++it;
 						}
+
+						if (this->max_level_ > 0 && this->level_ > this->max_level_) {
+							// we are back to minimu level
+							while (this->level_ > this->min_level_) {
+								--this->level_;
+								--it;
+							}
+						}
+					}
 					else {
 						level_ = 1;
 						int count = 0;
 						while (count < start_sequence_size_) {
-							char matched_char = wiki_key_char_start_[count];
-							if (*it != matched_char)
+							// char matched_char = this->wiki_key_char_start_[count];
+							if (*it != this->wiki_key_char_start_)
 								return false;
 							++count;
 							++it;
@@ -884,14 +894,14 @@ namespace stpl {
 						return true;
 					else {
 						if (start_sequence_size_ == 1) {
-							if (*it == *this->wiki_key_char_end_) {
+							if (*it == this->wiki_key_char_end_) {
 								// BUG before if adavance is false, it wasn't dealt with
 								// if advance
 								IteratorT next = it + 1;
 								if (advance) {
 									++this->matched_levels_;
 									while (this->matched_levels_ < 0) {
-										if (*next != *this->wiki_key_char_end_)
+										if (*next != this->wiki_key_char_end_)
 											return false;
 
 										++this->matched_levels_;
@@ -908,25 +918,24 @@ namespace stpl {
 								else {
 									int count = this->level_ - 1;
 									while (count > 0) {
-										if (*next != *this->wiki_key_char_end_) {
+										if (*next != this->wiki_key_char_end_) {
 											return false;
 										}
 
 										--count;
 										++next;
 									}
-
 								}							
 								return true;
 							}
 						}
 						else {
 							int count = 0;
-							if (*it == wiki_key_char_end_[count]) {
+							if (*it == wiki_key_char_end_) {
 								++count;
 								IteratorT next = it + 1;
 								while (count < end_sequence_size_) {
-									char matched_char = wiki_key_char_end_[count];
+									char matched_char = wiki_key_char_end_;
 									if (*next != matched_char)
 										return false;
 									++next;
@@ -952,8 +961,6 @@ namespace stpl {
 
 			private:
 				void init() {
-					wiki_key_char_start_ = NULL;
-					wiki_key_char_end_ = NULL;
 					level_ = 0;
 					end_in_same_line_ = false;
 					strict_ = false;
@@ -1074,15 +1081,35 @@ namespace stpl {
 					return *it == ';';
 				}
 
+				virtual bool is_start(IteratorT& it) {
+					if (WikiEntityLeveled<StringT, IteratorT>::is_start(it)) {
+						IteratorT next = it + 1;
+						if (*next == '{') {
+							it = next + 1;
+							return true;
+						}
+						return false;
+					}
+					return false;
+				}
+
+				virtual bool is_end(IteratorT& it, bool advance = true) {
+					if (WikiEntityLeveled<StringT, IteratorT>::is_end(it, advance)) {
+						IteratorT pre = it - 1;
+						if (*pre == '}') {
+							if (advance)
+								it = it + 1;
+							return true;
+						}
+						return false;
+					}
+					return false;
+				}
+
 			protected:
 				virtual void set_wiki_key_char() override {
-					this->wiki_key_char_start_ = new char[2];
-					this->wiki_key_char_start_[1] = WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE;
-					this->wiki_key_char_start_[0] = '-';
-					
-					this->wiki_key_char_end_ = new char[2];
-					this->wiki_key_char_end_[1] = '-';
-					this->wiki_key_char_end_[0] = WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE;
+					this->wiki_key_char_start_ = WikiEntityConstants::WIKI_KEY_OPEN_LANGVARIANT;
+					this->wiki_key_char_end_ = WikiEntityConstants::WIKI_KEY_CLOSE_LANGVARIANT;
 
 					this->start_sequence_size_ = 2;
 					this->end_sequence_size_ = 2;
@@ -1115,10 +1142,8 @@ namespace stpl {
 				virtual ~LayoutLeveled() {}
 
 				virtual void set_wiki_key_char() override {
-					this->wiki_key_char_start_ = new char[1];
-					this->wiki_key_char_start_[0] = WikiEntityConstants::WIKI_KEY_HEADING;
-					this->wiki_key_char_end_ = new char[1];
-					this->wiki_key_char_end_[0] = WikiEntityConstants::WIKI_KEY_HEADING;					
+					this->wiki_key_char_start_ = WikiEntityConstants::WIKI_KEY_HEADING;
+					this->wiki_key_char_end_ = WikiEntityConstants::WIKI_KEY_HEADING;				
 				}
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
@@ -1172,10 +1197,8 @@ namespace stpl {
 				}
 
 				virtual void set_wiki_key_char() override {
-					this->wiki_key_char_start_ = new char[1];
-					this->wiki_key_char_start_[0] = WikiEntityConstants::WIKI_KEY_STYLE;
-					this->wiki_key_char_end_ = new char[1];
-					this->wiki_key_char_end_[0] = WikiEntityConstants::WIKI_KEY_STYLE;
+					this->wiki_key_char_start_ = WikiEntityConstants::WIKI_KEY_STYLE;
+					this->wiki_key_char_end_ = WikiEntityConstants::WIKI_KEY_STYLE;					
 				}
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
@@ -1260,10 +1283,8 @@ namespace stpl {
 
 			protected:
 				virtual void set_wiki_key_char() override {
-					this->wiki_key_char_start_ = new char[1];
-					this->wiki_key_char_start_[0] = WikiEntityConstants::WIKI_KEY_STYLE_INDENT;
-					this->wiki_key_char_end_ = new char[1];
-					this->wiki_key_char_end_[0] = '\n';			
+					this->wiki_key_char_start_ = WikiEntityConstants::WIKI_KEY_STYLE_INDENT;
+					this->wiki_key_char_end_ = WikiEntityConstants::WIKI_KEY_NEWLINE;						
 				}
 
 			private:
@@ -1541,10 +1562,8 @@ namespace stpl {
 
 			protected:
 				virtual void set_wiki_key_char() override {
-					this->wiki_key_char_start_ = new char[1];
-					this->wiki_key_char_start_[0] = WikiEntityConstants::WIKI_KEY_OPEN_LINK;
-					this->wiki_key_char_end_ = new char[1];
-					this->wiki_key_char_end_[0] = WikiEntityConstants::WIKI_KEY_CLOSE_LINK;					
+					this->wiki_key_char_start_ = WikiEntityConstants::WIKI_KEY_OPEN_LINK;
+					this->wiki_key_char_end_ = WikiEntityConstants::WIKI_KEY_CLOSE_LINK;				
 				}
 
 			private:
@@ -2001,13 +2020,8 @@ namespace stpl {
 
 			protected:
 				virtual void set_wiki_key_char() override {
-					this->wiki_key_char_start_ = new char[2];
-					this->wiki_key_char_start_[0] = WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE;
-					this->wiki_key_char_start_[1] = '|';
-
-					this->wiki_key_char_end_ = new char[2];
-					this->wiki_key_char_end_[0] = '|';
-					this->wiki_key_char_end_[1] = WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE;
+					this->wiki_key_char_start_ = WikiEntityConstants::WIKI_KEY_OPEN_TABLE;
+					this->wiki_key_char_end_ = WikiEntityConstants::WIKI_KEY_CLOSE_TABLE;
 
 					this->start_sequence_size_ = 2;
 					this->end_sequence_size_ = 2;
@@ -2128,16 +2142,14 @@ namespace stpl {
 
 			protected:
 				virtual void set_wiki_key_char() override {
-					this->wiki_key_char_start_ = new char[2];
-					this->wiki_key_char_start_[0] = WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE;
-					this->wiki_key_char_start_[1] = WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE;
+					this->wiki_key_char_start_ = WikiEntityConstants::WIKI_KEY_OPEN_TEMPLATE;
+					this->wiki_key_char_end_ = WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE;			
 
-					this->wiki_key_char_end_ = new char[2];
-					this->wiki_key_char_end_[0] = WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE;
-					this->wiki_key_char_end_[1] = WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE;
+					this->start_sequence_size_ = 1;
+					this->end_sequence_size_ = 1;
 
-					this->start_sequence_size_ = 2;
-					this->end_sequence_size_ = 2;
+					this->max_level_ = 3;
+					this->min_level_ = 2;
 				}
 
 			private:

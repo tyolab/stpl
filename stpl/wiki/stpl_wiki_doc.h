@@ -456,19 +456,7 @@ namespace stpl {
 					IteratorT end = this->end();
 
 					/* leave the space as text node
-					   and let the node deal with newline
-					 */
-					// while (begin < end) {
-					// 	if (*begin == ' ')
-					// 		++begin;
-					// 	else if (*begin == '\n') {
-					// 		// ++begin; no we are not skipping new line as entity may need newline for boundary
-					// 		start_from_newline = true;
-					// 		break;
-					// 	}	   
-					// 	else
-					// 		break;
-					// }
+					   and let the node deal with newline */
 
 					IteratorT it = begin, next;
 
@@ -476,6 +464,7 @@ namespace stpl {
 					int previous_state = Scanner<EntityT>::state_;
 					IteratorT pre_it;
 					int new_entity_check_passed = 0;
+					int new_entity_start = -1;
 
 					/**
 					 * We only need the openings, and let the entity finish itself
@@ -522,6 +511,7 @@ namespace stpl {
 								// confirmation
 								if (*next == '{') {
 									new_entity_check_passed = 1;
+									new_entity_start = 1;
 								}
 							}
 							break;								
@@ -536,6 +526,7 @@ namespace stpl {
 									// confirmation
 									if (*next == WikiEntityConstants::WIKI_KEY_STYLE) {
 										new_entity_check_passed = 1;
+										new_entity_start = 1;
 									}
 								}
 							}
@@ -557,6 +548,7 @@ namespace stpl {
 									if (start_from_newline || *pre_it == '\n') {
 										start_from_newline = true;
 										new_entity_check_passed = 1;
+										new_entity_start = 1;
 									}
 									else
 										entity_ptr = parent_ptr;
@@ -581,6 +573,7 @@ namespace stpl {
 								if (*pre == '\n') {
 									start_from_newline = true;
 									new_entity_check_passed = 1;
+									new_entity_start = 1;
 								}
 							}
 							
@@ -601,16 +594,19 @@ namespace stpl {
 						case WikiEntityConstants::WIKI_KEY_LIST_ORDERED:
 							{	
 								new_entity_check_passed = 1;
+								new_entity_start = 1;
 								start_from_newline = false;	
 							}
 							break;
 						case WikiEntityConstants::WIKI_KEY_PROPERTY_DELIMITER:
 							new_entity_check_passed = 1;
+							new_entity_start = 1;
 							start_from_newline = false;
 							break;							
 						case WikiEntityConstants::WIKI_KEY_CLOSE_LINK:
 							{
 								new_entity_check_passed = 1;
+								new_entity_start = 0;
 								start_from_newline = false;
 								if (parent_ptr) {
 									if (parent_ptr->get_type() == P_LINK) {
@@ -638,10 +634,11 @@ namespace stpl {
 							}
 							else {
 								new_entity_check_passed = 1;
+								new_entity_start = 0;
 								start_from_newline = false;
 								next = it + 1;
 								if (*next == WikiEntityConstants::WIKI_KEY_CLOSE_TEMPLATE) {
-									if (parent_ptr && parent_ptr->get_group() == PROPERTY) {
+									if (parent_ptr && parent_ptr->get_group() == PROPERTY && parent_ptr->get_type() == P_PROPERTY) {
 										parent_ptr->end(it);
 										parent_ptr->set_open(false);
 										begin = it;
@@ -664,17 +661,12 @@ namespace stpl {
 						/**
 						 * Before we go any further we need to handle the text node first
 						 */
-						if (new_entity_check_passed == 1) {
+						if (new_entity_check_passed == 1 && new_entity_start == 1) {
 							if (parent_ptr && !parent_ptr->should_have_children()) {
 								parent_ptr->end(it);
 								parent_ptr->set_open(false);
 								return parent_ptr;
 							}
-							// else if (!entity_ptr && it > begin) {
-							// 	entity_ptr = new Text<StringT, IteratorT>(begin, it);
-							// 	entity_ptr->set_open(false);
-							// 	begin = it;
-							// }
 						}
 
 						if (!entity_ptr) {
@@ -846,11 +838,6 @@ namespace stpl {
 							default:
 								break;
 							}
-
-							if (new_entity_check_passed == 1 && !entity_ptr) {
-								// need to uncheck the indicator
-								new_entity_check_passed = 0;
-							}
 						}
 
 						if (entity_ptr) {
@@ -860,25 +847,44 @@ namespace stpl {
 
 						// also as we couldn't find a new entity based on current character, and parent entity is not closed yet
 						// so we return it
-						else if (new_entity_check_passed == 0 &&  parent_ptr && parent_ptr->isopen()) {
+						else if (parent_ptr && parent_ptr->isopen()) {
 							// we are not skip here here we mainly check the state
 							// otherwise, if something bad happened, it will get stuck
-							begin = it;
-							if (parent_ptr->should_have_children()) {
-								// none of obvious entity is found, so let take it as a text node
-								// there could be a few cases here
-								// 1. parent has started with text but not in text node
-								// this is handled in create text pre function
-								// 2. parent has pushed child(ren) in
-								// this is in the middle of it
-								// 3. if parent has no child(ren) yet
-								// this is the first one, so it would hurt either
-								EntityT *text_ptr = parent_ptr->create_child(begin, end);
-								text_ptr->set_parent(parent_ptr);							
-								return text_ptr;
+							// no key char found, things are much simpler
+							if (new_entity_check_passed == 0 || (new_entity_check_passed == 1 && new_entity_start == 1)) {
+								begin = it;
+								if (parent_ptr->should_have_children()) {
+									// none of obvious entity is found, so let take it as a text node
+									// there could be a few cases here
+									// 1. parent has started with text but not in text node
+									// this is handled in create text pre function
+									// 2. parent has pushed child(ren) in
+									// this is in the middle of it
+									// 3. if parent has no child(ren) yet
+									// this is the first one, so it would hurt either
+									EntityT *text_ptr = parent_ptr->create_child(begin, end);
+									text_ptr->set_parent(parent_ptr);							
+									return text_ptr;
+								}
+								else
+									return parent_ptr;
 							}
-							else
-								return parent_ptr;
+							else {
+								if (new_entity_check_passed == 1 && new_entity_start == 0) {
+									// so it is a closed key char then
+									// what are we gonna do? 
+									// if it is a not proper written text, it could be meant for the parent
+									// close the parent? let the parent eat it?
+									// if create a new entity, it will come back, as it is an end
+									if (parent_ptr && parent_ptr->is_end(it)) {
+										parent_ptr->set_open(false);
+										parent_ptr->end(it);
+										return parent_ptr;
+									}
+									// else								
+									// we are gonna let them be eaten
+								}
+							}
 						}
 						
 						// as we couldn't find a new entity based on current character, 
