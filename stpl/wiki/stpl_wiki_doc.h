@@ -550,8 +550,9 @@ namespace stpl {
 										new_entity_check_passed = 1;
 										new_entity_start = 1;
 									}
-									else
-										entity_ptr = parent_ptr;
+									// so it is a text node, let the parent decide what child it should be
+									// else
+									//	entity_ptr = parent_ptr;
 								}
 							}
 							break;													

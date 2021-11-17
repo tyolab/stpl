@@ -815,8 +815,6 @@ namespace stpl {
 					this->create(content);
 				}
 				virtual ~WikiEntityLeveled() {
-					this->max_level_ = -1;
-					this->min_level_ = 1;
 				}
 
 				int get_level() const {
@@ -854,7 +852,7 @@ namespace stpl {
 						}
 
 						if (this->max_level_ > 0 && this->level_ > this->max_level_) {
-							// we are back to minimu level
+							// we are back to minimum level
 							while (this->level_ > this->min_level_) {
 								--this->level_;
 								--it;
@@ -967,6 +965,9 @@ namespace stpl {
 					is_reversed_sequence_ = false;
 					start_sequence_size_ = 1;
 					end_sequence_size_ = 1;
+
+					this->max_level_ = -1;
+					this->min_level_ = 1;					
 				}
 		};
 
@@ -1356,10 +1357,6 @@ namespace stpl {
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (WikiEntityLeveled<StringT, IteratorT>::is_end(it, advance)) {
-						// anchor_.end(it - this->level_);
-						// if (url_.begin() == anchor_.begin())
-						// 	url_.end(anchor_.end());
-						// anchor and url are the same if there is only one property
 						return true;
 					}
 					return false;
@@ -1667,6 +1664,8 @@ namespace stpl {
 
 				WikiProperty<StringT, IteratorT>*         current_parent_;
 
+				TableCell<StringT, IteratorT>*            last_cell_ptr_;
+
 			public:
 				Table() : TBase<StringT, IteratorT>::TBase() { init(); }
 				Table(IteratorT it)
@@ -1686,22 +1685,31 @@ namespace stpl {
 				}
 
 				virtual void process_child(BasicWikiEntity<StringT, IteratorT>* child) {
-					TableCell<StringT, IteratorT>* cell_ptr = reinterpret_cast<TableCell<StringT, IteratorT> *>(child);
+					TableCell<StringT, IteratorT>* cell_ptr = dynamic_cast<TableCell<StringT, IteratorT> *>(child);
 
                     if (cell_ptr) {
 						cell_ptr->set_cell_id(this->cell_id_);
-						 WikiEntityLeveled<StringT, IteratorT>::process_child(cell_ptr);
-
+						WikiEntityLeveled<StringT, IteratorT>::process_child(cell_ptr);
+						last_cell_ptr_ = cell_ptr;
 					}
-#ifdef DEBUG
-                    else {
-						std::cerr << "Table::process_child: child is not a TableCell" << std::endl;
+                    else {	
+						// std::cerr << "Table::process_child: child is not a TableCell" << std::endl;
+						if (!last_cell_ptr_) {
+							last_cell_ptr_ = new TableCell<StringT, IteratorT>(child->begin(), child->end());
+							last_cell_ptr_->add(child);
+							last_cell_ptr_->set_cell_id(++this->cell_id_);
+							WikiEntityLeveled<StringT, IteratorT>::process_child(last_cell_ptr_);
+						}
+						else {
+							last_cell_ptr_->add(child);
+							last_cell_ptr_->end(child->end());
+						}
 					}
 
 					// if (this->cell_id_ == -1)
 					// 	std::cerr << "Table::process_child: cell_id_ is -1" << std::endl;
-					// std::cerr << "Table::process_child: child, cell id: " << this->cell_id_ << std::endl;
-#endif // DEBUG
+					// else
+					// 	std::cerr << "Table::process_child: child, cell id: " << this->cell_id_ << std::endl;
 				}
 
 				void print_last_cell(std::ostream &ss, TableCell<StringT, IteratorT> *last_format, std::vector<TableCell<StringT, IteratorT>* >& last_cells, int rows, bool row_header, bool& first_col) {
@@ -1798,7 +1806,7 @@ namespace stpl {
 							}
 						}
 
-						cell_ptr = reinterpret_cast<TableCell<StringT, IteratorT> *>(*it);
+						cell_ptr = static_cast<TableCell<StringT, IteratorT> *>(*it);
 						if (cell_ptr) {
 							row_header = rows_header_ind_[rows] == '1';
 							int skip_cells = cell_ptr->get_cell_id() - last_cell_id;
@@ -2034,6 +2042,8 @@ namespace stpl {
 					row_id_ = -1;
 					rows_header_ind_ = "0";
 					cell_id_ = -1;
+
+					last_cell_ptr_ = NULL;
 
 					this->set_group(TBASE);
 					this->set_type(TABLE);
