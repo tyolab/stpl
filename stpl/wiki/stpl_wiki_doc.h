@@ -895,10 +895,18 @@ namespace stpl {
 									if (!start_from_newline && (prev_it == this->begin_ || *prev_it == '\n'))
 										start_from_newline = true;
 
-									if (start_from_newline && !parent_ptr) {
-										Scanner<EntityT>::state_ = LAYOUT;
-										entity_ptr = new LayoutLeveled<StringT, IteratorT>(it, end);
-										start_from_newline = false;
+									if (start_from_newline) {
+										if (!parent_ptr) {
+											Scanner<EntityT>::state_ = LAYOUT;
+											entity_ptr = new LayoutLeveled<StringT, IteratorT>(it, end);
+											start_from_newline = false;
+										}
+										else {
+											// parent supposed to be null already already
+											parent_ptr->end(it);
+											parent_ptr->set_open(false);
+											return parent_ptr;
+										}
 									}
 								}
 								break;

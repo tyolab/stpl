@@ -2102,14 +2102,20 @@ namespace stpl {
 						IteratorT next = it + 1;
 						while (*next == ' ')
 							++next;
-						if (*next == '|') {
+						if (*next == '!') {
+							return false;
+						}
+						else if (*next == '|') {
 							++next;
 							if (*next == '}') {
 								if (advance)
 									it = next + 1;
 								return true;
 							}
+							return false;
 						}
+						// table should be ended as there shouldn't be andy table without '|'
+						return true;
 					}
 					else if (*it == '|') {
 						IteratorT next = it + 1;
