@@ -67,7 +67,7 @@ namespace stpl {
 			LAYOUT_T_LB,
 			LAYOUT_T_LI,
 			LAYOUT_T_UL,
-			LAYOUT_LI,
+			LAYOUT_OL,
 			LAYOUT_UL,
 			LAYOUT_DESC,
 
@@ -107,6 +107,8 @@ namespace stpl {
 			TAG_POEM,
 
 			// Property Types
+			P_NONE,
+			P_HEADING,
 			P_LINK,
 			P_PROPERTY,
 			P_CELL,

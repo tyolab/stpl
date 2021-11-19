@@ -177,7 +177,17 @@ namespace stpl {
 								// It is not a good idea to do it here
 								if (tmp_entity->isopen() && pre == it) {
 									// there is no more rest
-									current_pos_ =  ++it;
+									// obviously this entity doesn't know what to do with this char
+									// which mean it is end of it
+									tmp_entity->end(it);
+									tmp_entity->set_open(false);
+
+									if (tmp_entity->end() == tmp_entity->begin()) {
+									   current_pos_ =  ++it;
+									   #ifdef DEBUG
+									   throw std::runtime_error("Unhandled char");
+									   #endif // DEBUG
+									}
 								}			
 							}
 							else

@@ -468,6 +468,8 @@ namespace stpl {
 
 				BasicWikiEntity<StringT, IteratorT>                 *last_child_;
 
+				int                                                  level_;
+
 			public:
 				WikiEntity() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() {
 				}
@@ -541,16 +543,8 @@ namespace stpl {
 				}
 
 				virtual std::string to_html() {
-					if (this->children_.size() > 0) {
-						std::stringstream ss;
-						
-						auto it = this->children_.begin();
-						for (; it != this->children_.end(); ++it)
-							ss << (*it)->to_html();
-						
-						return ss.str();
-					}
-					return this->to_std_string();
+					// if no children no nothing
+					return children_to_html(); // this->to_std_string();
 				}
 
 				virtual std::string to_text() {
@@ -571,16 +565,16 @@ namespace stpl {
 					return ss.str();
 				}
 
-				virtual bool is_end(IteratorT& it, bool advance=true) {
-					if (BasicWikiEntity<StringT, IteratorT>::is_end(it)) {
-						// if (last_child_ && it > last_child_->end()) {
-						// 	// we need to record the last text node
-						// 	this->create_text_child_after(it);
-						// }
-						return true;
-					}	
-					return false;	
-				}
+				// virtual bool is_end(IteratorT& it, bool advance=true) {
+				// 	if (BasicWikiEntity<StringT, IteratorT>::is_end(it)) {
+				// 		// if (last_child_ && it > last_child_->end()) {
+				// 		// 	// we need to record the last text node
+				// 		// 	this->create_text_child_after(it);
+				// 		// }
+				// 		return true;
+				// 	}	
+				// 	return false;	
+				// }
 
 				virtual bool is_pause(IteratorT& it) {
 					/**
@@ -590,16 +584,27 @@ namespace stpl {
 					 * Why the above needs to do that
 					 * Don't do it
 					 */
-					if (BasicWikiEntity<StringT, IteratorT>::is_pause(it)) {
-						// no we can't end it here;
-						// this->end(it);
-						return true;
-					}	
-					return false;
-				}								
+					// if (BasicWikiEntity<StringT, IteratorT>::is_pause(it)) {
+					// 	// no we can't end it here;
+					// 	// this->end(it);
+					// 	return true;
+					// }
+					// As it is supposed to contain children
+					this->skip_whitespace(it);
+					return true;
+				}
+
+				int get_level() const {
+					return level_;
+				}
+
+				void set_level(int level) {
+					level_ = level;
+				}
 
 			private:
 				void init() {
+					level_ = 0;
 					last_child_ = NULL;
 				}
 		};
