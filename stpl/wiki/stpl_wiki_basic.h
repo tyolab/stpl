@@ -197,7 +197,17 @@ namespace stpl {
 				virtual bool is_pause(IteratorT& it) {
 					// ok we are not gonna pause when the character with the following
 					// that is not a good idea either that simply skip the first character simply because 
-					return *it == '[' || *it == '{'  || *it == '-' || *it == '\'' || *it == '#' || *it == '*' || *it == ':';
+					if (*it == '[' || *it == '{'  || *it == '-' || *it == '\'')
+						return true;
+					else if (*it == '#' || *it == '*' || *it == ':') {
+						IteratorT pre = it - 1;
+						if (*pre == '\n')
+							return true;
+					}
+					else if (*it == '$') {
+						
+					}
+					return false;
 				}			
 
 				virtual bool is_separated(IteratorT& it) {

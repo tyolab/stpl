@@ -471,6 +471,15 @@ namespace stpl {
 					int new_entity_start = -1;
 
 					/**
+					 * @brief special treatment for 
+					 * 
+					 */
+					if (!isspace(*it) && parent_ptr && (parent_ptr->get_group() == LAYOUT_LIST || parent_ptr->get_group() == LIST_ITEM)) {
+						if (parent_ptr->is_end(it, false))
+							return parent_ptr;
+					}
+
+					/**
 					 * We only need the openings, and let the entity finish itself
 					 * but for the text node, we won't be able to do so, so anything that is between those
 					 * special nodes are text nodes
@@ -735,7 +744,7 @@ namespace stpl {
 
 									while (*next == WikiEntityConstants::WIKI_KEY_LIST)
 										++next, ++levels;
-									if (parent_ptr && parent_ptr->get_group() == LAYOUT_ITEM) {
+									if (parent_ptr && parent_ptr->get_group() == LIST_ITEM) {
 										// either same level or higher
 										if (levels <= parent_ptr->get_level()) {
 											parent_ptr->end(it);
@@ -788,9 +797,6 @@ namespace stpl {
 									if (*(it + 1) == 'R' && *(it + 2) == 'E' && *(it + 3) == 'D' && *(it + 4) == 'I' && *(it + 5) == 'R' && *(it + 6) == 'E' && *(it + 7) == 'C' && *(it + 8) == 'T') {
 										entity_ptr = new Redirect<StringT, IteratorT>(it, end);
 									}
-									else if (*(it + 1) == 'D' && *(it + 2) == 'E' && *(it + 3) == 'B' && *(it + 4) == 'U' && *(it + 5) == 'G') {
-										entity_ptr = new DebugNode<StringT, IteratorT>(it, end);
-									}
 									else {
 										IteratorT next = it + 1;
 										int levels = 1;
@@ -798,7 +804,7 @@ namespace stpl {
 										while (*next == WikiEntityConstants::WIKI_KEY_LIST_ORDERED)
 											++next, ++levels;
 										//if (*next == ' '/* parent_ptr && parent_ptr->get_group() != PROPERTY */) {
-											if (parent_ptr && parent_ptr->get_group() == LAYOUT_ITEM/*  && parent_ptr->isopen() */) {
+											if (parent_ptr && parent_ptr->get_group() == LIST_ITEM/*  && parent_ptr->isopen() */) {
 
 												// either same level or higher
 												if (levels <= parent_ptr->get_level()) {
@@ -866,8 +872,10 @@ namespace stpl {
 										if (parent_ptr->get_group() == PROPERTY) {
 											if (parent_ptr->get_type() == P_HEADING) {
 												// time for the end
-												parent_ptr->end(it);
-												parent_ptr->set_open(false);
+												// parent_ptr->end(it);
+												// parent_ptr->set_open(false);
+												// let it finish it
+												return parent_ptr;
 											}
 											// if text contains = at the begining
 											// created end loop
@@ -913,25 +921,33 @@ namespace stpl {
 										else if (parent_ptr->get_group() == TBASE) {
 											// because | is for separator it can't be part of next entity
 											next = it + 1;
-											if (*next == '}') {
-												begin = it;
-												return parent_ptr;
-											}
-
-											if (parent_ptr->get_type() == TEMPLATE) {
-												entity_ptr = new WikiProperty<StringT, IteratorT>(next, end);
-												previous_state = PROPERTY;
-												begin = next;
-											}
-											else if (parent_ptr->get_type() == TABLE) {
-												if (*next == '|' || *next == '!') {
-													// let parent handle it
-													// as it means that it is a cell in the same line, table needs to adjust cell id etc.
+											if (parent_ptr->get_type() == TABLE) {
+												if (*next == '}') {
+													begin = it;
 													return parent_ptr;
 												}
-
-												entity_ptr = new TableCell<StringT, IteratorT>(next, end);
-												previous_state = CELL;
+												else {
+													if (*next == '|' || *next == '!') {
+														// let parent handle it
+														// as it means that it is a cell in the same line, table needs to adjust cell id etc.
+														return parent_ptr;
+													}
+													IteratorT pre = it - 1;
+													while (*pre == ' ')
+														--pre;
+													// need to check the position of the cell, it is kinda of hack
+													if (*pre == '\n') {
+														// might be eaten by previous entity
+														parent_ptr->is_pause(pre);
+													}
+													entity_ptr = new TableCell<StringT, IteratorT>(next, end);
+													previous_state = CELL;
+													begin = next;
+												}
+											}
+											else if (parent_ptr->get_type() == TEMPLATE) {
+												entity_ptr = new WikiProperty<StringT, IteratorT>(next, end);
+												previous_state = PROPERTY;
 												begin = next;
 											}
 											else
@@ -948,7 +964,12 @@ namespace stpl {
 										}
 									}
 								}
-								break;								
+								break;	
+							case '$':
+								if (*(it + 1) == 'D' && *(it + 2) == 'E' && *(it + 3) == 'B' && *(it + 4) == 'U' && *(it + 5) == 'G') {
+										entity_ptr = new DebugNode<StringT, IteratorT>(it, end);
+									}
+								break;															
 							default:
 								break;
 							}

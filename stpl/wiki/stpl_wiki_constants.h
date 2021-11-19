@@ -33,7 +33,7 @@ namespace stpl {
 			GRUOP_NONE,
 			LAYOUT, 
 			LAYOUT_LIST, 
-			LAYOUT_ITEM,
+			LIST_ITEM,
 			TAG,
 			LINK,
 			TBASE,

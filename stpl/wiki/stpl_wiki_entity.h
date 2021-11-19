@@ -640,7 +640,7 @@ namespace stpl {
 			private:
 				void init() { 
 					this->level_ = 0;
-					this->set_group(LAYOUT_ITEM);					
+					this->set_group(LIST_ITEM);					
 				}	
 		};
 
@@ -1125,7 +1125,7 @@ namespace stpl {
 
 			private:
 				void init() {
-					this->set_group(LAYOUT_ITEM);
+					this->set_group(LIST_ITEM);
 				}
 		};
 
@@ -1809,7 +1809,7 @@ namespace stpl {
 					// 	std::cerr << "Table::process_child: cell_id_ is -1" << std::endl;
 					// else
 					#ifdef DEBUG
-					// std::cerr << "Table::process_child: child, cell id: " << last_cell_ptr_->get_cell_id() << std::endl;
+					//std::cerr << "Table::process_child: child, cell id: " << last_cell_ptr_->get_cell_id() << std::endl;
 					#endif // DEBUG
 				}
 
