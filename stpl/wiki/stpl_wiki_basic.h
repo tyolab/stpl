@@ -38,27 +38,15 @@ namespace stpl {
 		class BasicWikiEntity : public StringBound<StringT, IteratorT> 
 		{
 			public:
-				static int                                      counter;
+				static int                                      	counter;
 
 			protected:
-				WikiNodeGroup		 							group_;
-				WikiNodeType 									type_;
-				BasicWikiEntity*								parent_ptr_;
-				StringBound<StringT, IteratorT> 				body_;
-					
-			private:
-				void init() {
-					group_ = GRUOP_NONE;
-					type_ = NONE;
-					parent_ptr_ = NULL;
+				WikiNodeGroup		 								group_;
+				WikiNodeType 										type_;
+				BasicWikiEntity*									parent_ptr_;
+				StringBound<StringT, IteratorT> 					body_;
 
-					Atom::set_id(Atom::counter++);
-					// for debuging
-					// if (*(this->begin()) == 'N')
-					// 	cerr << Atom::counter << std::endl;
-					if (Atom::get_id() == 15)
-						parent_ptr_ = NULL;
-				}
+				int                                                 level_;
 				
 			public:
 				BasicWikiEntity() : StringBound<StringT, IteratorT>::StringBound() {
@@ -214,7 +202,25 @@ namespace stpl {
 
 				virtual bool is_separated(IteratorT& it) {
 					return this->parent_ptr_ && this->parent_ptr_->is_delimiter(it);
-				}					
+				}
+
+				int get_level() const {
+					return level_;
+				}
+
+				void set_level(int level) {
+					level_ = level;
+				}
+
+			private:
+				void init() {
+					level_ = 0;
+					group_ = GRUOP_NONE;
+					type_ = NONE;
+					parent_ptr_ = NULL;
+
+					Atom::set_id(Atom::counter++);
+				}
 		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
@@ -468,8 +474,6 @@ namespace stpl {
 
 				BasicWikiEntity<StringT, IteratorT>                 *last_child_;
 
-				int                                                  level_;
-
 			public:
 				WikiEntity() : BasicWikiEntity<StringT, IteratorT>::BasicWikiEntity() {
 				}
@@ -594,17 +598,8 @@ namespace stpl {
 					return true;
 				}
 
-				int get_level() const {
-					return level_;
-				}
-
-				void set_level(int level) {
-					level_ = level;
-				}
-
 			private:
 				void init() {
-					level_ = 0;
 					last_child_ = NULL;
 				}
 		};

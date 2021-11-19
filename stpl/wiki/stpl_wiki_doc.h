@@ -728,60 +728,58 @@ namespace stpl {
 									entity_ptr = new Table<StringT, IteratorT>(it, end);
 								}
 								break;
-							case WikiEntityConstants::WIKI_KEY_LIST:
-								int levels = 1;
-								IteratorT next = it + 1;
+							case WikiEntityConstants::WIKI_KEY_LIST: 
+								{
+									int levels = 1;
+									IteratorT next = it + 1;
 
-								while (*next == WikiEntityConstants::WIKI_KEY_LIST)
-									++next, ++levels;
-								if (parent_ptr && parent_ptr->get_group() == LAYOUT_ITEM) {
-									// parent of course is open
-									//&& parent_ptr->isopen()) {
-									// parent_ptr->end(it);
-									// parent_ptr->set_open(false);
-									// entity_ptr = parent_ptr;
-									ListItem<StringT, IteratorT> *li_ptr = static_cast<ListItem<StringT, IteratorT>*>(parent_ptr);
-									// if (li_ptr->get_level() == levels) {
-									// 	// if (li_ptr->get_type() == LAYOUT_UL) {
-									// 		// different list type
-									// 		li_ptr->end(it);
-									// 		li_ptr->set_open(false);
-									// 		return li_ptr;
-									// 	// }
-									// 	// else
-									// 	// 	entity_ptr = new ListItemUnordered<StringT, IteratorT>(it, end);
-									// }
-									// else 
-									
+									while (*next == WikiEntityConstants::WIKI_KEY_LIST)
+										++next, ++levels;
+									if (parent_ptr && parent_ptr->get_group() == LAYOUT_ITEM) {
+										// either same level or higher
+										if (levels <= parent_ptr->get_level()) {
+											parent_ptr->end(it);
+											parent_ptr->set_open(false);
 
-									// either same level or higher
-									if (levels <= li_ptr->get_level()) {
-										parent_ptr->end(it);
-										parent_ptr->set_open(false);
-
-										// parent of parent is a list
-										// this is a list item
-										// parent of parent not necessary closes yet
-										if (levels < li_ptr->get_level() || li_ptr->get_type() != LAYOUT_UL) {
-											EntityT *new_parent_ptr = parent_ptr->get_parent();
-											if (new_parent_ptr) {
-												new_parent_ptr->end(it);
-												new_parent_ptr->set_open(false);
+											// parent of parent is a list
+											// this is a list item
+											// parent of parent not necessary closes yet
+											if (levels < parent_ptr->get_level() || parent_ptr->get_type() != LAYOUT_UL) {
+												EntityT *new_parent_ptr = parent_ptr->get_parent();
+												if (new_parent_ptr) {
+													new_parent_ptr->end(it);
+													new_parent_ptr->set_open(false);
+												}
 											}
+											return parent_ptr;
 										}
-										return parent_ptr;
+										else {
+											// nested list
+											entity_ptr = new LayoutUnorderedList<StringT, IteratorT>(it, end);
+											entity_ptr->set_level(levels);
+										}									
+									}							
+									else if (parent_ptr && parent_ptr->get_group() == LAYOUT_LIST && parent_ptr->get_type() == LAYOUT_UL) {
+										if (parent_ptr->get_level() == levels) {
+											entity_ptr = new ListItemUnordered<StringT, IteratorT>(it, end);
+											// entity_ptr->set_level(levels);
+										}
+										else if (parent_ptr->get_level() < levels) {
+											// nested list
+											entity_ptr = new LayoutUnorderedList<StringT, IteratorT>(it, end);
+											entity_ptr->set_level(levels);
+										}
+										else {
+											parent_ptr->end(it);
+											parent_ptr->set_open(false);
+											return parent_ptr;
+										}
 									}
 									else {
-										// nested list
+										Scanner<EntityT>::state_ = LAYOUT;
 										entity_ptr = new LayoutUnorderedList<StringT, IteratorT>(it, end);
-									}									
-								}							
-								else if (parent_ptr && parent_ptr->get_group() == LAYOUT && parent_ptr->get_type() == LAYOUT_UL) {
-									entity_ptr = new ListItemUnordered<StringT, IteratorT>(it, end);
-								}
-								else {
-									Scanner<EntityT>::state_ = LAYOUT;
-									entity_ptr = new LayoutUnorderedList<StringT, IteratorT>(it, end);
+										entity_ptr->set_level(levels);
+									}
 								}
 								break;
 							case WikiEntityConstants::WIKI_KEY_LIST_ORDERED:
@@ -795,28 +793,22 @@ namespace stpl {
 									}
 									else {
 										IteratorT next = it + 1;
-										if (*next == ' '/* parent_ptr && parent_ptr->get_group() != PROPERTY */) {
+										int levels = 1;
+
+										while (*next == WikiEntityConstants::WIKI_KEY_LIST_ORDERED)
+											++next, ++levels;
+										//if (*next == ' '/* parent_ptr && parent_ptr->get_group() != PROPERTY */) {
 											if (parent_ptr && parent_ptr->get_group() == LAYOUT_ITEM/*  && parent_ptr->isopen() */) {
-												// parent_ptr->end(it);
-												// parent_ptr->set_open(false);
-												// entity_ptr = parent_ptr;
-
-												int levels = 1;
-												IteratorT next = it + 1;
-
-												while (*next == WikiEntityConstants::WIKI_KEY_LIST_ORDERED)
-													++next, ++levels;
-												ListItem<StringT, IteratorT> *li_ptr = static_cast<ListItem<StringT, IteratorT>*>(parent_ptr);
 
 												// either same level or higher
-												if (levels <= li_ptr->get_level()) {
+												if (levels <= parent_ptr->get_level()) {
 													parent_ptr->end(it);
 													parent_ptr->set_open(false);
 
 													// parent of parent is a list
 													// this is a list item
 													// parent of parent not necessary closes yet
-													if (levels < li_ptr->get_level() || li_ptr->get_type() != LAYOUT_OL) {
+													if (levels < parent_ptr->get_level() || parent_ptr->get_type() != LAYOUT_OL) {
 														EntityT *new_parent_ptr = parent_ptr->get_parent();
 														if (new_parent_ptr) {
 															new_parent_ptr->end(it);
@@ -830,14 +822,28 @@ namespace stpl {
 													entity_ptr = new LayoutOrderedList<StringT, IteratorT>(it, end);
 												}													
 											}
-											else if (parent_ptr && parent_ptr->get_type() == LAYOUT_OL) {
-												entity_ptr = new ListItemOrdered<StringT, IteratorT>(it, end);
+											else if (parent_ptr && parent_ptr->get_group() == LAYOUT_LIST && parent_ptr->get_type() == LAYOUT_OL) {
+												if (parent_ptr->get_level() == levels) {
+													entity_ptr = new ListItemOrdered<StringT, IteratorT>(it, end);
+													entity_ptr->set_level(levels);
+												}
+												else if (parent_ptr->get_level() < levels) {
+													// nested list
+													entity_ptr = new LayoutOrderedList<StringT, IteratorT>(it, end);
+													entity_ptr->set_level(levels);
+												}
+												else {
+													parent_ptr->end(it);
+													parent_ptr->set_open(false);
+													return parent_ptr;
+												}												
 											}
 											else {
-												Scanner<EntityT>::state_ = LAYOUT;
+												Scanner<EntityT>::state_ = LAYOUT_LIST;
 												entity_ptr = new LayoutOrderedList<StringT, IteratorT>(it, end);
+												entity_ptr->set_level(levels);
 											}
-										}
+										// }
 									}
 								}
 															

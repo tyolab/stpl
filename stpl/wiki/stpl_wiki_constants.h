@@ -32,6 +32,7 @@ namespace stpl {
 		enum WikiNodeGroup {
 			GRUOP_NONE,
 			LAYOUT, 
+			LAYOUT_LIST, 
 			LAYOUT_ITEM,
 			TAG,
 			LINK,

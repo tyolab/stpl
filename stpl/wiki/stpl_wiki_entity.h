@@ -566,6 +566,7 @@ namespace stpl {
 			protected:
 				bool                                                 ordered_;
 				char                                                 start_with_;
+				char	                                             key_char_;
 
 			public:
 				ListItem() : WikiEntity<StringT, IteratorT>::WikiEntity() {}
@@ -583,7 +584,9 @@ namespace stpl {
 
 				virtual std::string to_html() {
 					return "<li>" + WikiEntity<StringT, IteratorT>::to_html() + "</li>";
-				}									
+				}
+
+				virtual void set_key_char() = 0;					
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (*it == '\n') {
@@ -591,14 +594,48 @@ namespace stpl {
 						// 	// we need to record the last text node
 						// 	this->create_text_child_after(it);
 						// }
+						
+						IteratorT next = it + 1;
 						if (advance)
 							it = it + 1;
+
+						this->skip_whitespace(next);
+						if (*next == key_char_) {
+							// we are not gonna advance, because table need new line for other properties
+							// if (advance)
+							// 	it = next + 1;
+							int levels = 1;
+							++next;
+							while (*next == key_char_) {
+								++next;
+								++levels;
+							}
+
+							if (levels <= this->get_level()) {								
+								return true;
+							}
+							return false;
+						}
+
 						return true;
 					}
 					// for List Item, newline is the only character to end it
 					// so we dont need to refer to parent
 					return false;
 				}
+
+				virtual bool is_start(IteratorT& it) {
+					if (*it == key_char_) {
+						this->level_ = 1;
+						++it;
+						while (*it == key_char_) {
+							++it;
+							++this->level_;
+						}
+						return true;
+					}
+					return false;
+				}				
 
 			private:
 				void init() { 
@@ -633,15 +670,9 @@ namespace stpl {
 
 			protected:
 
-				virtual bool is_start(IteratorT& it) {
-					while (*it == WikiEntityConstants::WIKI_KEY_LIST) {
-						++it;
-						++this->level_;
-						this->begin(it);
-						return true;
-					}
-					return false;
-				}
+				virtual void set_key_char() {
+					this->key_char_ = WikiEntityConstants::WIKI_KEY_LIST;
+				}	
 
 				// we collect text node and others
 				virtual bool is_pause(IteratorT& it) {
@@ -650,7 +681,8 @@ namespace stpl {
 
 			private:
 				void init() { 
-					this->set_type(LAYOUT_UL);		
+					this->set_type(LAYOUT_UL);	
+					this->set_key_char();	
 				}			
 		};	
 
@@ -680,46 +712,71 @@ namespace stpl {
 
 			protected:
 
-				virtual bool is_start(IteratorT& it) {
-					while (*it == WikiEntityConstants::WIKI_KEY_LIST_ORDERED) {
-						++it;
-						++this->level_;
-						this->begin(it);
-						return true;
-					}
-					return false;
-				}
+				virtual void set_key_char() {
+					this->key_char_ = WikiEntityConstants::WIKI_KEY_LIST_ORDERED;
+				}				
 
 			private:
 				void init() {
 					this->set_type(LAYOUT_OL);
+					this->set_key_char();
 				 }			
-		};				
+		};
+
+		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
+		class LayoutList: public WikiEntity<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT						string_type;
+				typedef IteratorT					iterator;
+
+			public:
+				LayoutList() : WikiEntity<StringT, IteratorT>::WikiEntity() { init(); }
+				LayoutList(IteratorT it)
+					 : WikiEntity<StringT, IteratorT>::WikiEntity(it) { init(); }
+				LayoutList(IteratorT begin, IteratorT end)
+					 : WikiEntity<StringT, IteratorT>::WikiEntity(begin, end) { init(); }
+				LayoutList(StringT content) :
+					WikiEntity<StringT, IteratorT>::WikiEntity() {
+					init();
+					this->create(content);
+				}
+				virtual ~LayoutList() {}
+
+				virtual BasicWikiEntity<StringT, IteratorT> *create_child(IteratorT& begin, IteratorT& end) {
+					return this;
+				}
+
+			private:
+				void init() { 
+					this->set_group(LAYOUT_LIST);
+				}
+		};						
 
 		template <typename StringT = std::string
 							, typename IteratorT = typename StringT::iterator
 						  >
-		class LayoutUnorderedList: public WikiEntity<StringT, IteratorT>
+		class LayoutUnorderedList: public LayoutList<StringT, IteratorT>
 		{
 			public:
 				typedef StringT													string_type;
 				typedef IteratorT												iterator;
 
 			public:
-				LayoutUnorderedList() : WikiEntity<StringT, IteratorT>::WikiEntity()
+				LayoutUnorderedList() : LayoutList<StringT, IteratorT>::LayoutList()
 							 { init(); }
 				LayoutUnorderedList(IteratorT it) :
-					WikiEntity<StringT, IteratorT>::WikiEntity(it)/*, start_k_(it, it)*/
+					LayoutList<StringT, IteratorT>::LayoutList(it)/*, start_k_(it, it)*/
 					 { init(); }
 				LayoutUnorderedList(IteratorT begin, IteratorT end) :
-					WikiEntity<StringT, IteratorT>::WikiEntity(begin, end)/*, start_k_(begin, begin)*/
+					LayoutList<StringT, IteratorT>::LayoutList(begin, end)/*, start_k_(begin, begin)*/
 					 { init(); }
 
 				virtual ~LayoutUnorderedList() {
 				}
 
 				virtual std::string to_html() {
-					return "<ul>" + WikiEntity<StringT, IteratorT>::to_html() + "</ul>";
+					return "<ul>" + LayoutList<StringT, IteratorT>::to_html() + "</ul>";
 				}
 
 				virtual bool is_start(IteratorT& it) {
@@ -730,7 +787,7 @@ namespace stpl {
 					if (*it == WikiEntityConstants::WIKI_KEY_LIST) {
 						return true;
 					}
-					return WikiEntity<StringT, IteratorT>::is_pause(it);
+					return LayoutList<StringT, IteratorT>::is_pause(it);
 				}
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
@@ -748,33 +805,32 @@ namespace stpl {
 
 			private:
 				void init() {
-					this->set_group(LAYOUT);
 					this->set_type(LAYOUT_UL);					
 				}
 		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
-		class LayoutOrderedList: public WikiEntity<StringT, IteratorT>
+		class LayoutOrderedList: public LayoutList<StringT, IteratorT>
 		{
 			public:
 				typedef	StringT	string_type;
 				typedef IteratorT	iterator;
 
 			public:
-				LayoutOrderedList() : WikiEntity<StringT, IteratorT>::WikiEntity() { init(); }
+				LayoutOrderedList() : LayoutList<StringT, IteratorT>::LayoutList() { init(); }
 				LayoutOrderedList(IteratorT it)
-					 : WikiEntity<StringT, IteratorT>::WikiEntity(it) { init(); }
+					 : LayoutList<StringT, IteratorT>::LayoutList(it) { init(); }
 				LayoutOrderedList(IteratorT begin, IteratorT end)
-					 : WikiEntity<StringT, IteratorT>::WikiEntity(begin, end) { init(); }
+					 : LayoutList<StringT, IteratorT>::LayoutList(begin, end) { init(); }
 				LayoutOrderedList(StringT content) :
-					WikiEntity<StringT, IteratorT>::WikiEntity() {
+					LayoutList<StringT, IteratorT>::LayoutList() {
 					init();
 					this->create(content);
 				}
 				virtual ~LayoutOrderedList() {}
 
 				virtual std::string to_html() {
-					return "<ol>" + WikiEntity<StringT, IteratorT>::to_html() + "</ol>";
+					return "<ol>" + LayoutList<StringT, IteratorT>::to_html() + "</ol>";
 				}
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
@@ -792,7 +848,6 @@ namespace stpl {
 
 			private:
 				void init() { 
-					this->set_group(LAYOUT);
 					this->set_type(LAYOUT_OL);
 				}
 		};
