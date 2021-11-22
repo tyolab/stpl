@@ -30,7 +30,7 @@ namespace stpl {
 		// TEMPLATE node includes wiki declarations, text declarations,
 		// If not any of others, then just TEXT
 		enum WikiNodeGroup {
-			GRUOP_NONE,
+			GROUP_NONE,
 			LAYOUT, 
 			LAYOUT_LIST, 
 			LIST_ITEM,
@@ -168,14 +168,14 @@ namespace stpl {
 
 		class WikiEntityVariables {
 			public:
-				static std::string protocol;
-				static std::string path;
-				static std::string host;
+				static std::string 									protocol;
+				static std::string 									path;
+				static std::string 									host;
 
-				static std::string html_head;
+				static std::string 									html_head;
 
-				static std::string link_category;
-				static std::string link_file;
+				static std::string 									link_category;
+				static std::string 									link_file;
 		};
 
 		std::string WikiEntityVariables::host = "localhost";

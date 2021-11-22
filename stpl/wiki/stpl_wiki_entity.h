@@ -106,6 +106,15 @@ namespace stpl {
 					return this->parent_ptr_->is_child_end(group, type, it);
 				}
 
+				virtual bool is_pause(IteratorT& it) {
+					if (*it == '|' && this->get_type() == P_HEADING) {
+						// this is not a property for either Link or Others
+						++it;
+						return false;
+					}
+					return WikiEntity<StringT, IteratorT>::is_pause(it);
+				}				
+
 			private:
 				void init() {
 					this->set_group(PROPERTY);
@@ -507,6 +516,8 @@ namespace stpl {
 							// 	it = next + 1;
 							return true;
 						}
+						if (advance)
+							++it;
 						return false;
 					}
 				    else 
@@ -596,10 +607,10 @@ namespace stpl {
 						// }
 						
 						IteratorT next = it + 1;
-						if (advance)
-							it = it + 1;
+						// if (advance)
+						// 	it = it + 1;
 
-						this->skip_whitespace(next);
+						// this->skip_whitespace(next);
 						if (*next == key_char_) {
 							// we are not gonna advance, because table need new line for other properties
 							// if (advance)
@@ -614,6 +625,9 @@ namespace stpl {
 							if (levels <= this->get_level()) {								
 								return true;
 							}
+							// have to skip the new line
+							if (advance)
+								++it;
 							return false;
 						}
 
@@ -793,12 +807,17 @@ namespace stpl {
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (*it == '\n') {
 						IteratorT next = it + 1;
-						this->skip_whitespace(next);
 						if (*next != '*') {
-							if (advance)
-								it = next;
+							// no we cannot eat the new line char
+							// if (advance)
+							// 	it = next;
 							return true;
 						}
+						// otherwise we need to move forward a char 
+						// more children in the list
+						if (advance)
+							++it;
+						return false;
 					}
 					return *it != '*';
 				}
@@ -836,12 +855,15 @@ namespace stpl {
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (*it == '\n') {
 						IteratorT next = it + 1;
-						this->skip_whitespace(next);
+						// this->skip_whitespace(next);
 						if (*next != '#') {
-							if (advance)
-								it = next;
+							// if (advance)
+							// 	it = next;
 							return true;
 						}
+						if (advance)
+							++it;
+						return false;
 					}
 					return *it != '#';
 				}
@@ -1222,13 +1244,24 @@ namespace stpl {
 				}
 
 				virtual bool is_child_end(WikiNodeGroup group, WikiNodeType type, IteratorT& it) {
-					return *it == WikiEntityConstants::WIKI_KEY_HEADING;
+					if (*it == '\n') {
+						return true;
+					}					
+					else if (*it == WikiEntityConstants::WIKI_KEY_HEADING)
+						return true;
+					return false;
 				}
 
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					// when the line ends it ends
-					if (*it == '\n') 
+					if (*it == '\n') {
+						if (advance && this->matched_levels_ != 0) {
+							// this is not a HEADING
+							this->set_group(GROUP_NONE);
+							this->set_type(NONE);
+						}
 						return true;
+					}
 					else if (WikiEntityLeveled<StringT, IteratorT>::is_end(it, advance))
 						return true;
 					return false;

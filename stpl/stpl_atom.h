@@ -27,6 +27,7 @@ namespace stpl {
 	class Atom {
 		public:
 			static int                                      counter;
+			static int                                      max_id;
 			static int                                      line_counter;
 
 		protected:
@@ -43,7 +44,7 @@ namespace stpl {
 	};
 
     int Atom::counter = 0;
-
+	int Atom::max_id = -1;
 }
 
 #endif /* STPL_STPL_STPL_ATOM_H_ */

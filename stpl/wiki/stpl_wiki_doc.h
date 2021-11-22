@@ -488,9 +488,9 @@ namespace stpl {
 						// skip white spaces
 						// actually we cannot let the node deal with spaces
 						// space will confuse nodes
-						while (*it == ' ' && it != end) {
-							++it;
-						}
+						// while (*it == ' ' && it != end) {
+						// 	++it;
+						// }
 						begin = it;
 
 						pre_it = it;
@@ -551,13 +551,13 @@ namespace stpl {
 									entity_ptr = parent_ptr;
 								}
 								else {
-									pre_it = it;
-									while (pre_it > this->begin_) {
-										--pre_it;
-										if (*pre_it != ' ') {
-											break;
-										}
-									}
+									pre_it = it - 1;
+									// while (pre_it > this->begin_) {
+									// 	--pre_it;
+									// 	if (*pre_it != ' ') {
+									// 		break;
+									// 	}
+									// }
 									if (start_from_newline || *pre_it == '\n') {
 										start_from_newline = true;
 										new_entity_check_passed = 1;
@@ -579,11 +579,11 @@ namespace stpl {
 							// 2) there could be text before the first section
 							{
 								IteratorT pre = it - 1;
-								while (pre > this->begin_ && *pre == ' ')
-								{
-									/* code */
-									--pre;
-								}
+								// while (pre > this->begin_ && *pre == ' ')
+								// {
+								// 	/* code */
+								// 	--pre;
+								// }
 								if (*pre == '\n') {
 									start_from_newline = true;
 									new_entity_check_passed = 1;
@@ -760,7 +760,7 @@ namespace stpl {
 													new_parent_ptr->set_open(false);
 												}
 											}
-											return parent_ptr;
+											entity_ptr = parent_ptr;
 										}
 										else {
 											// nested list
@@ -771,22 +771,25 @@ namespace stpl {
 									else if (parent_ptr && parent_ptr->get_group() == LAYOUT_LIST && parent_ptr->get_type() == LAYOUT_UL) {
 										if (parent_ptr->get_level() == levels) {
 											entity_ptr = new ListItemUnordered<StringT, IteratorT>(it, end);
+											begin = it;
 											// entity_ptr->set_level(levels);
 										}
 										else if (parent_ptr->get_level() < levels) {
 											// nested list
 											entity_ptr = new LayoutUnorderedList<StringT, IteratorT>(it, end);
+											begin = it;
 											entity_ptr->set_level(levels);
 										}
 										else {
 											parent_ptr->end(it);
 											parent_ptr->set_open(false);
-											return parent_ptr;
+											entity_ptr = parent_ptr;
 										}
 									}
 									else {
 										Scanner<EntityT>::state_ = LAYOUT;
 										entity_ptr = new LayoutUnorderedList<StringT, IteratorT>(it, end);
+										begin = it;
 										entity_ptr->set_level(levels);
 									}
 								}
@@ -821,32 +824,36 @@ namespace stpl {
 															new_parent_ptr->set_open(false);
 														}
 													}
-													return parent_ptr;
+													entity_ptr = parent_ptr;
 												}
 												else {
 													// nested list
 													entity_ptr = new LayoutOrderedList<StringT, IteratorT>(it, end);
+													begin = it;
 												}													
 											}
 											else if (parent_ptr && parent_ptr->get_group() == LAYOUT_LIST && parent_ptr->get_type() == LAYOUT_OL) {
 												if (parent_ptr->get_level() == levels) {
 													entity_ptr = new ListItemOrdered<StringT, IteratorT>(it, end);
+													begin = it;
 													entity_ptr->set_level(levels);
 												}
 												else if (parent_ptr->get_level() < levels) {
 													// nested list
 													entity_ptr = new LayoutOrderedList<StringT, IteratorT>(it, end);
+													begin = it;
 													entity_ptr->set_level(levels);
 												}
 												else {
 													parent_ptr->end(it);
 													parent_ptr->set_open(false);
-													return parent_ptr;
+													entity_ptr = parent_ptr;
 												}												
 											}
 											else {
 												Scanner<EntityT>::state_ = LAYOUT_LIST;
 												entity_ptr = new LayoutOrderedList<StringT, IteratorT>(it, end);
+												begin = it;
 												entity_ptr->set_level(levels);
 											}
 										// }
@@ -869,43 +876,50 @@ namespace stpl {
 								// it sees a new HEADNING
 								{
 									if (parent_ptr) {
-										if (parent_ptr->get_group() == PROPERTY) {
-											if (parent_ptr->get_type() == P_HEADING) {
-												// time for the end
-												// parent_ptr->end(it);
-												// parent_ptr->set_open(false);
-												// let it finish it
-												return parent_ptr;
-											}
-											// if text contains = at the begining
-											// created end loop
-											// because we added create child function at the end
-											// so probably we don't need ti
-											// return parent_ptr;
-										}
-										else if (parent_ptr->get_type() == LAYOUT_HEADING) {
+										// if (parent_ptr->get_group() == PROPERTY) {
+										// 	if (parent_ptr->get_type() == P_HEADING) {
+										// 		// time for the end
+										// 		// parent_ptr->end(it);
+										// 		// parent_ptr->set_open(false);
+										// 		// let it finish it
+										// 		entity_ptr = parent_ptr;
+										// 	}
+										// 	// if text contains = at the begining
+										// 	// created end loop
+										// 	// because we added create child function at the end
+										// 	// so probably we don't need ti
+										// 	// return parent_ptr;
+										// }
+										// else 
+										if (parent_ptr->get_type() == LAYOUT_HEADING || parent_ptr->get_type() == P_HEADING) {
 											// time for the end
-											return parent_ptr;
-										}										
-									}
-																		
-									IteratorT prev_it = this->begin_;
-									if (it > prev_it)
-										prev_it = it - 1;
-									if (!start_from_newline && (prev_it == this->begin_ || *prev_it == '\n'))
-										start_from_newline = true;
-
-									if (start_from_newline) {
-										if (!parent_ptr) {
-											Scanner<EntityT>::state_ = LAYOUT;
-											entity_ptr = new LayoutLeveled<StringT, IteratorT>(it, end);
-											start_from_newline = false;
+											// we see '='
+											// let the parent check if this an end
+											entity_ptr =  parent_ptr;
 										}
-										else {
-											// parent supposed to be null already already
-											parent_ptr->end(it);
-											parent_ptr->set_open(false);
-											return parent_ptr;
+										// else
+										// let the rest of the code handle it							
+									}
+									else {							
+										IteratorT prev_it = this->begin_;
+										if (it > prev_it)
+											prev_it = it - 1;
+										if (!start_from_newline && (prev_it == this->begin_ || *prev_it == '\n'))
+											start_from_newline = true;
+
+										if (start_from_newline) {
+											if (!parent_ptr) {
+												Scanner<EntityT>::state_ = LAYOUT;
+												entity_ptr = new LayoutLeveled<StringT, IteratorT>(it, end);
+												begin = it;
+												start_from_newline = false;
+											}
+											else {
+												// parent supposed to be null already already
+												parent_ptr->end(it);
+												parent_ptr->set_open(false);
+												entity_ptr = parent_ptr;
+											}
 										}
 									}
 								}
@@ -917,7 +931,7 @@ namespace stpl {
 											begin = it + 1;
 											entity_ptr = new CommonChildEntity<StringT, IteratorT>(it + 1, end);
 										}
-										else if (parent_ptr->get_group() == PROPERTY || parent_ptr->get_group() == CELL) {
+										else if (parent_ptr->get_type() == P_PROPERTY || parent_ptr->get_type() == P_CELL) {
 											// a property can't not be the paranet of another property
 											parent_ptr->set_open(false);
 											parent_ptr->end(it);
@@ -932,17 +946,17 @@ namespace stpl {
 											if (parent_ptr->get_type() == TABLE) {
 												if (*next == '}') {
 													begin = it;
-													return parent_ptr;
+													entity_ptr = parent_ptr;
 												}
 												else {
 													if (*next == '|' || *next == '!') {
 														// let parent handle it
 														// as it means that it is a cell in the same line, table needs to adjust cell id etc.
-														return parent_ptr;
+														entity_ptr = parent_ptr;
 													}
 													IteratorT pre = it - 1;
-													while (*pre == ' ')
-														--pre;
+													// while (*pre == ' ')
+													// 	--pre;
 													// need to check the position of the cell, it is kinda of hack
 													if (*pre == '\n') {
 														// might be eaten by previous entity
@@ -962,12 +976,12 @@ namespace stpl {
 												throw new runtime_error("Invalid TBASE type");
 										}
 										else {
-											// since we come down here, it much be a separator for either template or table, or link
+											// since we come down here, it may be a separator for either template or table, or link
 											EntityT *parent_parent_ptr = parent_ptr->get_parent();
 											if (parent_parent_ptr && parent_parent_ptr->is_end(it)) {
 												parent_ptr->set_open(false);
 												parent_ptr->end(it);
-												return parent_ptr;
+												entity_ptr = parent_ptr;
 											}
 										}
 									}
@@ -985,6 +999,13 @@ namespace stpl {
 
 						if (entity_ptr) {
 							// found a new entity
+							if (!entity_ptr->isopen() && entity_ptr->begin() == entity_ptr->end()) {
+								// empty entity, shouldn't be happening
+								// we just need to turn it into a text node
+								begin = it + 1;
+								entity_ptr->end(begin);
+								entity_ptr->set_group(TEXT);
+							}
 							return entity_ptr;
 						}
 

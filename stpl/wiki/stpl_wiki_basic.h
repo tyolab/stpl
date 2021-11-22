@@ -37,9 +37,6 @@ namespace stpl {
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
 		class BasicWikiEntity : public StringBound<StringT, IteratorT> 
 		{
-			public:
-				static int                                      	counter;
-
 			protected:
 				WikiNodeGroup		 								group_;
 				WikiNodeType 										type_;
@@ -205,7 +202,7 @@ namespace stpl {
 							return true;
 					}
 					else if (*it == '$') {
-						
+
 					}
 					return false;
 				}			
@@ -225,11 +222,16 @@ namespace stpl {
 			private:
 				void init() {
 					level_ = 0;
-					group_ = GRUOP_NONE;
+					group_ = GROUP_NONE;
 					type_ = NONE;
 					parent_ptr_ = NULL;
 
 					Atom::set_id(Atom::counter++);
+					if (Atom::max_id != -1 && Atom::counter > Atom::max_id) {
+						// for example, even each char makes a node and create a sub-node about it, the max id
+						// should'nt be twice of the total number of chars
+						throw std::runtime_error("Check the code: maximum number of node shouldn't exceed the max id");
+					}
 				}
 		};
 
