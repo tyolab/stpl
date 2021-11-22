@@ -944,28 +944,34 @@ namespace stpl {
 											// because | is for separator it can't be part of next entity
 											next = it + 1;
 											if (parent_ptr->get_type() == TABLE) {
-												if (*next == '}') {
-													begin = it;
+												// if (*next == '}') {
+												// 	begin = it;
+												// 	parent_ptr->end(it);
+												// 	parent_ptr->set_open(false);
+												// 	entity_ptr = parent_ptr;
+												// }
+												// else {
+												// 	if (*next == '|' || *next == '!') {
+												// 		// let parent handle it
+												// 		// as it means that it is a cell in the same line, table needs to adjust cell id etc.
+												// 		entity_ptr = parent_ptr;
+												// 	}
+												// 	IteratorT pre = it - 1;
+												// 	// while (*pre == ' ')
+												// 	// 	--pre;
+												// 	// need to check the position of the cell, it is kinda of hack
+												// 	// if (*pre == '\n') {
+												// 	// 	// might be eaten by previous entity
+												// 	// 	parent_ptr->is_pause(pre);
+												// 	// }
+												if (*next == '|' || *next == '!' || *next == '}')
+													// let the code logic handle it
 													entity_ptr = parent_ptr;
-												}
-												else {
-													if (*next == '|' || *next == '!') {
-														// let parent handle it
-														// as it means that it is a cell in the same line, table needs to adjust cell id etc.
-														entity_ptr = parent_ptr;
-													}
-													IteratorT pre = it - 1;
-													// while (*pre == ' ')
-													// 	--pre;
-													// need to check the position of the cell, it is kinda of hack
-													if (*pre == '\n') {
-														// might be eaten by previous entity
-														parent_ptr->is_pause(pre);
-													}
+												else
 													entity_ptr = new TableCell<StringT, IteratorT>(next, end);
-													previous_state = CELL;
-													begin = next;
-												}
+												// 	// previous_state = CELL;
+												// 	// begin = next;
+												// }
 											}
 											else if (parent_ptr->get_type() == TEMPLATE) {
 												entity_ptr = new WikiProperty<StringT, IteratorT>(next, end);

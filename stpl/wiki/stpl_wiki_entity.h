@@ -509,16 +509,18 @@ namespace stpl {
 				    if (*it == '\n') {
 						// do we need to advance here?
 						// please check and find out, and put some reasons here
-						IteratorT next = it + 1;
-						if (*next == '|' || *next == '!') {
-							// we are not gonna advance, because table need new line for other properties
-							// if (advance)
-							// 	it = next + 1;
-							return true;
-						}
-						if (advance)
-							++it;
-						return false;
+						// IteratorT next = it + 1;
+						// if (*next == '|' || *next == '!') {
+						// 	// we are not gonna advance, because table need new line for other properties
+						// 	// if (advance)
+						// 	// 	it = next + 1;
+						// 	return true;
+						// }
+						// if (advance)
+						// 	++it;
+						// // if it not start with a pipe, it ends
+						// return *it;
+						return true;
 					}
 				    else 
 					if (*it == '|')
@@ -1808,7 +1810,7 @@ namespace stpl {
 				virtual ~Table() {}
 
 				virtual BasicWikiEntity<StringT, IteratorT> *create_child(IteratorT& begin, IteratorT& end) {
-					++this->cell_id_;
+					// ++this->cell_id_;
 					return new TableCell<StringT, IteratorT>(begin, end);
 				}
 
@@ -1944,17 +1946,21 @@ namespace stpl {
 						if (cell_ptr) {
 							row_header = rows_header_ind_[rows] == '1';
 							int skip_cells = cell_ptr->get_cell_id() - last_cell_id;
-							bool should_be_cell = false;
-							if (cell_ptr->children().size() > 0) {
-								auto child = cell_ptr->children().begin();
-								while (child != cell_ptr->children().end()) {
-									if ((*child)->get_group() != TEXT) {
-										should_be_cell = true;
-										break;
-									}
-									++child;
-								}
-							}
+							/**
+							 * Can't remember why I was doing this
+							 * when it is not a cell???
+							 */
+							// bool should_be_cell = false;
+							// if (cell_ptr->children().size() > 0) {
+							// 	auto child = cell_ptr->children().begin();
+							// 	while (child != cell_ptr->children().end()) {
+							// 		if ((*child)->get_group() != TEXT) {
+							// 			should_be_cell = true;
+							// 			break;
+							// 		}
+							// 		++child;
+							// 	}
+							// }
 
 							if (skip_cells > 1) {
 								// fill up the missing cells
@@ -1965,13 +1971,15 @@ namespace stpl {
 									else
 										ss << "<td ></td>" << std::endl;
 								}
+								last_cell_id += skip_cells - 1;
 							}
-							else {
-								if (should_be_cell) {
-									skip_cells = 1;
-									last_format = cell_ptr;
-								}
-							}
+							// else {
+							// 	if (should_be_cell) {
+							// 		skip_cells = 1;
+							////      this line of cause the same cell gets printed twice
+							// 		last_format = cell_ptr;
+							// 	}
+							// }
 
 							// we print it only we have the last cell
 							if (last_format && skip_cells > 0) {
@@ -2025,10 +2033,11 @@ namespace stpl {
 						IteratorT next = it + 1;
 						while (*next == ' ')
 							++next;
-						if (*next == '}') {
-							return true;
-						}
-						else if (*next == '|') {
+						// if (*next == '}') {
+						// 	return true;
+						// }
+						// else 
+						if (*next == '|') {
 							++next;
 							switch (*next) {
 								case '+':
@@ -2042,7 +2051,7 @@ namespace stpl {
 
 										it = next;
 									}
-									return true;;
+									return true;
 								// new row
 								case '-':
 									{
@@ -2059,8 +2068,8 @@ namespace stpl {
 
 										while (*next != '\n')
 											++next;
-
-										it = next;
+										// table will come back here again if it can see a pipe
+										it = next + 1;
 									}
 									return true;
 								default:
@@ -2068,7 +2077,7 @@ namespace stpl {
 							}
 							++cell_id_;
 							++col_id_;
-							++it;
+							it = next;
 							// that will be a table cell
 							return true;
 						}
@@ -2133,8 +2142,8 @@ namespace stpl {
 				virtual bool is_end(IteratorT& it, bool advance=true) {
 					if (*it == '\n') {
 						IteratorT next = it + 1;
-						while (*next == ' ')
-							++next;
+						// while (*next == ' ')
+						// 	++next;
 						if (*next == '!') {
 							return false;
 						}
