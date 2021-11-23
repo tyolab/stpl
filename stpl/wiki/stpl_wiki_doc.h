@@ -305,10 +305,16 @@ namespace stpl {
 
 					if (it != nodes.end() && (*it)->get_group() == REDIRECT) {
 						++it;
-						if (it != nodes.end()) 
-							redirect_ = (EntityT *)(*it);
-					    // should be a link
-					    redirect_->set_type(LINK_REDIRECT);
+						while (it != nodes.end()) {
+							EntityT *entity = (EntityT *)(*it);
+							if (entity->get_group() == LINK) {
+								// should be a link
+								redirect_ = entity;
+								redirect_->set_type(LINK_REDIRECT);
+								break;
+							}
+							++it;
+						}
 						return;
 					}
 
@@ -800,7 +806,17 @@ namespace stpl {
 									if (*(it + 1) == 'R' && *(it + 2) == 'E' && *(it + 3) == 'D' && *(it + 4) == 'I' && *(it + 5) == 'R' && *(it + 6) == 'E' && *(it + 7) == 'C' && *(it + 8) == 'T') {
 										entity_ptr = new Redirect<StringT, IteratorT>(it, end);
 									}
-									else {
+									else if (it == this->begin_) {
+										IteratorT next = it + 1;
+										while (next < this->end_ && *next != '\n')
+											++next;
+										--next;
+										if (*next == ']')
+											// must be a redirect link
+											entity_ptr = new Redirect<StringT, IteratorT>(it, end);
+									}
+
+									if (!entity_ptr) {
 										IteratorT next = it + 1;
 										int levels = 1;
 
