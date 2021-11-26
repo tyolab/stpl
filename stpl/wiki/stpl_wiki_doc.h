@@ -81,6 +81,10 @@ namespace stpl {
 					}
 				}
 
+				bool is_redirect() {
+					return redirect_ != NULL;
+				}
+
 				std::string to_html() {
 					organize();
 					std::stringstream ss;
@@ -150,11 +154,11 @@ namespace stpl {
 				 * 
 				 * @return std::string 
 				 */
-				std::string to_trec(int id) {
+				std::string to_trec(const char *title = "", int id = -1, int to_html = 1) {
 					organize();
 					std::stringstream ss;
 					ss << "<DOC>" << std::endl;
-					ss << "<DOCNO>" << id << "</DOCNO>" << std::endl;
+					ss << "<TITLE>" << id << "</TITLE>" << std::endl;
 					// categories
 					ss << "<CATEGORIES>" << std::endl;
 					for (auto it = categories_.begin(); it != categories_.end(); ++it) {			
@@ -163,10 +167,14 @@ namespace stpl {
 						ss << "<CATEGORY>" << std::endl;
 					}
 					ss << "</CATEGORIES>" << std::endl;
-
+					ss << "<TITLE>" << title << "</TITLE>" << std::endl;
 					ss << "<TEXT>" << std::endl;
-					for (auto it = sections_.begin(); it != sections_.end(); ++it) {		
-						ss << (*it)->to_text();
+					for (auto it = sections_.begin(); it != sections_.end(); ++it) {
+						// html actually contain more information than text
+						if (to_html == 1)	
+							ss << (*it)->to_html();
+						else
+							ss << (*it)->to_text();
 						ss << std::endl;
 					}
 					ss << "</TEXT>" << std::endl;

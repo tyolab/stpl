@@ -19,7 +19,7 @@
 
 namespace utils {
 
-    bool iccompare(const std::string& str1, const std::string& str2) {
+    inline bool iccompare(const std::string& str1, const std::string& str2) {
             if (str1.size() != str2.size()) {
                 return false;
             }
@@ -31,14 +31,14 @@ namespace utils {
             return true;
     }     
 
-    bool ends_with(const std::string& str, const std::string& suffix) {
+    inline bool ends_with(const std::string& str, const std::string& suffix) {
         if (str.size() < suffix.size())
             return false;
         std::string last_segment = str.substr(str.size() - suffix.size());
         return iccompare(last_segment, suffix);
     }    
 
-    bool ends_with(const std::string& str, const std::vector<std::string>& suffix) {
+    inline bool ends_with(const std::string& str, const std::vector<std::string>& suffix) {
         for (std::vector<std::string>::const_iterator it = suffix.begin(); it != suffix.end(); ++it) {
             if (ends_with(str, *it)) {
                 return true;
@@ -47,7 +47,7 @@ namespace utils {
         return false;
     }
 
-    std::string escape_quote(std::string& source) {
+    inline std::string escape_quote(std::string& source) {
         std::stringstream ss;
         std::string::iterator pre, it = source.begin();
         int count = 0;
