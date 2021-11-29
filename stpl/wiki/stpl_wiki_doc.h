@@ -59,12 +59,9 @@ namespace stpl {
 					 init();
 				}
 				virtual ~WikiDoc() {
-					auto it = sections_.begin();
-					if (it != sections_.end()) {
-						delete *it;
-						++it;
-					}
-					sections_.clear();
+					clear_sections();
+					clear_templates();
+					clear_categories();
 				}
 
 				void write(std::string filename) {
@@ -300,7 +297,16 @@ namespace stpl {
 						++it;
 					}
 					templates_.clear();
-				}				
+				}
+
+				void clear_categories() {
+					auto it = categories_.begin();
+					if (it != categories_.end()) {
+						delete *it;
+						++it;
+					}
+					categories_.clear();
+				}							
 
 				void organize() {
 					if (organized_)
@@ -338,14 +344,11 @@ namespace stpl {
 								if (entity_ptr->get_type() == LINK_IMAGE)
 									images_.push_back(entity_ptr);
 								else {
-									static const std::vector<std::string> suffix_array = {
-										".jpg", ".jpeg", ".png", ".svg", ".jiff"
-									};
 									Link<StringT, IteratorT> *link = (Link<StringT, IteratorT> *)entity_ptr;
 									if (link->children().size() > 0) {
 										auto child = link->children().begin();
 										std::string link_text = (*child)->to_std_string();
-										if (utils::ends_with(link_text, suffix_array)) {
+										if (utils::ends_with(link_text, WikiEntityConstants::IMAGE_SUFFIX_ARRAY)) {
 											templates_.push_back(*child);
 										}
 									}
@@ -386,13 +389,15 @@ namespace stpl {
 					if (!section) {
 						std::cout << "last section is null!!! " << std::endl;
 					}
-#endif // DEBUG					
+#endif // DEBUG		
+					// remove templates, categories for the last section			
 					if (section && section->children().size() > 0) {
 						it = section->children().end() - 1;
 						int last_count = 0;
 						while (it != section->children().begin()) {
 							int group = (*it)->get_group();
 							if (group == TEXT && (*it)->is_empty()) {
+								delete *it;
 								--it;
 								continue;
 							}
@@ -420,8 +425,18 @@ namespace stpl {
 				void init() {
 					organized_ = false;
 					redirect_ = NULL;
+
+					if (WikiEntityConstants::IMAGE_SUFFIX_ARRAY.size() == 0) {
+						WikiEntityConstants::IMAGE_SUFFIX_ARRAY.push_back(".jpg");
+						WikiEntityConstants::IMAGE_SUFFIX_ARRAY.push_back(".jpeg");
+						WikiEntityConstants::IMAGE_SUFFIX_ARRAY.push_back(".png");
+						WikiEntityConstants::IMAGE_SUFFIX_ARRAY.push_back(".svg");
+						WikiEntityConstants::IMAGE_SUFFIX_ARRAY.push_back(".jiff");
+					}
 				}
 		};
+
+
 
 		typedef WikiDoc<>	                    WikiDocument;
 		typedef WikiDoc<std::string, char *>	WikiFile;
