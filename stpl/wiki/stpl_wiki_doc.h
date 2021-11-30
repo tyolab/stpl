@@ -60,8 +60,8 @@ namespace stpl {
 				}
 				virtual ~WikiDoc() {
 					clear_sections();
-					clear_templates();
-					clear_categories();
+					// clear_templates2();
+					// clear_categories();
 				}
 
 				void write(std::string filename) {
@@ -283,25 +283,25 @@ namespace stpl {
 			private:
 				void clear_sections() {
 					auto it = sections_.begin();
-					if (it != sections_.end()) {
+					while (it != sections_.end()) {
 						delete *it;
 						++it;
 					}
 					sections_.clear();
 				}
 
-				void clear_templates() {
-					auto it = templates_.begin();
-					if (it != templates_.end()) {
+				void clear_templates2() {
+					auto it = templates2_.begin();
+					while (it != templates2_.end()) {
 						delete *it;
 						++it;
 					}
-					templates_.clear();
+					templates2_.clear();
 				}
 
 				void clear_categories() {
 					auto it = categories_.begin();
-					if (it != categories_.end()) {
+					while (it != categories_.end()) {
 						delete *it;
 						++it;
 					}
@@ -390,23 +390,30 @@ namespace stpl {
 						std::cout << "last section is null!!! " << std::endl;
 					}
 #endif // DEBUG		
-					// remove templates, categories for the last section			
+					// remove templates, categories for the last section
+					int last_count = 0;		
 					if (section && section->children().size() > 0) {
 						it = section->children().end() - 1;
-						int last_count = 0;
 						while (it != section->children().begin()) {
 							int group = (*it)->get_group();
 							if (group == TEXT && (*it)->is_empty()) {
-								delete *it;
+								// delete *it;
+								// *it = NULL;
 								--it;
 								continue;
 							}
 							else if (group == LINK || group == TBASE) {
 								int type = (*it)->get_type();
-								if (type == LINK_CATEGORY)
+								if (type == LINK_CATEGORY) {
 									categories_.push_back(*it);
-								else if (type == TEMPLATE)
+									*it = NULL;
+								}
+								else if (type == TEMPLATE) {
 									templates2_.push_back(*it);
+									// *it = NULL;
+								}
+								else
+									break;
 							}
 							else
 								break;
