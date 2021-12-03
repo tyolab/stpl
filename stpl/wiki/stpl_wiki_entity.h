@@ -68,11 +68,17 @@ namespace stpl {
 				}
 
 				virtual std::string to_html() {
-					if (this->children().size() == 0) {
+					if (this->children().size() == 0) 
 						return "";
-					}
+					
+					this->assign_output_format();
+					/**
+					 * I have no ideas why the following code is needed.
+					 * could not remember the reason for doing it.
+					 */
 					WikiNodeGroup group = this->parent_ptr_->get_group();
-					if (group == LINK) {
+					WikiNodeType type = this->parent_ptr_->get_type();
+					if (group == LINK && type == LINK_EXTERNAL) {
 						std::stringstream ss;
 						auto first = this->children().begin();
 						auto second = first + 1;
@@ -173,6 +179,7 @@ namespace stpl {
 				}
 
 				virtual std::string to_std_string() {
+					this->assign_output_format();
 					if (this->children_.size() > 0) {
 						stringstream ss;
 						auto it = this->children_.begin();
@@ -185,6 +192,8 @@ namespace stpl {
 				}
 
 				virtual std::string to_json() {
+					this->assign_output_format();
+
 					stringstream ss;
 					ss << "{" << std::endl;
 					auto it = this->children_.begin();
@@ -198,6 +207,7 @@ namespace stpl {
 						// if (this->has_quote())
 						// 	ss << "\"";
 						while (it != this->children_.end()) {
+							(*it)->set_output_format(this->get_output_format());
 							std::string content = (*it++)->to_html();
 							ss << utils::escape_quote(content);
 						}
@@ -221,6 +231,8 @@ namespace stpl {
 				 * the appearing order
 				 */
 				virtual std::string to_html() {
+					this->assign_output_format();
+
 					stringstream ss;
 					auto it = this->children_.begin();
 
@@ -411,21 +423,9 @@ namespace stpl {
 				virtual ~WikiSection() {};
 
 				virtual std::string to_json() {
-					stringstream ss;
-					ss << "{" << std::endl;
-					ss << "\"id\": "  << "\"" << this->get_id() << "\"," << std::endl;
-					if (this->get_level() > 0) {
-						ss << "\"level\": " << "\"" << this->get_level() << "\"," << std::endl;
-						ss << "\"line\": "  << "\"" << this->get_line() << "\"," << std::endl;
-					}
-					std::string html = this->children_to_html();
-					html.erase(std::remove(html.begin(), html.end(), '\n'), html.end());
-					ss <<  "\"text\": "  << "\"" << utils::escape_quote(html) << "\"" << std::endl;
-					ss <<  "}" << std::endl;
-
-					return ss.str();
-				}				
-
+					return to_output(this->get_output_format());
+				}
+							
 				int get_id() const {
 					return id_;
 				}
@@ -442,14 +442,34 @@ namespace stpl {
 					line_ = line;
 				}
 
-			protected:
-
-
 			private:
 				void init() { 
 					this->set_group(SECTION);
 					this->set_own_children(false);
-				}	
+				}
+
+				/**
+				 * @brief 
+				 * 
+				 * @param format 0 json, 1 html, 2 text, 3 tyokiie
+				 */
+				std::string to_output(int format = 0) {
+
+					stringstream ss;
+					ss << "{" << std::endl;
+					ss << "\"id\": "  << "\"" << this->get_id() << "\"," << std::endl;
+					if (this->get_level() > 0) {
+						ss << "\"level\": " << "\"" << this->get_level() << "\"," << std::endl;
+						ss << "\"line\": "  << "\"" << this->get_line() << "\"," << std::endl;
+					}
+					std::string content;
+					content  = this->children_to_html();
+					content .erase(std::remove(content .begin(), content .end(), '\n'), content .end());
+					ss <<  "\"text\": "  << "\"" << utils::escape_quote(content ) << "\"" << std::endl;
+					ss <<  "}" << std::endl;
+
+					return ss.str();
+				}
 		};
 
 		template <typename StringT = std::string,
@@ -596,6 +616,7 @@ namespace stpl {
 				virtual ~ListItem() {};
 
 				virtual std::string to_html() {
+					this->assign_output_format();
 					return "<li>" + WikiEntity<StringT, IteratorT>::to_html() + "</li>";
 				}
 
@@ -792,6 +813,7 @@ namespace stpl {
 				}
 
 				virtual std::string to_html() {
+					this->assign_output_format();
 					return "<ul>" + LayoutList<StringT, IteratorT>::to_html() + "</ul>";
 				}
 
@@ -851,6 +873,7 @@ namespace stpl {
 				virtual ~LayoutOrderedList() {}
 
 				virtual std::string to_html() {
+					this->assign_output_format();
 					return "<ol>" + LayoutList<StringT, IteratorT>::to_html() + "</ol>";
 				}
 
@@ -1274,18 +1297,6 @@ namespace stpl {
 					entity->set_type(P_HEADING);
 					return entity;
 				}
-				
-				virtual std::string to_std_string() {
-					return WikiEntityLeveled<StringT, IteratorT>::to_std_string();
-				}
-
-				virtual std::string to_html() {
-					return WikiEntityLeveled<StringT, IteratorT>::to_html();
-				}
-
-				virtual std::string to_json() {
-					return WikiEntityLeveled<StringT, IteratorT>::to_json();
-				}
 
 			private:
 				void init() {
@@ -1318,6 +1329,8 @@ namespace stpl {
 				virtual ~Style() {}
 
 				virtual std::string to_html() {
+					this->assign_output_format();
+
 					if (this->level_ == 2)
 						// return "<span style=\"font-style: italic;\">" + WikiEntityLeveled<StringT, IteratorT>::to_html() + "</span>";
 						return "<i>" + WikiEntityLeveled<StringT, IteratorT>::to_html() + "</i>";
@@ -1401,6 +1414,8 @@ namespace stpl {
 				}
 				
 				virtual std::string to_html() {
+					this->assign_output_format();
+
 					std::stringstream ss;
 					
 					ss << "<div class=\"textindent" << this->level_ << "\"" << ">" << std::endl;
@@ -1561,12 +1576,14 @@ namespace stpl {
 				}
 
 				/**
-				 * For the link things might get a bit interesting
+				 * @brief 
 				 * 
+				 * @param format 0 json, 1 html, 2 text, 3 tyokiie
 				 */
-				virtual std::string to_html() {
+				std::string to_output(int format = 0) {				
 					if (this->children_.size() == 0)
 						return "";
+						
 					auto first = this->children_.begin();
 					auto second = this->children_.end() - 1;
 					stringstream ss;
@@ -1586,11 +1603,6 @@ namespace stpl {
 						ss << "<div class='innerlink'>" << std::endl;
 						ss << "<a href=\"";
 						std::string img_url;
-						// if (this->external_) {
-						// 	img_url =  (*first)->to_std_string();
-						// }
-						// else {
-							// ss /* << WikiEntityVariables::protocol << "://" + WikiEntityVariables::host */ << WikiEntityVariables::path <<  (*first)->to_std_string();
 						img_url =  WikiEntityVariables::path + (*first)->to_std_string();
 						// }
 						ss << img_url;
@@ -1612,8 +1624,11 @@ namespace stpl {
 							ss << (*first)->to_html();
 						}
 						else {
-							ss << "<a href=\"";
-								ss << WikiEntityVariables::protocol << "://" + WikiEntityVariables::host << WikiEntityVariables::path <<  (*first)->to_std_string();
+							if (format == 3)
+								ss << "<span available=\"no\" url=\"";
+							else
+								ss << "<a href=\"";	
+							ss << WikiEntityVariables::protocol << "://" + WikiEntityVariables::host << WikiEntityVariables::path <<  (*first)->to_std_string();
 							
 							ss << "\">";
 
@@ -1624,16 +1639,30 @@ namespace stpl {
 							// we are using the url as the anchor text
 							else
 								ss << (*first)->to_std_string();
-							ss << "</a> ";
+							if (format == 3)
+								ss << "</span> ";
+							else
+								ss << "</a> ";							
 						}
 					}
 
 					return ss.str();
 				}
 
+				/**
+				 * For the link things might get a bit interesting
+				 * 
+				 */
+				virtual std::string to_html() {
+					return to_output(this->get_output_format());
+				}
+
 				virtual std::string to_json() {			
 					if (this->children_.size() == 0)
-						return "{url: \"\"}";	
+						return "{url: \"\"}";
+
+					this->assign_output_format();
+
 					auto first = this->children_.begin();
 					auto second = this->children_.end() - 1;
 					stringstream ss;
@@ -1903,6 +1932,8 @@ namespace stpl {
 				}
 
 				virtual std::string to_html() {
+					this->assign_output_format();
+
 					std::stringstream ss;
 					ss << "<table";
 					if (style_.length() > 0) {
@@ -2232,6 +2263,8 @@ namespace stpl {
 				}
 
 				virtual std::string to_json() {
+					this->assign_output_format();
+
 					std::stringstream ss;
 					ss << "{" << std::endl;
 					ss << "\"name\": \"" << this->name_.to_std_string() << "\"," << std::endl;
@@ -2249,6 +2282,8 @@ namespace stpl {
 				}
 
 				virtual std::string to_html() {
+					this->assign_output_format();
+
 					std::stringstream ss;
 					int count = 0;
 					std::string name = this->name_.to_std_string();

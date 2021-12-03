@@ -82,6 +82,28 @@ namespace stpl {
 					return redirect_ != NULL;
 				}
 
+				std::string to_text() {
+					organize();
+					std::stringstream ss;
+					
+					if (redirect_) {
+						ss << redirect_->to_std_string() << std::endl;
+						return ss.str();
+					}
+					WikiSection<string_type, iterator> *last_section = NULL;
+					auto it = sections_.begin();
+					if (it != sections_.end()) 
+					do {
+						WikiSection<string_type, iterator> *section = (WikiSection<string_type, iterator> *)(*it);
+						ss << section->to_text() << std::endl;
+
+						ss << std::endl;
+						++it;
+					} while (it != sections_.end());
+
+					return ss.str();
+				}				
+
 				std::string to_html() {
 					organize();
 					std::stringstream ss;
@@ -180,8 +202,12 @@ namespace stpl {
 					return ss.str();
 				}
 
-				std::string to_json(std::string extras = "") {
-					organize();
+				std::string to_tyokiie(std::string extras = "") {
+					return to_json(extras, OUTPUT_TYOKIIE);
+				}				
+
+				std::string to_json(std::string extras = "", int format = OUTPUT_JSON) {
+					organize(format);
 
 					std::stringstream ss;
 
@@ -308,7 +334,7 @@ namespace stpl {
 					categories_.clear();
 				}							
 
-				void organize() {
+				void organize(int format = OUTPUT_JSON) {
 					if (organized_)
 						return;
 
@@ -335,6 +361,8 @@ namespace stpl {
 					WikiSection<StringT, IteratorT> *section = NULL;
 					for (; it != nodes.end(); ++it) {
 						EntityT *entity_ptr = *it;
+						entity_ptr->set_output_format(format);
+
 						if (!section) {
 							if (entity_ptr->get_group() == TBASE && entity_ptr->get_type() == TEMPLATE) {
 								templates_.push_back(entity_ptr);
@@ -362,6 +390,7 @@ namespace stpl {
 							if (section) 
 								section->end(entity_ptr->begin());
 							section = new WikiSection<StringT, IteratorT>(entity_ptr->begin(), this->end());
+							section->set_output_format(format);
 							sections_.push_back(section);
 
 							section->set_id(count++);
@@ -937,7 +966,7 @@ namespace stpl {
 										// 	// return parent_ptr;
 										// }
 										// else 
-										if (parent_ptr->get_type() == LAYOUT_HEADING || parent_ptr->get_type() == P_HEADING) {
+										if (parent_ptr->get_type() == P_PROPERTY || parent_ptr->get_type() == LAYOUT_HEADING || parent_ptr->get_type() == P_HEADING) {
 											// time for the end
 											// we see '='
 											// let the parent check if this an end

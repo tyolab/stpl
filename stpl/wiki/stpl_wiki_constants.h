@@ -131,6 +131,13 @@ namespace stpl {
 			LINK_IMAGE			
 		}; 
 
+		enum WikiOutputFormat {
+			OUTPUT_JSON = 0,
+			OUTPUT_HTML = 1,
+			OUTPUT_TEXT = 2,
+			OUTPUT_TYOKIIE = 3
+		};
+
 		class WikiEntityConstants {
 			public:
 				static const char 													WIKI_KEY_NEWLINE = '\n';

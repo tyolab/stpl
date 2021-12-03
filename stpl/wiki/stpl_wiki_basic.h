@@ -44,6 +44,7 @@ namespace stpl {
 				StringBound<StringT, IteratorT> 					body_;
 
 				int                                                 level_;
+				int                                                 output_format_;
 				
 			public:
 				BasicWikiEntity() : StringBound<StringT, IteratorT>::StringBound() {
@@ -219,12 +220,21 @@ namespace stpl {
 					level_ = level;
 				}
 
+				int get_output_format() const {
+					return output_format_;
+				}
+
+				void set_output_format(int outputFormat) {
+					output_format_ = outputFormat;
+				}
+
 			private:
 				void init() {
 					level_ = 0;
 					group_ = GROUP_NONE;
 					type_ = NONE;
 					parent_ptr_ = NULL;
+					output_format_ = 0;
 
 					Atom::set_id(Atom::counter++);
 					if (Atom::max_id != -1 && Atom::counter > Atom::max_id) {
@@ -559,9 +569,8 @@ namespace stpl {
 				}
 
 				virtual std::string to_html() {
-					// if no children no nothing
-					return children_to_html(); // this->to_std_string();
-				}
+					return children_to_html(); 
+				}			
 
 				virtual std::string to_text() {
 					std::stringstream ss;
@@ -573,6 +582,7 @@ namespace stpl {
 				}
 
 				std::string children_to_html() {
+					this->assign_output_format();
 					std::stringstream ss;
 					auto it = this->children_.begin();
 					while (it != this->children_.end()) {
@@ -580,17 +590,6 @@ namespace stpl {
 					}
 					return ss.str();
 				}
-
-				// virtual bool is_end(IteratorT& it, bool advance=true) {
-				// 	if (BasicWikiEntity<StringT, IteratorT>::is_end(it)) {
-				// 		// if (last_child_ && it > last_child_->end()) {
-				// 		// 	// we need to record the last text node
-				// 		// 	this->create_text_child_after(it);
-				// 		// }
-				// 		return true;
-				// 	}	
-				// 	return false;	
-				// }
 
 				virtual bool is_pause(IteratorT& it) {
 					/**
@@ -608,6 +607,15 @@ namespace stpl {
 					// As it is supposed to contain children
 					this->skip_whitespace(it);
 					return true;
+				}
+
+			protected:
+				void assign_output_format() {
+					auto it = this->children_.begin();
+					while (it != this->children_.end()) {
+						(*it)->set_output_format(this->get_output_format());
+						++it;						
+					}
 				}
 
 			private:
