@@ -1006,7 +1006,9 @@ namespace stpl {
 											begin = it + 1;
 											entity_ptr = new CommonChildEntity<StringT, IteratorT>(it + 1, end);
 										}
-										else if (parent_ptr->get_type() == P_PROPERTY || parent_ptr->get_type() == P_CELL) {
+										else if (parent_ptr->get_type() == P_PROPERTY 
+											|| parent_ptr->get_type() == P_CELL
+											|| parent_ptr->get_type() == P_LINK) {
 											// a property can't not be the paranet of another property
 											parent_ptr->set_open(false);
 											parent_ptr->end(it);

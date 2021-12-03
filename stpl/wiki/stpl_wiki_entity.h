@@ -1625,7 +1625,7 @@ namespace stpl {
 						}
 						else {
 							if (format == 3)
-								ss << "<span available=\"no\" url=\"";
+								ss << "<span id=\"" << this->get_id() << "\" to=\"" << (*first)->to_std_string() <<  "\" type=\"link\" available=\"no\" url=\"";
 							else
 								ss << "<a href=\"";	
 							ss << WikiEntityVariables::protocol << "://" + WikiEntityVariables::host << WikiEntityVariables::path <<  (*first)->to_std_string();
