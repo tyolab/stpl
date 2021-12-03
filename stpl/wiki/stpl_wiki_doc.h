@@ -291,7 +291,6 @@ namespace stpl {
 					if (extras.size() > 0) {
 						ss << "," << std::endl;
 						ss << "extras: " << extras << std::endl;
-						ss << extras;
 					}
 					ss << "}" << std::endl;
 
