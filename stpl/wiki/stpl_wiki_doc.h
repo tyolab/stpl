@@ -202,11 +202,11 @@ namespace stpl {
 					return ss.str();
 				}
 
-				std::string to_tyokiie(std::string extras = "") {
-					return to_json(extras, OUTPUT_TYOKIIE);
+				std::string to_tyokiie(const char* title = "", const char* id = "", const char* extras = "") {
+					return to_json(title, id, extras, OUTPUT_TYOKIIE);
 				}				
 
-				std::string to_json(std::string extras = "", int format = OUTPUT_JSON) {
+				std::string to_json(const char* title = "", const char* id = "", const char* extras = "", int format = OUTPUT_JSON) {
 					organize(format);
 
 					std::stringstream ss;
@@ -218,6 +218,9 @@ namespace stpl {
 					}
 					else {
 						ss << "\"article\": {" << std::endl;
+
+						ss << "\"title\": \"" << title << "\"," << std::endl;
+						ss << "\"id\": \"" << id << "\"," << std::endl;
 
 						int count = 0;
 						// template
@@ -288,9 +291,9 @@ namespace stpl {
 					}
 					ss << "}" << std::endl;
 
-					if (extras.size() > 0) {
+					if (strlen(extras) > 0) {
 						ss << "," << std::endl;
-						ss << "extras: " << extras << std::endl;
+						ss << "\"extras\": " << extras << std::endl;
 					}
 					ss << "}" << std::endl;
 
