@@ -177,7 +177,9 @@ namespace stpl {
 					organize();
 					std::stringstream ss;
 					ss << "<DOC>" << std::endl;
-					ss << "<TITLE>" << id << "</TITLE>" << std::endl;
+					if (id > -1)
+						ss << "<DOCNO>" << id << "</DOCNO>" << std::endl;
+					ss << "<TITLE>" << title << "</TITLE>" << std::endl;
 					// categories
 					ss << "<CATEGORIES>" << std::endl;
 					for (auto it = categories_.begin(); it != categories_.end(); ++it) {			
