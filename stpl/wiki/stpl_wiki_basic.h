@@ -225,7 +225,7 @@ namespace stpl {
 				}
 
 				void set_output_format(int outputFormat) {
-					output_format_ = outputFormat;
+					this->output_format_ = outputFormat;
 				}
 
 			private:

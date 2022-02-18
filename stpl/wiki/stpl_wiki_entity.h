@@ -1654,6 +1654,7 @@ namespace stpl {
 				 * 
 				 */
 				virtual std::string to_html() {
+					this->assign_output_format();
 					return to_output(this->get_output_format());
 				}
 

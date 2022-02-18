@@ -184,6 +184,8 @@ namespace stpl {
 
 				static std::string 									link_category;
 				static std::string 									link_file;
+
+				static int                                          link_to_span;
 		};
 
 		std::string WikiEntityVariables::host = "localhost";
@@ -194,6 +196,7 @@ namespace stpl {
 		std::string WikiEntityVariables::link_file = "File";
 
 		std::string WikiEntityVariables::html_head = "";
+		int WikiEntityVariables::link_to_span = 0;
 
 		const char *WikiEntityConstants::WIKI_KEY_CHARS_STYLE_INDENT = ":";
 		const char *WikiEntityConstants::WIKI_KEY_CHARS_NEWLINE = "\n";
