@@ -674,6 +674,12 @@ namespace stpl {
 						case WikiEntityConstants::WIKI_KEY_OPEN_LINK:
 						// list might be inside an entity
 						case WikiEntityConstants::WIKI_KEY_LIST:
+							{	
+								new_entity_check_passed = 1;
+								new_entity_start = 1;
+								start_from_newline = false;	
+							}
+							break;						
 						case WikiEntityConstants::WIKI_KEY_LIST_ORDERED:
 							{	
 								new_entity_check_passed = 1;
@@ -865,8 +871,11 @@ namespace stpl {
 								break;
 							case WikiEntityConstants::WIKI_KEY_LIST_ORDERED:
 								{
-									// could be redirect node
-									if (*(it + 1) == 'R' && *(it + 2) == 'E' && *(it + 3) == 'D' && *(it + 4) == 'I' && *(it + 5) == 'R' && *(it + 6) == 'E' && *(it + 7) == 'C' && *(it + 8) == 'T') {
+									if (*(it + 1) == 'D' && *(it + 2) == 'E' && *(it + 3) == 'B' && *(it + 4) == 'U' && *(it + 5) == 'G') {
+										entity_ptr = new DebugNode<StringT, IteratorT>(it, end);
+									}
+										// could be redirect node
+									else if (*(it + 1) == 'R' && *(it + 2) == 'E' && *(it + 3) == 'D' && *(it + 4) == 'I' && *(it + 5) == 'R' && *(it + 6) == 'E' && *(it + 7) == 'C' && *(it + 8) == 'T') {
 										entity_ptr = new Redirect<StringT, IteratorT>(it, end);
 									}
 									else if (it == this->begin_) {
@@ -930,10 +939,14 @@ namespace stpl {
 												}												
 											}
 											else {
-												Scanner<EntityT>::state_ = LAYOUT_LIST;
-												entity_ptr = new LayoutOrderedList<StringT, IteratorT>(it, end);
-												begin = it;
-												entity_ptr->set_level(levels);
+												// one more check
+												// if parent is a link a hash just mean jumping to a particular section of the page
+												if (parent_ptr && parent_ptr->get_group() != LINK && parent_ptr->get_type() != P_LINK) {
+													Scanner<EntityT>::state_ = LAYOUT_LIST;
+													entity_ptr = new LayoutOrderedList<StringT, IteratorT>(it, end);
+													begin = it;
+													entity_ptr->set_level(levels);
+												}
 											}
 										// }
 									}
