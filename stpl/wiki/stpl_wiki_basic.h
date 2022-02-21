@@ -249,8 +249,8 @@ namespace stpl {
 		class Text: public BasicWikiEntity<StringT, IteratorT>
 		{
 			public:
-				typedef	StringT	string_type;
-				typedef IteratorT	iterator;
+				typedef	StringT													string_type;
+				typedef IteratorT												iterator;
 
 			private:
 				int 															is_empty_;					
@@ -384,6 +384,68 @@ namespace stpl {
 					this->group_ = TEXT; 
 					this->is_empty_ = -1;
 				}				 
+		};
+
+		/**
+		 * @brief new line will cause pause, when a newline node is created, which means it is in the middle of nowhere
+		 * 
+		 * @tparam StringT 
+		 * @tparam StringT::iterator 
+		 */
+		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
+		class NewLine: public Text<StringT, IteratorT>
+		{
+			public:
+				typedef	StringT	string_type;
+				typedef IteratorT	iterator;
+
+			private:
+				void init() {
+					 this->group_ = REDIRECT;
+				}
+
+			public:
+				NewLine() : Text<StringT, IteratorT>::Text() { init(); }
+				NewLine(IteratorT it)
+					 : Text<StringT, IteratorT>::Text(it) { init(); }
+				NewLine(IteratorT begin, IteratorT end)
+					 : Text<StringT, IteratorT>::Text(begin, end) { init(); }
+				NewLine(StringT content) :
+					Text<StringT, IteratorT>::Text() {
+					init();
+					this->create(content);
+				}
+				virtual ~NewLine() {}
+
+				std::string to_html() {
+					if ((this->end() - this->begin()) >= 2) {
+						std::stringstream ss;
+						if (WikiEntityVariables::tag_ind == 1) {
+							ss << "</p>";
+							WikiEntityVariables::tag_ind = 0;
+						}
+						else {
+							ss << "<p>";
+							WikiEntityVariables::tag_ind = 1;
+						}
+						return ss.str();
+					}
+					return "";
+				}
+
+				/**
+				 * @brief 
+				 * 
+				 * @param it 
+				 * @param advance 
+				 * @return true 
+				 * @return false 
+				 */
+				virtual bool is_end(IteratorT& it, bool advance=true) {
+					while (*it == '\n')
+						++it;
+					return true;
+				}
 		};
 
 		template <typename StringT = std::string, typename IteratorT = typename StringT::iterator>
@@ -569,7 +631,7 @@ namespace stpl {
 				}
 
 				virtual std::string to_html() {
-					return children_to_html(); 
+					return this->children_to_html(); 
 				}			
 
 				virtual std::string to_text() {
@@ -581,7 +643,7 @@ namespace stpl {
 					return ss.str();
 				}
 
-				std::string children_to_html() {
+				virtual std::string children_to_html() {
 					this->assign_output_format();
 					std::stringstream ss;
 					auto it = this->children_.begin();

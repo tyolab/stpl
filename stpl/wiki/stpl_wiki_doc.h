@@ -144,7 +144,7 @@ namespace stpl {
 							if (section->get_level() >= 2)
 								ss << "<div class=\"row\"><h2 class=\"section-title\">" << section->get_line() << "</h2></div>" << std::endl;
 							if (section->size() > 0) {
-								ss << "<div class=\"row\">" << std::endl;
+								ss << "<div class=\"row\">" << std::endl;			
 								ss << section->to_html() << std::endl;
 								ss << "</div>" << std::endl;
 							}
@@ -216,7 +216,7 @@ namespace stpl {
 					ss << "{" << std::endl;
 
 					if (redirect_) {
-						ss << "\"redirect\": \"" << redirect_->to_std_string() << "\"," << std::endl;
+						ss << "\"redirect\": \"" << redirect_->to_std_string() << "\"" << std::endl;
 					}
 					else {
 						ss << "\"article\": {" << std::endl;
@@ -289,14 +289,16 @@ namespace stpl {
 								++count;
 							}
 							ss << "]" << std::endl;
-						}												
-					}
-					ss << "}" << std::endl;
+						}
 
-					if (strlen(extras) > 0) {
-						ss << "," << std::endl;
-						ss << "\"extras\": " << extras << std::endl;
+						ss << "}" << std::endl;	
+
+						if (strlen(extras) > 0) {
+							ss << "," << std::endl;
+							ss << "\"extras\": " << extras << std::endl;
+						}								
 					}
+
 					ss << "}" << std::endl;
 
 					return ss.str();
@@ -1161,8 +1163,9 @@ namespace stpl {
 							if (parent_ptr && parent_ptr->isopen()) {
 								return parent_ptr;
 							}
-							++it;
-							begin = it;
+							return new NewLine<StringT, IteratorT>(it, end);
+							// ++it;
+							// begin = it;
 						}
 						else {
 							begin = it;

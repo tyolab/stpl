@@ -470,6 +470,17 @@ namespace stpl {
 
 					return ss.str();
 				}
+
+				virtual std::string children_to_html() {
+					stringstream ss;
+					// ss << "<p>";
+					WikiEntityVariables::tag_ind = 0;
+					ss << WikiEntity<StringT, IteratorT>::children_to_html();
+					if (WikiEntityVariables::tag_ind == 1) {
+						ss << "</p>";
+					}
+					return ss.str();
+				}
 		};
 
 		template <typename StringT = std::string,
